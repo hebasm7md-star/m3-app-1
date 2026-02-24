@@ -72,17 +72,7 @@
 
             state.selectedApForDetail = a;
 
-            // Don't open right sidebar:
-            // - if left sidebar is expanded AND antenna tab is active
-            // - OR while antenna placement mode is active
-            var mainSidebar = document.getElementById("mainSidebar");
-            var isLeftSidebarExpanded = mainSidebar && mainSidebar.classList.contains("expanded");
-            var antennaSection = document.querySelector('.section-content[data-section="accesspoints"]');
-            var isAntennaTabActive = antennaSection && antennaSection.classList.contains("active");
-            var isPlacingAntenna = !!state.addingAP;
-            var shouldPreventOpening = (isLeftSidebarExpanded && isAntennaTabActive) || isPlacingAntenna;
-
-            if (!shouldPreventOpening) {
+            if (!state.addingAP) {
               $("apDetailSidebar").classList.add("visible");
               renderApDetails();
               state.justOpenedApSidebar = true;
@@ -168,17 +158,7 @@
 
             state.selectedApForDetail = a;
 
-            // Don't open right sidebar:
-            // - if left sidebar is expanded AND antenna tab is active
-            // - OR while antenna placement mode is active
-            var mainSidebar = document.getElementById("mainSidebar");
-            var isLeftSidebarExpanded = mainSidebar && mainSidebar.classList.contains("expanded");
-            var antennaSection = document.querySelector('.section-content[data-section="accesspoints"]');
-            var isAntennaTabActive = antennaSection && antennaSection.classList.contains("active");
-            var isPlacingAntenna = !!state.addingAP;
-            var shouldPreventOpening = (isLeftSidebarExpanded && isAntennaTabActive) || isPlacingAntenna;
-
-            if (!shouldPreventOpening) {
+            if (!state.addingAP) {
               $("apDetailSidebar").classList.add("visible");
               renderApDetails();
               state.justOpenedApSidebar = true;
@@ -2067,21 +2047,12 @@
 
             state.selectedApForDetail = ap;
 
-            // Don't open right sidebar only if left sidebar is expanded AND antenna tab is active
-            var mainSidebar = document.getElementById("mainSidebar");
-            var isLeftSidebarExpanded = mainSidebar && mainSidebar.classList.contains("expanded");
-            var antennaSection = document.querySelector('.section-content[data-section="accesspoints"]');
-            var isAntennaTabActive = antennaSection && antennaSection.classList.contains("active");
-            var shouldPreventOpening = isLeftSidebarExpanded && isAntennaTabActive;
-
-            if (!shouldPreventOpening) {
-              $("apDetailSidebar").classList.add("visible");
-              renderApDetails();
-              state.justOpenedApSidebar = true;
-              setTimeout(function () {
-                state.justOpenedApSidebar = false;
-              }, 100);
-            }
+            $("apDetailSidebar").classList.add("visible");
+            renderApDetails();
+            state.justOpenedApSidebar = true;
+            setTimeout(function () {
+              state.justOpenedApSidebar = false;
+            }, 100);
           }
 
           renderAPs(); // Update button states

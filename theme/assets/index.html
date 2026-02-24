@@ -11,7 +11,7 @@
     <!-- Three.js library for GPU-accelerated 3D rendering -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="../assets/style.css">
 </head>
 
 <body>
@@ -35,6 +35,10 @@
         <span class="tooltip">Visualization</span>
       </button>
       
+      <button class="icon-btn" data-section="optimization" title="Optimization">
+        🎯
+        <span class="tooltip">Optimization</span>
+      </button>
       <button class="icon-btn" data-section="walls" title="Walls & Obstacles">
         🧱
         <span class="tooltip">Walls & Obstacles</span>
@@ -194,22 +198,6 @@
                 <input id="maxVal" type="number" value="-30" />
               </div>
             </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Threshold</label>
-                <input id="complianceThreshold" type="number" value="-85" />
-              </div>
-              <div class="form-group">
-                <label>Percentage</label>
-                <input id="compliancePercentage" type="number" value="80" />
-              </div>
-            </div>
-            <div class="form-group form-group-spacing-top">
-              <input type="file" id="coverageCsvFile" accept=".csv" class="hidden-file-input" />
-              <button id="optimizeBtn" class="small full-width">
-                Optimize
-              </button>
-            </div>
             <label class="checkbox-label">
               <input type="checkbox" id="showContours" />
               <span>Show Zone Boundaries</span>
@@ -222,6 +210,35 @@
               <input type="checkbox" id="showVisualization" checked />
               <span>Show Coverage Map</span>
             </label>
+          </div>
+        </div>
+
+        <!-- Optimization -->
+        <div class="section-content" data-section="optimization">
+          <div class="card">
+            <h3 class="card-title">AI Optimization</h3>
+            <p class="helper-text">
+              Set coverage targets, then run optimization to automatically tune antenna placement.
+            </p>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Threshold (dBm)</label>
+                <input id="complianceThreshold" type="number" value="-85" />
+              </div>
+              <div class="form-group">
+                <label>Target Coverage %</label>
+                <input id="compliancePercentage" type="number" value="80" />
+              </div>
+            </div>
+            <div class="form-group form-group-spacing-top">
+              <input type="file" id="coverageCsvFile" accept=".csv" class="hidden-file-input" />
+              <button id="optimizeBtn" class="small full-width">
+                Optimize
+              </button>
+            </div>
+            <p class="helper-text helper-text-small">
+              Optimization will adjust antenna positions to meet the coverage targets above.
+            </p>
           </div>
         </div>
 
@@ -602,34 +619,34 @@
   </div>
 
 <!-- Pre-monolith modules (no dependency on state/draw/canvas) -->
-<script src="PropagationModel25DN.js"></script>
-<script src="NotificationSystem.js"></script>
-<script src="RadioCalculations.js"></script>
-<script src="DataExportSystem.js"></script>
-<script src="GeometryUtils.js"></script>
-<script src="ColorSystem.js"></script>
-<script src="AntennaPatterns.js"></script>
+<script src="utils/PropagationModel25DN.js"></script>
+<script src="systems/NotificationSystem.js"></script>
+<script src="utils/RadioCalculations.js"></script>
+<script src="systems/DataExportSystem.js"></script>
+<script src="utils/GeometryUtils.js"></script>
+<script src="utils/ColorSystem.js"></script>
+<script src="utils/AntennaPatterns.js"></script>
 
 <!-- Main application script -->
-<script src="CoordinateSystem.js"></script>
-<script src="IPSStudioV2.6.js"></script>
+<script src="core/CoordinateSystem.js"></script>
+<script src="core/IPSStudioV2.6.js"></script>
 
 <!-- Post-monolith modules (depend on state, draw, canvas, etc.) -->
-<script src="SignalCalculations.js"></script>
-<script src="BackendSync.js"></script>
-<script src="OptimizationSystem.js"></script>
-<script src="CSVCoverageSystem.js"></script>
-<script src="UndoSystem.js"></script>
-<script src="ContourRenderer.js"></script>
-<script src="HeatmapEngine.js"></script>
-<script src="ThreeJSRenderer.js"></script>
-<script src="ProjectIO.js"></script>
-<script src="AntennaPlacement.js"></script>
-<script src="UIRenderers.js"></script>
-<script src="CanvasInteraction.js"></script>
+<script src="utils/SignalCalculations.js"></script>
+<script src="systems/BackendSync.js"></script>
+<script src="systems/OptimizationSystem.js"></script>
+<script src="systems/CSVCoverageSystem.js"></script>
+<script src="systems/UndoSystem.js"></script>
+<script src="renderers/ContourRenderer.js"></script>
+<script src="renderers/HeatmapEngine.js"></script>
+<script src="renderers/ThreeJSRenderer.js"></script>
+<script src="systems/ProjectIO.js"></script>
+<script src="systems/AntennaPlacement.js"></script>
+<script src="renderers/UIRenderers.js"></script>
+<script src="core/CanvasInteraction.js"></script>
 
 <!-- Fallback -->
-<script src="force_sidebar_init.js"></script>
+<script src="core/force_sidebar_init.js"></script>
 </body>
 
 </html>

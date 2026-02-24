@@ -9378,14 +9378,8 @@
           }
           console.log("Showing section:", section);
 
-          // If antenna tab is opened, close the right sidebar
-          if (section === "accesspoints") {
-            var apDetailSidebar = $("apDetailSidebar");
-            if (apDetailSidebar && apDetailSidebar.classList.contains("visible")) {
-              apDetailSidebar.classList.remove("visible");
-              state.selectedApForDetail = null;
-            }
-          }
+          // Right panel stays open regardless of which left tab is selected
+          // The left sidebar list and right detail panel are complementary views
         } else {
           console.error("Section not found:", section);
         }
@@ -9407,21 +9401,23 @@
   // Close sidebar when clicking outside (but not on canvas or other interactive elements)
   document.addEventListener("click", function (e) {
     // Handle left sidebar
+    // Never close sidebars when clicking on a notification modal (confirmation dialogs, etc.)
+    var clickedOnModal = e.target.closest(".notif-modal-overlay") || e.target.closest(".notif-modal");
+    if (clickedOnModal) return;
+
     if (iconSidebarData) {
       var sidebar = iconSidebarData.sidebar;
       var iconButtons = document.querySelectorAll(".icon-btn");
 
       // Don't close if clicking inside sidebar or icon bar
-      // This includes all elements inside the sidebar (inputs, buttons, etc.)
       var clickedInsideSidebar =
         sidebar &&
         (sidebar.contains(e.target) || e.target.closest(".icon-sidebar"));
-      // Also check if clicking on a button inside the sidebar
       var clickedOnSidebarButton =
         e.target.closest(".list-item") || e.target.closest("button.small");
 
       if (clickedInsideSidebar || clickedOnSidebarButton) {
-        // Click is inside sidebar, don't close it - continue to check right sidebar
+        // Click is inside sidebar, don't close it
       } else if (
         !e.target.closest(".canvas-container") &&
         e.target.id !== "plot"
@@ -9433,10 +9429,9 @@
             b.classList.remove("active");
           });
           iconSidebarData.currentSection = null;
-          // Restore legend to default position after sidebar collapse (if not manually moved)
           setTimeout(function () {
-            constrainLegendPosition(true); // Restore default if not manually moved
-          }, 350); // Wait for transition to complete
+            constrainLegendPosition(true);
+          }, 350);
         }
       }
     }
@@ -9444,15 +9439,12 @@
     // Handle right sidebar (AP detail sidebar) - close when clicking anywhere outside it
     var apDetailSidebar = $("apDetailSidebar");
     if (apDetailSidebar && apDetailSidebar.classList.contains("visible")) {
-      // Don't close if clicking inside the AP detail sidebar
       if (apDetailSidebar.contains(e.target)) {
         return;
       }
-      // Don't close if we just opened it (prevents immediate closing after opening)
       if (state.justOpenedApSidebar) {
         return;
       }
-      // Close the AP detail sidebar when clicking outside (including canvas)
       apDetailSidebar.classList.remove("visible");
       state.selectedApForDetail = null;
     }
@@ -10935,22 +10927,12 @@
       // Show detail sidebar but don't set selectedApId or highlight
       state.selectedApForDetail = hit;
 
-      // Don't open right sidebar only if left sidebar is expanded AND antenna tab is active
-      var mainSidebar = document.getElementById("mainSidebar");
-      var isLeftSidebarExpanded = mainSidebar && mainSidebar.classList.contains("expanded");
-      var antennaSection = document.querySelector('.section-content[data-section="accesspoints"]');
-      var isAntennaTabActive = antennaSection && antennaSection.classList.contains("active");
-      var shouldPreventOpening = isLeftSidebarExpanded && isAntennaTabActive;
-
-      if (!shouldPreventOpening) {
-        $("apDetailSidebar").classList.add("visible");
-        renderApDetails();
-        // Set flag to prevent immediate closing
-        state.justOpenedApSidebar = true;
-        setTimeout(function () {
-          state.justOpenedApSidebar = false;
-        }, 100);
-      }
+      $("apDetailSidebar").classList.add("visible");
+      renderApDetails();
+      state.justOpenedApSidebar = true;
+      setTimeout(function () {
+        state.justOpenedApSidebar = false;
+      }, 100);
 
       // Update sidebar to highlight and scroll to the viewed antenna
       renderAPs();

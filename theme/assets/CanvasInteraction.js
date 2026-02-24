@@ -1526,22 +1526,12 @@
       // Show detail sidebar but don't set selectedApId or highlight
       state.selectedApForDetail = hit;
 
-      // Don't open right sidebar only if left sidebar is expanded AND antenna tab is active
-      var mainSidebar = document.getElementById("mainSidebar");
-      var isLeftSidebarExpanded = mainSidebar && mainSidebar.classList.contains("expanded");
-      var antennaSection = document.querySelector('.section-content[data-section="accesspoints"]');
-      var isAntennaTabActive = antennaSection && antennaSection.classList.contains("active");
-      var shouldPreventOpening = isLeftSidebarExpanded && isAntennaTabActive;
-
-      if (!shouldPreventOpening) {
-        $("apDetailSidebar").classList.add("visible");
-        renderApDetails();
-        // Set flag to prevent immediate closing
-        state.justOpenedApSidebar = true;
-        setTimeout(function () {
-          state.justOpenedApSidebar = false;
-        }, 100);
-      }
+      $("apDetailSidebar").classList.add("visible");
+      renderApDetails();
+      state.justOpenedApSidebar = true;
+      setTimeout(function () {
+        state.justOpenedApSidebar = false;
+      }, 100);
 
       // Update sidebar to highlight and scroll to the viewed antenna
       renderAPs();
