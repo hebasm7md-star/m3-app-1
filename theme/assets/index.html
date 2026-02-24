@@ -11,7 +11,7 @@
     <!-- Three.js library for GPU-accelerated 3D rendering -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     
-<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="style.css">
 </head>
 
 <body>
@@ -619,34 +619,34 @@
   </div>
 
 <!-- Pre-monolith modules (no dependency on state/draw/canvas) -->
-<script src="utils/PropagationModel25DN.js"></script>
-<script src="systems/NotificationSystem.js"></script>
-<script src="utils/RadioCalculations.js"></script>
-<script src="systems/DataExportSystem.js"></script>
-<script src="utils/GeometryUtils.js"></script>
-<script src="utils/ColorSystem.js"></script>
-<script src="utils/AntennaPatterns.js"></script>
+<script src="PropagationModel25DN.js"></script>
+<script src="NotificationSystem.js"></script>
+<script src="RadioCalculations.js"></script>
+<script src="DataExportSystem.js"></script>
+<script src="GeometryUtils.js"></script>
+<script src="ColorSystem.js"></script>
+<script src="AntennaPatterns.js"></script>
 
 <!-- Main application script -->
-<script src="core/CoordinateSystem.js"></script>
-<script src="core/IPSStudioV2.6.js"></script>
+<script src="CoordinateSystem.js"></script>
+<script src="IPSStudioV2.6.js"></script>
 
 <!-- Post-monolith modules (depend on state, draw, canvas, etc.) -->
-<script src="utils/SignalCalculations.js"></script>
-<script src="systems/BackendSync.js"></script>
-<script src="systems/OptimizationSystem.js"></script>
-<script src="systems/CSVCoverageSystem.js"></script>
-<script src="systems/UndoSystem.js"></script>
-<script src="renderers/ContourRenderer.js"></script>
-<script src="renderers/HeatmapEngine.js"></script>
-<script src="renderers/ThreeJSRenderer.js"></script>
-<script src="systems/ProjectIO.js"></script>
-<script src="systems/AntennaPlacement.js"></script>
-<script src="renderers/UIRenderers.js"></script>
-<script src="core/CanvasInteraction.js"></script>
+<script src="SignalCalculations.js"></script>
+<script src="BackendSync.js"></script>
+<script src="OptimizationSystem.js"></script>
+<script src="CSVCoverageSystem.js"></script>
+<script src="UndoSystem.js"></script>
+<script src="ContourRenderer.js"></script>
+<script src="HeatmapEngine.js"></script>
+<script src="ThreeJSRenderer.js"></script>
+<script src="ProjectIO.js"></script>
+<script src="AntennaPlacement.js"></script>
+<script src="UIRenderers.js"></script>
+<script src="CanvasInteraction.js"></script>
 
 <!-- Fallback -->
-<script src="core/force_sidebar_init.js"></script>
+<script src="force_sidebar_init.js"></script>
 </body>
 
 </html>
