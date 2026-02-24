@@ -46,7 +46,7 @@ var OptimizationSystem = (function () {
       );
     }, 500);
 
-    console.log("Started optimization polling");
+    console.log("[startOptimizationPolling] Started optimization polling");
   }
 
   // Stop polling for optimization updates
@@ -62,31 +62,33 @@ var OptimizationSystem = (function () {
   function handleOptimizationUpdate(data) {
     try {
       var newActions = data.new_action_configs || [];
+      var newRsrp = data.new_bsrv_rsrp || [];
+      var compliancePercent = data.new_compliance || [];
       var status = data.state;// || data.status;
       var message = data.message;
-      var compliancePercent = data.compliance_percent;
+      // var compliancePercent = data.compliance_percent;
 
       // Update compliance % if provided by backend (force override HTML calculation)
       // If backend sends null/undefined, let HTML's own calculation show (don't update here)
-      if (compliancePercent !== undefined && compliancePercent !== null && !isNaN(compliancePercent)) {
+      if (compliancePercent !== undefined && compliancePercent !== null) { // && !isNaN(compliancePercent)
         // Convert to number and round to match display format
-        var formattedPercent = Math.round(Number(compliancePercent));
+        //var formattedPercent = Math.round(Number(compliancePercent));
         var compliancePercentEl = document.getElementById("compliancePercent");
         if (compliancePercentEl) {
           // Force update: override any HTML-calculated value with backend value
-          compliancePercentEl.textContent = formattedPercent;
-          console.log("[HTML] Forced compliance percent from backend:", formattedPercent);
+          compliancePercentEl.textContent = compliancePercent;
+          console.log("[HTML] Forced compliance percent from backend:", compliancePercent);
         } else {
           console.warn("[HTML] compliancePercent element not found in DOM");
         }
         // Store in state so it's preserved
-        state.compliancePercentage = formattedPercent;
-        state.compliancePercentFromBackend = formattedPercent; // Flag that we're using backend value
-      } else {
+        // state.compliancePercentage = formattedPercent;
+        // state.compliancePercentFromBackend = formattedPercent; // Flag that we're using backend value
+      } 
+      else {
         // Backend sent null/undefined - let HTML's own calculation show
-        // Don't update here, let updateActiveAntennaStats() handle it
         console.log("[HTML] compliance_percent is null/undefined, using HTML's own calculation");
-        state.compliancePercentFromBackend = null; // Clear backend flag
+        // state.compliancePercentFromBackend = null; // Clear backend flag
       }
 
       // Update loading message if visible
@@ -259,7 +261,7 @@ var OptimizationSystem = (function () {
       if (changesMade) {
         if (window.saveState) window.saveState();
         if (window.renderAPs) window.renderAPs();
-        
+
         var canvas = document.getElementById("plot");
         if (canvas && typeof window.draw === 'function') {
           // Re-generate heatmap and redraw
@@ -275,7 +277,7 @@ var OptimizationSystem = (function () {
       // If optimization is marked as completed by backend, stop polling
       if (status === "completed" || status === "error" || status === 'finished') {
         stopOptimizationPolling();
-        
+
         if (status === "completed" || status === 'finished') {
           if (footerBadge) {
             footerBadge.textContent = 'COMPLETED';
