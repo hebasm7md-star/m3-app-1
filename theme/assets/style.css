@@ -297,6 +297,7 @@
       }
 
       /* ── Undo & Restart — indigo pill buttons ── */
+      .redo-btn,
       .undo-btn,
       .restart-btn {
       display: flex;
@@ -321,13 +322,14 @@
       flex-shrink: 0;
       }
 
+      .redo-btn:hover,
       .undo-btn:hover,
       .restart-btn:hover {
       background: #e0e7ff;                           /* indigo-100 */
       color: #4338ca;                                /* indigo-700 */
       box-shadow: 0 2px 6px rgba(99,102,241,0.16);
       }
-
+      .redo-btn:active,
       .undo-btn:active,
       .restart-btn:active {
       background: #c7d2fe;                           /* indigo-200 */
@@ -336,6 +338,7 @@
 
       /* Dark mode */
       .dark-mode .undo-btn,
+      .dark-mode .redo-btn,
       .dark-mode .restart-btn {
       background: rgba(99,102,241,0.14);
       border-color: rgba(99,102,241,0.28);
@@ -343,6 +346,7 @@
       box-shadow: 0 1px 4px rgba(0,0,0,0.18);
       }
 
+      .dark-mode .redo-btn:hover,
       .dark-mode .undo-btn:hover,
       .dark-mode .restart-btn:hover {
       background: rgba(99,102,241,0.22);

@@ -13,7 +13,7 @@ class Combined(CombinedTemplate):
     self.last_index = 0
     self._reset_session()
 
-    filepath = "_/theme/IPS%20Studio%20V2.6.html"
+    filepath = "_/theme/index.html"
     html_panel = HtmlPanel(
       html=f"""
                 <style>
