@@ -13,7 +13,7 @@ class Combined(CombinedTemplate):
     self.last_index = 0
     self._reset_session()
 
-    filepath = "_/theme/index.html"
+    filepath = "_/theme/IPS%20Studio%20V2.6.html"
     html_panel = HtmlPanel(
       html=f"""
                 <style>
@@ -100,9 +100,9 @@ class Combined(CombinedTemplate):
     js.window.addEventListener("anvilAntennaStatusUpdate",      self.send_antenna_config)
     js.window.addEventListener("anvilAntennasBatchStatusUpdate",self.add_batch_antennas)
     js.window.addEventListener("anvilUploadAntennaPattern",     self.send_pattern_to_server)
-    js.window.addEventListener("anvilAlert",                    self.show_alert)
-    js.window.addEventListener("anvilNotification",             self.show_notification)
-    js.window.addEventListener("anvilConfirm",                  self.show_confirm)
+    # js.window.addEventListener("anvilAlert",                    self.show_alert)
+    # js.window.addEventListener("anvilNotification",             self.show_notification)
+    # js.window.addEventListener("anvilConfirm",                  self.show_confirm)
     js.window.addEventListener("anvilGenerateDxf",              self.generate_dxf)
     js.window.addEventListener("anvilParseDxf",                 self.parse_dxf)
     js.window.addEventListener("anvilComplianceSettings",       self.update_compliance_settings)
@@ -331,9 +331,10 @@ class Combined(CombinedTemplate):
     if status == "finished":
       self._send_to_iframe("optimization_update",
                            new_action_configs=new_actions,
-                           bsrv_rsrp=new_bsrv_rsrp,
-                           compliance=new_compliance,
-                           state=status)
+                           new_bsrv_rsrp=new_bsrv_rsrp,
+                           new_compliance=new_compliance,
+                           status=status,
+                           message=message)
       self.last_index += len(new_actions)
       print(f"[+] OPTIMIZATION COMPLETED — last_index={self.last_index}")
       self._send_to_iframe("optimization_finished", success=True)
@@ -410,24 +411,24 @@ class Combined(CombinedTemplate):
 
   # ========== Dialogs ==========
 
-  def show_alert(self, event):
-    data = event.detail
-    alert(data.get("message", ""), title=data.get("title", "Alert"))
+  # def show_alert(self, event):
+  #     data = event.detail
+  #     alert(data.get("message", ""), title=data.get("title", "Alert"))
 
-  def show_notification(self, event):
-    data = event.detail
-    Notification(data.get("message", ""),
-                 title=data.get("title", "Notification"),
-                 style=data.get("style", "info"),
-                 timeout=data.get("timeout", 3000)).show()
+  # def show_notification(self, event):
+  #     data = event.detail
+  #     Notification(data.get("message", ""),
+  #                   title=data.get("title", "Notification"),
+  #                   style=data.get("style", "info"),
+  #                   timeout=data.get("timeout", 3000)).show()
 
-  def show_confirm(self, event):
-    data       = event.detail
-    request_id = data.get("requestId")
-    choice     = confirm(data.get("message", ""),
-                         title=data.get("title", "Confirm"),
-                         buttons=[("Accept", True), ("Cancel", False)])
-    self._send_to_iframe("anvil_confirm_response", requestId=request_id, confirmed=choice)
+  # def show_confirm(self, event):
+  #     data       = event.detail
+  #     request_id = data.get("requestId")
+  #     choice     = confirm(data.get("message", ""),
+  #                           title=data.get("title", "Confirm"),
+  #                           buttons=[("Accept", True), ("Cancel", False)])
+  #     self._send_to_iframe("anvil_confirm_response", requestId=request_id, confirmed=choice)
 
   # ========== Compliance ==========
 

@@ -121,8 +121,10 @@ var state = {
   floorPlaneInclination: 0,
   floorPlaneInclinationDirection: 0,
   currentProjectFileName: null,
-  csvCoverageData: null,
-  csvCoverageGrid: null,
+  // csvCoverageData: null,
+  // csvCoverageGrid: null,
+  optimizationRsrpGrid: null,
+  optimizationCompliancePercent: null,
 };
 
 var elementTypes = {
