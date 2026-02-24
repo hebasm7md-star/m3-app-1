@@ -7,7 +7,7 @@
 //
 // Depends on: global state, draw(), renderAPs(), renderWalls(),
 //             invalidateHeatmapCache(), updateAntennaPatternsList(),
-//             $() and add() helpers
+//             document.getElementById() and add() helpers
 //
 // Called by:
 //   Save Project button — saveProject()
@@ -255,22 +255,22 @@
         // For JSON/DXF files, preserve original aspect ratio instead of forcing 30:20
         var offsetX = 0;
         var offsetY = 0;
-        
+
         if (projectData.w && projectData.h) {
           var originalAspectRatio = projectData.w / projectData.h;
           var canvasAspectRatio = 30 / 20;
-          
+
           var p = (typeof pad === 'function') ? pad() : 50;
           var availW = canvas.width - 2 * p;
           var availH = canvas.height - 2 * p;
           var canvasAR = availW / availH;
-          
+
           if (originalAspectRatio > canvasAspectRatio) {
-              state.w = projectData.w;
-              state.h = state.w / canvasAR;
+            state.w = projectData.w;
+            state.h = state.w / canvasAR;
           } else {
-              state.h = projectData.h;
-              state.w = state.h * canvasAR;
+            state.h = projectData.h;
+            state.w = state.h * canvasAR;
           }
 
           offsetX = (state.w - projectData.w) / 2;
@@ -328,10 +328,10 @@
                 state.backgroundImageAlpha =
                   projectData.backgroundImageAlpha;
               }
-              
+
               var imgAspectRatio = img.width / img.height;
               var canvasAspectRatio = state.w / state.h;
-              
+
               if (imgAspectRatio > canvasAspectRatio) {
                 state.backgroundImageDisplayWidth = state.w;
                 state.backgroundImageDisplayHeight = state.w / imgAspectRatio;
@@ -340,7 +340,7 @@
                 state.backgroundImageDisplayHeight = state.h;
               }
               state.backgroundImageAspectRatio = imgAspectRatio;
-              
+
               updateDeleteImageButton();
               draw();
             })
@@ -376,14 +376,14 @@
             if (apData.antennaPattern) {
               var patternStr = JSON.stringify(apData.antennaPattern);
               ap.antennaPattern = JSON.parse(patternStr);
-              
+
               if (!ap.antennaPattern.horizontalData || !Array.isArray(ap.antennaPattern.horizontalData)) {
                 ap.antennaPattern.horizontalData = [];
               }
               if (!ap.antennaPattern.verticalData || !Array.isArray(ap.antennaPattern.verticalData)) {
                 ap.antennaPattern.verticalData = [];
               }
-              
+
               ap.antennaPatternFileName = apData.antennaPatternFileName;
             }
             state.aps.push(ap);
@@ -420,7 +420,7 @@
             if (!wallType && elementType === "wall") {
               for (var t in wallTypes) {
                 if (wallTypes[t].loss == (wData.loss !== undefined ? wData.loss : defaultLoss) &&
-                  wallTypes[t].color == (wData.color || defaultColor)) {
+                    wallTypes[t].color == (wData.color || defaultColor)) {
                   wallType = t;
                   break;
                 }
@@ -454,7 +454,7 @@
               elementType: elementType,
               width: wData.width,
             };
-            
+
             if (wData.points && Array.isArray(wData.points) && wData.points.length >= 2) {
               wall.points = wData.points.map(function(p) {
                 return { x: p.x + offsetX, y: p.y + offsetY };
@@ -466,7 +466,7 @@
               wall.p1 = { x: 0, y: 0 };
               wall.p2 = { x: 0, y: 0 };
             }
-            
+
             state.walls.push(wall);
           });
         }
@@ -504,7 +504,7 @@
         ) {
           var patternsStr = JSON.stringify(projectData.antennaPatterns);
           state.antennaPatterns = JSON.parse(patternsStr);
-          
+
           for (var i = 0; i < state.antennaPatterns.length; i++) {
             var pattern = state.antennaPatterns[i];
             if (!pattern.horizontalData || !Array.isArray(pattern.horizontalData)) {
@@ -514,11 +514,11 @@
               pattern.verticalData = [];
             }
           }
-          
+
           state.defaultAntennaPatternIndex =
             projectData.defaultAntennaPatternIndex !== undefined
-              ? projectData.defaultAntennaPatternIndex
-              : -1;
+            ? projectData.defaultAntennaPatternIndex
+            : -1;
           updateAntennaPatternsList();
         }
 
@@ -544,20 +544,20 @@
           state.csvCoverageData = projectData.csvCoverageData;
 
         // Update UI
-        if ($("view")) $("view").value = state.view;
-        if ($("model")) $("model").value = state.model;
-        if ($("minVal")) $("minVal").value = state.minVal;
-        if ($("maxVal")) $("maxVal").value = state.maxVal;
-        if ($("complianceThreshold")) $("complianceThreshold").value = state.complianceThreshold !== undefined ? state.complianceThreshold : state.minVal;
-        if ($("compliancePercentage")) $("compliancePercentage").value = state.compliancePercentage !== undefined ? state.compliancePercentage : 80;
-        if ($("showContours"))
-          $("showContours").checked = state.showContours;
-        if ($("showTooltip")) $("showTooltip").checked = state.showTooltip;
-        if ($("showVisualization"))
-          $("showVisualization").checked = state.showVisualization;
-        if ($("alphaSlider")) {
-          $("alphaSlider").value = state.backgroundImageAlpha;
-          var alphaLabel = $("alphaLabel");
+        if (document.getElementById("view")) document.getElementById("view").value = state.view;
+        if (document.getElementById("model")) document.getElementById("model").value = state.model;
+        if (document.getElementById("minVal")) document.getElementById("minVal").value = state.minVal;
+        if (document.getElementById("maxVal")) document.getElementById("maxVal").value = state.maxVal;
+        if (document.getElementById("complianceThreshold")) document.getElementById("complianceThreshold").value = state.complianceThreshold !== undefined ? state.complianceThreshold : state.minVal;
+        if (document.getElementById("compliancePercentage")) document.getElementById("compliancePercentage").value = state.compliancePercentage !== undefined ? state.compliancePercentage : 80;
+        if (document.getElementById("showContours"))
+          document.getElementById("showContours").checked = state.showContours;
+        if (document.getElementById("showTooltip")) document.getElementById("showTooltip").checked = state.showTooltip;
+        if (document.getElementById("showVisualization"))
+          document.getElementById("showVisualization").checked = state.showVisualization;
+        if (document.getElementById("alphaSlider")) {
+          document.getElementById("alphaSlider").value = state.backgroundImageAlpha;
+          var alphaLabel = document.getElementById("alphaLabel");
           if (alphaLabel) {
             alphaLabel.textContent =
               "Image Opacity: " +
@@ -570,10 +570,10 @@
         renderWalls();
         renderAPs();
         updateActiveAntennaStats();
-        
+
         // AI COMMENT: Replaced inline heatmap cache invalidation with helper
         invalidateHeatmapCache();
-        
+
         draw();
 
         NotificationSystem.success("Project loaded successfully!");
@@ -597,7 +597,7 @@
       if (projectData.w && projectData.h) {
         var originalAspectRatio = projectData.w / projectData.h;
         var canvasAspectRatio = 30 / 20;
-        
+
         if (originalAspectRatio > canvasAspectRatio) {
           state.w = 30;
           state.h = 30 / originalAspectRatio;
@@ -605,7 +605,7 @@
           state.w = 20 * originalAspectRatio;
           state.h = 20;
         }
-        
+
         state.backgroundImageAspectRatio = originalAspectRatio;
         state.backgroundImageDisplayWidth = state.w;
         state.backgroundImageDisplayHeight = state.h;
@@ -642,10 +642,10 @@
             if (projectData.backgroundImageAlpha !== undefined) {
               state.backgroundImageAlpha = projectData.backgroundImageAlpha;
             }
-            
+
             var imgAspectRatio = img.width / img.height;
             var canvasAspectRatio = state.w / state.h;
-            
+
             if (imgAspectRatio > canvasAspectRatio) {
               state.backgroundImageDisplayWidth = state.w;
               state.backgroundImageDisplayHeight = state.w / imgAspectRatio;
@@ -654,7 +654,7 @@
               state.backgroundImageDisplayHeight = state.h;
             }
             state.backgroundImageAspectRatio = imgAspectRatio;
-            
+
             updateDeleteImageButton();
             draw();
           }).catch(function (err) {
@@ -667,7 +667,7 @@
         state.backgroundImageDisplayWidth = null;
         state.backgroundImageDisplayHeight = null;
 
-        var imgLoader = $("imageLoader");
+        var imgLoader = document.getElementById("imageLoader");
         if (imgLoader) imgLoader.value = "";
 
         updateDeleteImageButton();
@@ -677,7 +677,7 @@
       state.viewMode = '2d';
       state.viewModeTarget = '2d';
       state.viewModeTransition = 0;
-      var viewToggle = $("viewModeToggle");
+      var viewToggle = document.getElementById("viewModeToggle");
       if (viewToggle) viewToggle.checked = false;
 
       // Restore antennas
@@ -751,18 +751,18 @@
   }
 
   // Save/Load button handlers
-  var saveBtn = $("saveProjectBtn");
-  if (saveBtn) add(saveBtn, "click", function () {
+  var saveBtn = document.getElementById("saveProjectBtn");
+  if (saveBtn) if (saveBtn) saveBtn.addEventListener("click", function () {
     saveProject();
   });
 
-  var loadBtn = $("loadProjectBtn");
-  if (loadBtn) add(loadBtn, "click", function () {
-    $("loadProjectFile").click();
+  var loadBtn = document.getElementById("loadProjectBtn");
+  if (loadBtn) if (loadBtn) loadBtn.addEventListener("click", function () {
+    document.getElementById("loadProjectFile").click();
   });
 
-  var loadFileInput = $("loadProjectFile");
-  if (loadFileInput) add(loadFileInput, "change", function (e) {
+  var loadFileInput = document.getElementById("loadProjectFile");
+  if (loadFileInput) if (loadFileInput) loadFileInput.addEventListener("change", function (e) {
     if (e.target.files && e.target.files[0]) {
       loadProject(e.target.files[0]);
       e.target.value = "";

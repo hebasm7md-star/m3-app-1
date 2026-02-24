@@ -5,7 +5,7 @@
 //
 // All functions are exposed on window for global access.
 //
-// Depends on: global state, $() helper, draw(),
+// Depends on: global state, document.getElementById() helper, draw(),
 //             generateHeatmapAsync(), invalidateHeatmapCache(),
 //             saveState(), getDefaultAntennaPattern(),
 //             parseAntennaPattern(), updateAntennaPatternsList(),
@@ -21,7 +21,7 @@
 (function () {
 
   function renderAPs() {
-    var list = $("apList");
+    var list = document.getElementById("apList");
     list.innerHTML = "";
     for (var i = 0; i < state.aps.length; i++) {
       (function (idx) {
@@ -57,7 +57,7 @@
             state.heatmapUpdatePending = false;
             state.cachedHeatmap = null; // Invalidate cache to regenerate heatmap
             state.selectedApForDetail = null;
-            $("apDetailSidebar").classList.remove("visible");
+            document.getElementById("apDetailSidebar").classList.remove("visible");
           } else {
             // Select antenna and show only its pattern
             state.selectedApId = a.id;
@@ -73,7 +73,7 @@
             state.selectedApForDetail = a;
 
             if (!state.addingAP) {
-              $("apDetailSidebar").classList.add("visible");
+              document.getElementById("apDetailSidebar").classList.add("visible");
               renderApDetails();
               state.justOpenedApSidebar = true;
               setTimeout(function () {
@@ -140,7 +140,7 @@
             state.heatmapUpdatePending = true; // Set to true to trigger regeneration
             state.heatmapWorkerCallback = null; // Clear any pending worker callback
             state.selectedApForDetail = null;
-            $("apDetailSidebar").classList.remove("visible");
+            document.getElementById("apDetailSidebar").classList.remove("visible");
           } else {
             // Select antenna and show only its pattern
             state.selectedApId = a.id;
@@ -159,7 +159,7 @@
             state.selectedApForDetail = a;
 
             if (!state.addingAP) {
-              $("apDetailSidebar").classList.add("visible");
+              document.getElementById("apDetailSidebar").classList.add("visible");
               renderApDetails();
               state.justOpenedApSidebar = true;
               setTimeout(function () {
@@ -172,12 +172,12 @@
           }
 
           renderAPs(); // Update button states
-          
+
           // Start heatmap regeneration BEFORE draw() to minimize delay and prevent flash
           if (state.showVisualization) {
             generateHeatmapAsync(null, true); // Start with low-res for fast update
           }
-          
+
           // Draw after starting regeneration - validation will prevent using stale cache
           draw();
           return false;
@@ -411,7 +411,7 @@
                       var existingPattern = state.antennaPatterns[i];
                       // Check by name and frequency (primary check)
                       if (existingPattern.name === pattern.name &&
-                        existingPattern.frequency === pattern.frequency) {
+                          existingPattern.frequency === pattern.frequency) {
                         patternExists = true;
                         existingPatternIndex = i;
                         break;
@@ -601,7 +601,7 @@
             state.selectedApId = null;
             state.highlight = false;
             state.selectedApForDetail = null;
-            $("apDetailSidebar").classList.remove("visible");
+            document.getElementById("apDetailSidebar").classList.remove("visible");
           }
 
           // Cancel any pending heatmap updates
@@ -624,12 +624,12 @@
           renderAPs();
           renderApDetails(); // Update right sidebar if this antenna is selected
           updateActiveAntennaStats(); // Update active antenna stats
-          
+
           // Start heatmap regeneration BEFORE draw() to minimize delay and prevent flash
           if (state.showVisualization) {
             generateHeatmapAsync(null, true); // Start with low-res for fast update
           }
-          
+
           // Draw after starting regeneration - validation will prevent using stale cache
           draw();
         };
@@ -648,7 +648,7 @@
             state.selectedApId = null;
             state.highlight = false;
           }
-          
+
           // Cancel any pending heatmap updates and invalidate cache IMMEDIATELY
           // This prevents the old cached heatmap from being rendered even for a single frame
           if (state.heatmapUpdateRequestId !== null) {
@@ -660,15 +660,15 @@
           state.cachedHeatmapAntennaCount = 0;
           state.heatmapUpdatePending = true; // Set to true to prevent using any stale cache
           state.heatmapWorkerCallback = null; // Clear any pending worker callback
-          
+
           renderAPs();
           updateActiveAntennaStats(); // Update active antenna stats
-          
+
           // Start heatmap regeneration BEFORE draw() to minimize delay
           if (state.showVisualization) {
             generateHeatmapAsync(null, true); // Start with low-res for fast update
           }
-          
+
           // Draw after starting regeneration - validation will prevent using stale cache
           draw();
         };
@@ -931,7 +931,7 @@
         list.appendChild(item);
       })(i);
     }
-    var apCountEl = $("apCount");
+    var apCountEl = document.getElementById("apCount");
     if (apCountEl) apCountEl.textContent = state.aps.length;
     updateActiveAntennaStats();
   }
@@ -947,7 +947,7 @@
     }
 
     // Update active antenna count
-    var activeAntennaCountEl = $("activeAntennaCount");
+    var activeAntennaCountEl = document.getElementById("activeAntennaCount");
     if (activeAntennaCountEl) {
       activeAntennaCountEl.textContent = activeCount;
     }
@@ -985,18 +985,18 @@
     // Update compliance percentage only if backend hasn't provided a value
     // If backend has provided a value, it should take precedence (handled in handleOptimizationUpdate)
     if (state.compliancePercentFromBackend === null || state.compliancePercentFromBackend === undefined) {
-      var compliancePercentEl = $("compliancePercent");
+      var compliancePercentEl = document.getElementById("compliancePercent");
       if (compliancePercentEl) {
         compliancePercentEl.textContent = compliancePercent;
       }
     } else {
       // Backend value exists, don't override it with HTML calculation
-      console.log("[HTML] Skipping HTML compliance calculation, using backend value:", state.compliancePercentFromBackend);
+      // console.log("[HTML] Skipping HTML compliance calculation, using backend value:", state.compliancePercentFromBackend);
     }
   }
 
   function renderFloorPlanes() {
-    var list = $("floorPlaneList");
+    var list = document.getElementById("floorPlaneList");
     if (!list) return;
     list.innerHTML = "";
     for (var i = 0; i < state.floorPlanes.length; i++) {
@@ -1035,8 +1035,8 @@
         var inclination = fp.inclination !== undefined ? fp.inclination : 0;
         var inclinationDir =
           fp.inclinationDirection !== undefined
-            ? fp.inclinationDirection
-            : 0;
+          ? fp.inclinationDirection
+          : 0;
 
         content.innerHTML =
           '<label style="font-size:12px; margin-top:4px;">Attenuation (dB):</label>' +
@@ -1054,15 +1054,15 @@
           (planeType === "inclined" ? " selected" : "") +
           ">Inclined</option></select>" +
           (planeType === "inclined"
-            ? '<label style="font-size:12px; margin-top:4px;">Inclination (\u00B0):</label>' +
-            '<input type="number" step="1" value="' +
-            inclination +
-            '" title="Inclination angle" style="margin-bottom:8px;">' +
-            '<label style="font-size:12px; margin-top:4px;">Direction (\u00B0):</label>' +
-            '<input type="number" step="1" value="' +
-            inclinationDir +
-            '" title="Inclination direction">'
-            : "");
+           ? '<label style="font-size:12px; margin-top:4px;">Inclination (\u00B0):</label>' +
+           '<input type="number" step="1" value="' +
+           inclination +
+           '" title="Inclination angle" style="margin-bottom:8px;">' +
+           '<label style="font-size:12px; margin-top:4px;">Direction (\u00B0):</label>' +
+           '<input type="number" step="1" value="' +
+           inclinationDir +
+           '" title="Inclination direction">'
+           : "");
 
         var inputs = content.getElementsByTagName("input");
         var selects = content.getElementsByTagName("select");
@@ -1174,7 +1174,7 @@
   }
 
   function renderWalls() {
-    var list = $("wallList");
+    var list = document.getElementById("wallList");
     list.innerHTML = "";
     for (var i = 0; i < state.walls.length; i++) {
       (function (idx) {
@@ -1204,8 +1204,8 @@
             if (state.selectedWallId === w.id) {
               state.selectedWallId =
                 state.selectedWallIds.length > 0
-                  ? state.selectedWallIds[0]
-                  : null;
+                ? state.selectedWallIds[0]
+                : null;
             }
           } else {
             // Add to selection
@@ -1276,10 +1276,10 @@
           if (!w.width) {
             w.width =
               w.elementType === "window"
-                ? 1.5
-                : w.elementType === "doubleDoor"
-                  ? 2.4
-                  : 1.2;
+              ? 1.5
+              : w.elementType === "doubleDoor"
+              ? 2.4
+              : 1.2;
           }
           var currentWidth = w.width;
           contentHTML +=
@@ -1352,10 +1352,10 @@
         // Find the loss input (last input if width exists, or first input if not)
         var lossInput =
           w.elementType === "door" ||
-            w.elementType === "doubleDoor" ||
-            w.elementType === "window"
-            ? inp[inp.length - 1]
-            : inp[0];
+          w.elementType === "doubleDoor" ||
+          w.elementType === "window"
+          ? inp[inp.length - 1]
+          : inp[0];
         if (lossInput) {
           // Prevent click from closing sidebar
           lossInput.onclick = function (e) {
@@ -1407,7 +1407,7 @@
         list.appendChild(item);
       })(i);
     }
-    var wallCountEl = $("wallCount");
+    var wallCountEl = document.getElementById("wallCount");
     if (wallCountEl) wallCountEl.textContent = state.walls.length;
   }
 
@@ -1449,7 +1449,7 @@
 
   function renderApDetails() {
     var ap = state.selectedApForDetail;
-    var content = $("apDetailContent");
+    var content = document.getElementById("apDetailContent");
 
     console.log("renderApDetails called", { ap: ap, content: content });
 
@@ -1471,14 +1471,14 @@
           noApLabel +
           '; text-align: center;">No AP selected</p></div>';
       }
-      if ($("apDetailTitle")) {
-        $("apDetailTitle").textContent = "AP Details";
+      if (document.getElementById("apDetailTitle")) {
+        document.getElementById("apDetailTitle").textContent = "AP Details";
       }
       return;
     }
 
-    if ($("apDetailTitle")) {
-      $("apDetailTitle").textContent = "Details for " + ap.id;
+    if (document.getElementById("apDetailTitle")) {
+      document.getElementById("apDetailTitle").textContent = "Details for " + ap.id;
     }
 
     // Ensure content is visible and has proper styling
@@ -1732,13 +1732,13 @@
             "</div>" +
             "</div>" +
             (ap.antennaPatternFileName
-              ? '<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e2e8f0;">' +
-              '<label style="font-size: 11px; font-weight: 500; color: #64748b !important; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">File Name</label>' +
-              '<div style="font-size: 12px; color: #10b981 !important; font-weight: 500;">' +
-              ap.antennaPatternFileName +
-              "</div>" +
-              "</div>"
-              : "") +
+             ? '<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e2e8f0;">' +
+             '<label style="font-size: 11px; font-weight: 500; color: #64748b !important; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">File Name</label>' +
+             '<div style="font-size: 12px; color: #10b981 !important; font-weight: 500;">' +
+             ap.antennaPatternFileName +
+             "</div>" +
+             "</div>"
+             : "") +
             "</div>";
         } else {
           patternInfo =
@@ -1779,14 +1779,14 @@
     // Bind event listeners after DOM is updated
     setTimeout(function () {
       function bindApDetail(inputId, key, isNumeric) {
-        var input = $(inputId);
+        var input = document.getElementById(inputId);
         if (!input) {
           console.warn("Input not found:", inputId);
           return;
         }
         // Disable input during optimization
         //input.disabled = state.isOptimizing;
-        add(input, "input", function () {
+        if (input) input.addEventListener("input", function () {
           // if (state.isOptimizing) return;
           var value = input.value.trim();
           var originalId = ap.id;
@@ -1866,8 +1866,8 @@
           // This prevents deformed pattern flash while allowing smooth transition
 
           if (key === "id") {
-            if ($("apDetailTitle")) {
-              $("apDetailTitle").textContent = "Details for " + value;
+            if (document.getElementById("apDetailTitle")) {
+              document.getElementById("apDetailTitle").textContent = "Details for " + value;
             }
             if (state.selectedApId === originalId) {
               state.selectedApId = value;
@@ -1879,7 +1879,7 @@
         });
 
         // Handle Enter key for immediate apply
-        add(input, "keydown", function (e) {
+        if (input) input.addEventListener("keydown", function (e) {
           if (e.key === "Enter" || e.keyCode === 13) {
             e.preventDefault();
             applyInputChangeImmediately(ap.id);
@@ -1891,12 +1891,12 @@
         if (
           isNumeric &&
           (key === "tx" ||
-            key === "gt" ||
-            key === "ch" ||
-            key === "azimuth" ||
-            key === "tilt")
+           key === "gt" ||
+           key === "ch" ||
+           key === "azimuth" ||
+           key === "tilt")
         ) {
-          add(input, "blur", function () {
+          if (input) input.addEventListener("blur", function () {
             var value = input.value.trim();
             if (value === "" || value === "-") {
               ap[key] = 0;
@@ -1911,7 +1911,7 @@
           });
         } else {
           // For non-numeric fields, apply changes on blur
-          add(input, "blur", function () {
+          if (input) input.addEventListener("blur", function () {
             applyInputChangeImmediately(ap.id);
           });
         }
@@ -1927,7 +1927,7 @@
       bindApDetail("apDetailY", "y", true);
 
       // Bind toggle button
-      var toggleBtn = $("apDetailToggle");
+      var toggleBtn = document.getElementById("apDetailToggle");
       if (toggleBtn) {
         // Disable toggle button during optimization
         toggleBtn.disabled = state.isOptimizing;
@@ -1938,7 +1938,7 @@
 
         // Re-apply disabled state after cloning
         //newToggleBtn.disabled = state.isOptimizing;
-        add(newToggleBtn, "click", function (e) {
+        if (newToggleBtn) newToggleBtn.addEventListener("click", function (e) {
           e.preventDefault();
           e.stopPropagation();
 
@@ -1960,7 +1960,7 @@
             state.selectedApId = null;
             state.highlight = false;
             state.selectedApForDetail = null;
-            $("apDetailSidebar").classList.remove("visible");
+            document.getElementById("apDetailSidebar").classList.remove("visible");
           }
 
           // Cancel any pending heatmap updates
@@ -1982,18 +1982,18 @@
 
           renderAPs();
           renderApDetails();
-          
+
           // Start heatmap regeneration BEFORE draw() to minimize delay and prevent flash
           if (state.showVisualization) {
             generateHeatmapAsync(null, true); // Start with low-res for fast update
           }
-          
+
           // Draw after starting regeneration - validation will prevent using stale cache
           draw();
         });
       }
       // Bind select button
-      var selectBtn = $("apDetailSelect");
+      var selectBtn = document.getElementById("apDetailSelect");
       if (selectBtn) {
         // Disable select button during optimization
         selectBtn.disabled = state.isOptimizing;
@@ -2005,7 +2005,7 @@
         // Re-apply disabled state after cloning
         newSelectBtn.disabled = state.isOptimizing;
 
-        add(newSelectBtn, "click", function (e) {
+        if (newSelectBtn) newSelectBtn.addEventListener("click", function (e) {
           e.preventDefault();
           e.stopPropagation();
 
@@ -2030,7 +2030,7 @@
             state.heatmapUpdatePending = true; // Set to true to trigger regeneration
             state.heatmapWorkerCallback = null; // Clear any pending worker callback
             state.selectedApForDetail = null;
-            $("apDetailSidebar").classList.remove("visible");
+            document.getElementById("apDetailSidebar").classList.remove("visible");
           } else {
             // Select antenna and show only its pattern
             state.selectedApId = ap.id;
@@ -2047,7 +2047,7 @@
 
             state.selectedApForDetail = ap;
 
-            $("apDetailSidebar").classList.add("visible");
+            document.getElementById("apDetailSidebar").classList.add("visible");
             renderApDetails();
             state.justOpenedApSidebar = true;
             setTimeout(function () {
@@ -2057,24 +2057,24 @@
 
           renderAPs(); // Update button states
           renderApDetails(); // Update the select button state
-          
+
           // Start heatmap regeneration BEFORE draw() to minimize delay and prevent flash
           if (state.showVisualization) {
             generateHeatmapAsync(null, true); // Start with low-res for fast update
           }
-          
+
           // Draw after starting regeneration - validation will prevent using stale cache
           draw();
         });
       }
       // Bind download RSRP button
-      var downloadRsrpBtn = $("apDetailDownloadRsrp");
+      var downloadRsrpBtn = document.getElementById("apDetailDownloadRsrp");
       if (downloadRsrpBtn) {
         // Remove any existing event listeners by cloning and replacing
         var newDownloadBtn = downloadRsrpBtn.cloneNode(true);
         downloadRsrpBtn.parentNode.replaceChild(newDownloadBtn, downloadRsrpBtn);
 
-        add(newDownloadBtn, "click", function (e) {
+        if (newDownloadBtn) newDownloadBtn.addEventListener("click", function (e) {
           e.preventDefault();
           e.stopPropagation();
 

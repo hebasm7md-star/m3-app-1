@@ -6,7 +6,7 @@
 //
 // All functions are exposed on window for global access.
 //
-// Depends on: GeometryUtils.js (clamp01), global state, $() helper
+// Depends on: GeometryUtils.js (clamp01), global state, document.getElementById() helper
 //
 // Called by:
 //   generateHeatmapAsync()  — colorNumeric, colorForAP, colorForChannel, colorForCount
@@ -84,7 +84,7 @@
   }
 
   function updateLegendBar() {
-    var bar = $("legendBar");
+    var bar = document.getElementById("legendBar");
     if (state.showContours) {
       bar.style.background =
         "linear-gradient(90deg,#ff0000,#ffff00,#00ff00)";

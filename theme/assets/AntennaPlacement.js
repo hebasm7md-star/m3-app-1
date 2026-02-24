@@ -5,7 +5,7 @@
 //
 // All functions are exposed on window for global access.
 //
-// Depends on: global state, $() and add() helpers, draw(),
+// Depends on: global state, document.getElementById() and add() helpers, draw(),
 //             renderAPs(), generateHeatmapAsync(), getDefaultAntennaPattern(),
 //             modelLoss(), GeometryUtils (hypot, findWallAt)
 //
@@ -20,8 +20,8 @@
 
   function exitAntennaPlacementMode() {
     state.addingAP = false;
-    var addAPBtn = $("addAP");
-    var canvas = $("plot");
+    var addAPBtn = document.getElementById("addAP");
+    var canvas = document.getElementById("plot");
     if (addAPBtn) {
       addAPBtn.textContent = "Add Antenna";
     }
@@ -756,7 +756,7 @@
   }
 
   function performAutoPlacement() {
-    var countInput = $("autoPlaceCount");
+    var countInput = document.getElementById("autoPlaceCount");
     var count = parseInt(countInput.value);
 
     if (isNaN(count) || count < 1 || count > 100) {
@@ -775,36 +775,38 @@
       "<p>You are about to automatically place <strong>" + count + " antenna(s)</strong> on the canvas.</p>" +
       "<ul>" +
       "<li>They will be distributed evenly in a grid pattern.</li>";
-      
+
     if (state.aps && state.aps.length > 0) {
       confirmMsg += "<li><strong>Warning:</strong> All existing antennas will be removed!</li>";
     }
-    
+
     confirmMsg += "</ul><p>Do you want to proceed?</p>";
 
     NotificationSystem.confirm(confirmMsg, "Confirm Automatic Placement", function(confirmed) {
       if (confirmed) {
         executeAutoPlacement(count);
       } else {
-        $("autoPlaceInputContainer").style.display = "none";
+        document.getElementById("autoPlaceInputContainer").style.display = "none";
         countInput.value = "";
       }
     }, { isHtml: true });
   }
 
   function executeAutoPlacement(count) {
-    var countInput = $("autoPlaceCount");
+    var countInput = document.getElementById("autoPlaceCount");
     var viewModeName =
       state.view === "rssi"
-        ? "RSSI"
-        : state.view === "snr"
-          ? "SNR"
-          : state.view === "cci"
-            ? "CCI Count"
-            : state.view === "thr"
-              ? "Throughput"
-              : "Signal";
+      ? "RSSI"
+      : state.view === "snr"
+      ? "SNR"
+      : state.view === "cci"
+      ? "CCI Count"
+      : state.view === "thr"
+      ? "Throughput"
+      : "Signal";
     console.log("Placing " + count + " antenna(s) in grid pattern...");
+
+    saveState(); // Save state BEFORE mutating state.aps (fixes auto-placement undo issue)
 
     state.aps = [];
 
@@ -860,7 +862,6 @@
       "*"
     );
 
-    saveState();
     renderAPs();
     state.heatmapUpdatePending = true;
     draw();
@@ -872,13 +873,13 @@
       }
     });
 
-    $("autoPlaceInputContainer").style.display = "none";
+    document.getElementById("autoPlaceInputContainer").style.display = "none";
     countInput.value = "";
 
     //showAnvilNotification("Successfully placed " + positions.length + " antenna(s)!", "Success", "success");
 
     setTimeout(function () {
- 
+
       // Auto-download RSRP for each placed antenna (staggered to avoid browser blocking)
       // state.aps.forEach(function (ap, idx) {
       //   setTimeout(function () {
@@ -900,8 +901,8 @@
 
   document.addEventListener("DOMContentLoaded", function () {
 
-    var addAPBtn = $("addAP");
-    if (addAPBtn) add(addAPBtn, "click", function () {
+    var addAPBtn = document.getElementById("addAP");
+    if (addAPBtn) if (addAPBtn) addAPBtn.addEventListener("click", function () {
       //if (state.isOptimizing) {
       //  alert("Cannot add antennas while optimization is in progress. Please wait for optimization to complete.");
       //  return;
@@ -912,8 +913,8 @@
       }
 
       state.addingAP = !state.addingAP;
-      var addAPBtn = $("addAP");
-      var canvas = $("plot");
+      var addAPBtn = document.getElementById("addAP");
+      var canvas = document.getElementById("plot");
       if (state.addingAP) {
         state.addingWall = false;
         state.addingFloorPlane = false;
@@ -922,11 +923,11 @@
         if (canvas) {
           canvas.style.cursor = "crosshair";
         }
-        var addFloorPlaneBtn = $("addFloorPlane");
+        var addFloorPlaneBtn = document.getElementById("addFloorPlane");
         if (addFloorPlaneBtn) {
           addFloorPlaneBtn.textContent = "Add Floor Plane";
         }
-        var addWallBtn = $("addWall");
+        var addWallBtn = document.getElementById("addWall");
         if (addWallBtn) {
           addWallBtn.textContent = getAddButtonText(false);
         }
@@ -953,8 +954,8 @@
       draw();
     });
 
-    var autoPlaceBtn = $("autoPlaceAntennas");
-    if (autoPlaceBtn) add(autoPlaceBtn, "click", function () {
+    var autoPlaceBtn = document.getElementById("autoPlaceAntennas");
+    if (autoPlaceBtn) if (autoPlaceBtn) autoPlaceBtn.addEventListener("click", function () {
       //if (state.isOptimizing) {
       //  alert("Cannot place antennas automatically while optimization is in progress. Please wait for optimization to complete.");
       //  return;
@@ -966,28 +967,28 @@
         return;
       }
 
-      var inputContainer = $("autoPlaceInputContainer");
+      var inputContainer = document.getElementById("autoPlaceInputContainer");
       if (inputContainer.style.display === "none") {
         inputContainer.style.display = "block";
-        $("autoPlaceCount").focus();
-        $("autoPlaceCount").value = "";
+        document.getElementById("autoPlaceCount").focus();
+        document.getElementById("autoPlaceCount").value = "";
       } else {
         inputContainer.style.display = "none";
       }
     });
 
-    var countInput = $("autoPlaceCount");
-    if (countInput) add(countInput, "keydown", function (e) {
+    var countInput = document.getElementById("autoPlaceCount");
+    if (countInput) if (countInput) countInput.addEventListener("keydown", function (e) {
       if (e.key === "Enter") {
         performAutoPlacement();
       } else if (e.key === "Escape") {
-        $("autoPlaceInputContainer").style.display = "none";
+        document.getElementById("autoPlaceInputContainer").style.display = "none";
         countInput.value = "";
       }
     });
 
-    var confirmAutoPlaceBtn = $("confirmAutoPlaceBtn");
-    if (confirmAutoPlaceBtn) add(confirmAutoPlaceBtn, "click", performAutoPlacement);
+    var confirmAutoPlaceBtn = document.getElementById("confirmAutoPlaceBtn");
+    if (confirmAutoPlaceBtn) if (confirmAutoPlaceBtn) confirmAutoPlaceBtn.addEventListener("click", performAutoPlacement);
 
   });
 

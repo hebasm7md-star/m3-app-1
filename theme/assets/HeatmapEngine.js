@@ -39,13 +39,7 @@
       state.heatmapWorker = new Worker("heatmap-worker.js");
       state.heatmapWorker.onmessage = function (e) {
         var data = e.data;
-        if (data.type === "progress") {
-          // Progress update - could show progress bar
-          console.log(
-            "Heatmap progress:",
-            Math.round(data.progress * 100) + "%"
-          );
-        } else if (data.type === "complete") {
+        if (data.type === "complete") {
           // Heatmap generation complete
           var imgData = new ImageData(
             new Uint8ClampedArray(data.imageData),
@@ -126,12 +120,12 @@
           if (ap.antennaPattern) {
             // Verify pattern has required data arrays
             var hasHorizontalData = ap.antennaPattern.horizontalData && 
-                                    Array.isArray(ap.antennaPattern.horizontalData) && 
-                                    ap.antennaPattern.horizontalData.length > 0;
+              Array.isArray(ap.antennaPattern.horizontalData) && 
+              ap.antennaPattern.horizontalData.length > 0;
             var hasVerticalData = ap.antennaPattern.verticalData && 
-                                  Array.isArray(ap.antennaPattern.verticalData) && 
-                                  ap.antennaPattern.verticalData.length > 0;
-            
+              Array.isArray(ap.antennaPattern.verticalData) && 
+              ap.antennaPattern.verticalData.length > 0;
+
             // Only include pattern if it has valid data
             if (hasHorizontalData || hasVerticalData) {
               patternData = {
@@ -141,7 +135,7 @@
               };
             }
           }
-          
+
           return {
             id: ap.id,
             x: ap.x,
@@ -168,19 +162,19 @@
         highlight: state.highlight,
         defaultPattern:
           state.defaultAntennaPatternIndex >= 0 &&
-            state.antennaPatterns[state.defaultAntennaPatternIndex]
-            ? {
-              horizontalData:
-                state.antennaPatterns[state.defaultAntennaPatternIndex]
-                  .horizontalData,
-              verticalData:
-                state.antennaPatterns[state.defaultAntennaPatternIndex]
-                  .verticalData,
-              _maxValue:
-                state.antennaPatterns[state.defaultAntennaPatternIndex]
-                  ._maxValue,
-            }
-            : null,
+          state.antennaPatterns[state.defaultAntennaPatternIndex]
+          ? {
+            horizontalData:
+              state.antennaPatterns[state.defaultAntennaPatternIndex]
+              .horizontalData,
+            verticalData:
+              state.antennaPatterns[state.defaultAntennaPatternIndex]
+              .verticalData,
+            _maxValue:
+              state.antennaPatterns[state.defaultAntennaPatternIndex]
+              ._maxValue,
+          }
+          : null,
         apColorMap: state.apColorMap,
         freq: state.freq || 2400,
         N: state.N || 2.5,
@@ -208,7 +202,7 @@
     // Use requestAnimationFrame to make it async and non-blocking
     state.heatmapUpdateRequestId = requestAnimationFrame(function () {
       try {
-        var canvas = $("plot");
+        var canvas = document.getElementById("plot");
         if (!canvas) {
           state.heatmapUpdatePending = false;
           if (callback) callback(null);

@@ -6,7 +6,7 @@
 //
 // All functions are exposed on window for global access.
 //
-// Depends on: global state, $() helper, NotificationSystem
+// Depends on: global state, document.getElementById() helper, NotificationSystem
 //
 // Called by:
 //   File upload handlers      — parseAntennaPattern
@@ -105,8 +105,8 @@
   }
 
   function updateAntennaPatternsList() {
-    var listContainer = $("antennaPatternsList");
-    var select = $("defaultAntennaPatternSelect");
+    var listContainer = document.getElementById("antennaPatternsList");
+    var select = document.getElementById("defaultAntennaPatternSelect");
 
     if (!listContainer || !select) return;
 
@@ -137,7 +137,7 @@
       select.appendChild(option);
     }
 
-    var deleteButton = $("deleteSelectedPattern");
+    var deleteButton = document.getElementById("deleteSelectedPattern");
     if (deleteButton) {
       var selectedValue = select.value;
       if (selectedValue !== "-1" && selectedValue !== null && selectedValue !== "") {
@@ -205,10 +205,10 @@
         var gainStr = line.substring(5).trim();
         pattern.gain = parseFloat(
           gainStr
-            .replace(" dBi.", "")
-            .replace(" dBi", "")
-            .replace(" dBd.", "")
-            .replace(" dBd", "")
+          .replace(" dBi.", "")
+          .replace(" dBi", "")
+          .replace(" dBd.", "")
+          .replace(" dBd", "")
         );
       } else if (line.startsWith("HORIZONTAL")) {
         currentSection = "horizontal";
