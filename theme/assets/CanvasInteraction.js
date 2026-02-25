@@ -58,7 +58,7 @@
     var rect = canvas.getBoundingClientRect();
     var x = ev.clientX - rect.left;
     var y = ev.clientY - rect.top;
-    return { x: invx(x), y: invy(y) };
+    return { x: window.invx(x), y: window.invy(y) };
   }
 
   function finishDoorWindow() {
@@ -499,14 +499,14 @@
         if (transition > 0) {
           // 3D view - project antenna to screen coordinates at coverage height
           // This aligns with where the coverage pattern is rendered
-          var ap2d = { x: mx(ap.x), y: my(ap.y) };
+          var ap2d = { x: window.mx(ap.x), y: window.my(ap.y) };
           var ap3d = projectToCanvas3D(ap.x, ap.y, coverageHeight);
           apScreenX = ap2d.x + (ap3d.x - ap2d.x) * transition;
           apScreenY = ap2d.y + (ap3d.y - ap2d.y) * transition;
         } else {
           // 2D view - use standard coordinates
-          apScreenX = mx(ap.x);
-          apScreenY = my(ap.y);
+          apScreenX = window.mx(ap.x);
+          apScreenY = window.my(ap.y);
         }
 
         // Check hit using screen coordinates
@@ -1055,688 +1055,700 @@
               var snapY = null;
               if (closestToP1) {
                 snapY = closestToP1.y;
-                newP1 = { x: closestToP1.x, y: closestToP1.y };
-              }
-              if (closestToP2) {
-                if (snapY === null) {
-                  snapY = closestToP2.y;
-                }
-                newP2 = { x: closestToP2.x, y: closestToP2.y };
-              }
-              // Ensure both endpoints have the same Y when snapping occurs
-              if (snapY !== null) {
-                newP1.y = snapY;
-                newP2.y = snapY;
-              }
-              // If no snapping, orientation is already maintained by moving both points together
-            } else if (state.wallDrag.orientation === "vertical") {
-              // Vertical wall: maintain same X coordinate for both endpoints
-              var snapX = null;
-              if (closestToP1) {
-                snapX = closestToP1.x;
-                newP1 = { x: closestToP1.x, y: closestToP1.y };
-              }
-              if (closestToP2) {
-                if (snapX === null) {
-                  snapX = closestToP2.x;
-                }
-                newP2 = { x: closestToP2.x, y: closestToP2.y };
-              }
-              // Ensure both endpoints have the same X when snapping occurs
-              if (snapX !== null) {
-                newP1.x = snapX;
-                newP2.x = snapX;
-              }
-              // If no snapping, orientation is already maintained by moving both points together
-            } else {
-              // Diagonal wall: allow free snapping
-              if (closestToP1) {
-                newP1 = closestToP1;
-              }
-              if (closestToP2) {
-                newP2 = closestToP2;
-              }
+              newP1 = { x: closestToP1.x, y: closestToP1.y };
             }
-
-            // Store intersection points and snapped endpoints for visual feedback
-            state.wallSnapPoints = intersectionPoints;
+            if (closestToP2) {
+              if (snapY === null) {
+                snapY = closestToP2.y;
+              }
+              newP2 = { x: closestToP2.x, y: closestToP2.y };
+            }
+            // Ensure both endpoints have the same Y when snapping occurs
+            if (snapY !== null) {
+              newP1.y = snapY;
+              newP2.y = snapY;
+            }
+            // If no snapping, orientation is already maintained by moving both points together
+          } else if (state.wallDrag.orientation === "vertical") {
+            // Vertical wall: maintain same X coordinate for both endpoints
+            var snapX = null;
             if (closestToP1) {
-              state.wallSnapPoints.push(closestToP1);
+              snapX = closestToP1.x;
+              newP1 = { x: closestToP1.x, y: closestToP1.y };
             }
-            if (closestToP2 && closestToP2 !== closestToP1) {
-              state.wallSnapPoints.push(closestToP2);
+            if (closestToP2) {
+              if (snapX === null) {
+                snapX = closestToP2.x;
+              }
+              newP2 = { x: closestToP2.x, y: closestToP2.y };
             }
-          }
-        } else {
-          state.wallSnapPoints = [];
-        }
-
-        // Maintain wall length - adjust endpoints to preserve original length
-        var currentLength = hypot(newP2.x - newP1.x, newP2.y - newP1.y);
-        var originalLength = state.wallDrag.originalLength;
-
-        if (
-          Math.abs(currentLength - originalLength) > 0.01 &&
-          originalLength > 0.01
-        ) {
-          // Calculate direction vector from p1 to p2
-          var dirX = (newP2.x - newP1.x) / currentLength;
-          var dirY = (newP2.y - newP1.y) / currentLength;
-
-          // Determine which endpoint to adjust based on snapping
-          // If both snapped, prefer adjusting p2 (or p1 if p2 was snapped to a critical point)
-          // If only one snapped, adjust the other
-          // If neither snapped, adjust p2 (shouldn't happen as length is maintained by moving both together)
-
-          var adjustP1 = false;
-          var adjustP2 = false;
-
-          if (p1Snapped && !p2Snapped) {
-            // Only p1 snapped, adjust p2
-            adjustP2 = true;
-          } else if (!p1Snapped && p2Snapped) {
-            // Only p2 snapped, adjust p1
-            adjustP1 = true;
-          } else if (p1Snapped && p2Snapped) {
-            // Both snapped, adjust p2 to maintain length
-            adjustP2 = true;
+            // Ensure both endpoints have the same X when snapping occurs
+            if (snapX !== null) {
+              newP1.x = snapX;
+              newP2.x = snapX;
+            }
+            // If no snapping, orientation is already maintained by moving both points together
           } else {
-            // Neither snapped, adjust p2 (should maintain length already, but just in case)
-            adjustP2 = true;
+            // Diagonal wall: allow free snapping
+            if (closestToP1) {
+              newP1 = closestToP1;
+            }
+            if (closestToP2) {
+              newP2 = closestToP2;
+            }
           }
 
-          if (adjustP2) {
-            // Adjust p2 to maintain length, keeping p1 fixed
-            if (
-              state.snapToGrid &&
-              state.wallDrag.orientation === "horizontal"
-            ) {
-              // Horizontal: maintain Y, adjust X
-              var newX2 = newP1.x + dirX * originalLength;
-              newP2 = { x: newX2, y: newP1.y };
-            } else if (
-              state.snapToGrid &&
-              state.wallDrag.orientation === "vertical"
-            ) {
-              // Vertical: maintain X, adjust Y
-              var newY2 = newP1.y + dirY * originalLength;
-              newP2 = { x: newP1.x, y: newY2 };
-            } else {
-              // Diagonal or no snapToGrid: adjust both X and Y
-              newP2 = {
-                x: newP1.x + dirX * originalLength,
-                y: newP1.y + dirY * originalLength,
-              };
-            }
-          } else if (adjustP1) {
-            // Adjust p1 to maintain length, keeping p2 fixed
-            // Reverse direction vector
-            if (
-              state.snapToGrid &&
-              state.wallDrag.orientation === "horizontal"
-            ) {
-              // Horizontal: maintain Y, adjust X
-              var newX1 = newP2.x - dirX * originalLength;
-              newP1 = { x: newX1, y: newP2.y };
-            } else if (
-              state.snapToGrid &&
-              state.wallDrag.orientation === "vertical"
-            ) {
-              // Vertical: maintain X, adjust Y
-              var newY1 = newP2.y - dirY * originalLength;
-              newP1 = { x: newP2.x, y: newY1 };
-            } else {
-              // Diagonal or no snapToGrid: adjust both X and Y
-              newP1 = {
-                x: newP2.x - dirX * originalLength,
-                y: newP2.y - dirY * originalLength,
-              };
-            }
+          // Store intersection points and snapped endpoints for visual feedback
+          state.wallSnapPoints = intersectionPoints;
+          if (closestToP1) {
+            state.wallSnapPoints.push(closestToP1);
+          }
+          if (closestToP2 && closestToP2 !== closestToP1) {
+            state.wallSnapPoints.push(closestToP2);
           }
         }
-
-        // Update wall positions
-        wall.p1.x = newP1.x;
-        wall.p1.y = newP1.y;
-        wall.p2.x = newP2.x;
-        wall.p2.y = newP2.y;
-        state.wallDrag.p = p;
-        draw();
+      } else {
+        state.wallSnapPoints = [];
       }
 
-      // Detect if user is dragging (moved more than 5 pixels)
-      if (state.mouseDownPos && state.drag) {
-        var dx = e.clientX - state.mouseDownPos.x;
-        var dy = e.clientY - state.mouseDownPos.y;
-        var dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist > 5) {
-          state.isDragging = true;
-          // Check if we're dragging an antenna (for heatmap optimization)
-          if (!state.isDraggingAntenna) {
-            var isAntenna = false;
-            for (var i = 0; i < state.aps.length; i++) {
-              if (state.aps[i].id === state.drag.id) {
-                isAntenna = true;
-                break;
-              }
-            }
-            if (isAntenna) {
-              state.isDraggingAntenna = true;
-            }
-          }
-        }
-      }
+      // Maintain wall length - adjust endpoints to preserve original length
+      var currentLength = hypot(newP2.x - newP1.x, newP2.y - newP1.y);
+      var originalLength = state.wallDrag.originalLength;
 
-      if (!state.drag && !state.temp) return;
-      if (state.drag && state.isDragging) {
-        var transition = state.viewModeTransition;
-        if (transition > 0 && state.dragStartWorld && state.dragStartScreen) {
-          // In 3D view, use iterative refinement to find world position
-          // that projects to the current mouse position
-          var rect = canvas.getBoundingClientRect();
-          var targetScreenX = e.clientX - rect.left;
-          var targetScreenY = e.clientY - rect.top;
+      if (
+        Math.abs(currentLength - originalLength) > 0.01 &&
+        originalLength > 0.01
+      ) {
+        // Calculate direction vector from p1 to p2
+        var dirX = (newP2.x - newP1.x) / currentLength;
+        var dirY = (newP2.y - newP1.y) / currentLength;
 
-          // Use coverage height for dragging to match visual representation
-          // The antenna dot is displayed at coverage height to align with coverage pattern
-          var coverageHeight = 1.5;
+        // Determine which endpoint to adjust based on snapping
+        // If both snapped, prefer adjusting p2 (or p1 if p2 was snapped to a critical point)
+        // If only one snapped, adjust the other
+        // If neither snapped, adjust p2 (shouldn't happen as length is maintained by moving both together)
 
-          // Start with the initial world position
-          var worldX = state.dragStartWorld.x;
-          var worldY = state.dragStartWorld.y;
+        var adjustP1 = false;
+        var adjustP2 = false;
 
-          // Calculate screen delta from start position
-          var screenDeltaX = targetScreenX - state.dragStartScreen.x;
-          var screenDeltaY = targetScreenY - state.dragStartScreen.y;
-
-          // Project the start position to see current screen position at coverage height
-          var startScreen = projectToCanvas3D(
-            state.dragStartWorld.x,
-            state.dragStartWorld.y,
-            coverageHeight
-          );
-
-          // Calculate scale factor by projecting a small offset at coverage height
-          var testOffset = 1.0; // 1 meter
-          var testScreen1 = projectToCanvas3D(
-            state.dragStartWorld.x + testOffset,
-            state.dragStartWorld.y,
-            coverageHeight
-          );
-          var testScreen2 = projectToCanvas3D(
-            state.dragStartWorld.x,
-            state.dragStartWorld.y + testOffset,
-            coverageHeight
-          );
-
-          var scaleX =
-            testOffset /
-            Math.max(0.1, Math.abs(testScreen1.x - startScreen.x));
-          var scaleY =
-            testOffset /
-            Math.max(0.1, Math.abs(testScreen2.y - startScreen.y));
-
-          // Account for camera rotation around Y axis
-          var cosY = Math.cos(state.cameraRotationY || 0);
-          var sinY = Math.sin(state.cameraRotationY || 0);
-
-          // Convert screen delta to world delta
-          // Screen X/Y movement maps to world X/Y with rotation
-          var worldDeltaX =
-            (screenDeltaX * cosY - screenDeltaY * sinY) * scaleX;
-          var worldDeltaY =
-            (screenDeltaX * sinY + screenDeltaY * cosY) * scaleY;
-
-          // Apply delta
-          worldX = state.dragStartWorld.x + worldDeltaX;
-          worldY = state.dragStartWorld.y + worldDeltaY;
-
-          // Refine by projecting and adjusting at coverage height
-          var projected = projectToCanvas3D(worldX, worldY, coverageHeight);
-          var errorX = targetScreenX - projected.x;
-          var errorY = targetScreenY - projected.y;
-
-          // Apply correction if error is significant
-          if (Math.abs(errorX) > 0.5 || Math.abs(errorY) > 0.5) {
-            var correctX = (errorX * cosY - errorY * sinY) * scaleX * 0.5;
-            var correctY = (errorX * sinY + errorY * cosY) * scaleY * 0.5;
-            worldX += correctX;
-            worldY += correctY;
-          }
-
-          state.drag.x = worldX;
-          state.drag.y = worldY;
+        if (p1Snapped && !p2Snapped) {
+          // Only p1 snapped, adjust p2
+          adjustP2 = true;
+        } else if (!p1Snapped && p2Snapped) {
+          // Only p2 snapped, adjust p1
+          adjustP1 = true;
+        } else if (p1Snapped && p2Snapped) {
+          // Both snapped, adjust p2 to maintain length
+          adjustP2 = true;
         } else {
-          // In 2D view, use standard coordinate conversion
-          state.drag.x = p.x;
-          state.drag.y = p.y;
+          // Neither snapped, adjust p2 (should maintain length already, but just in case)
+          adjustP2 = true;
         }
 
-        // Update antenna position in array immediately for real-time calculations
-        // This ensures any calculations use the current drag position
-        if (state.drag && state.isDraggingAntenna) {
-          for (var j = 0; j < state.aps.length; j++) {
-            if (state.aps[j].id === state.drag.id) {
-              // Store original position if not already stored
-              if (!state.aps[j]._originalDragPos) {
-                state.aps[j]._originalDragPos = {
-                  x: state.aps[j].x,
-                  y: state.aps[j].y,
-                };
-              }
-              // Update to drag position temporarily
-              state.aps[j].x = state.drag.x;
-              state.aps[j].y = state.drag.y;
+        if (adjustP2) {
+          // Adjust p2 to maintain length, keeping p1 fixed
+          if (
+            state.snapToGrid &&
+            state.wallDrag.orientation === "horizontal"
+          ) {
+            // Horizontal: maintain Y, adjust X
+            var newX2 = newP1.x + dirX * originalLength;
+            newP2 = { x: newX2, y: newP1.y };
+          } else if (
+            state.snapToGrid &&
+            state.wallDrag.orientation === "vertical"
+          ) {
+            // Vertical: maintain X, adjust Y
+            var newY2 = newP1.y + dirY * originalLength;
+            newP2 = { x: newP1.x, y: newY2 };
+          } else {
+            // Diagonal or no snapToGrid: adjust both X and Y
+            newP2 = {
+              x: newP1.x + dirX * originalLength,
+              y: newP1.y + dirY * originalLength,
+            };
+          }
+        } else if (adjustP1) {
+          // Adjust p1 to maintain length, keeping p2 fixed
+          // Reverse direction vector
+          if (
+            state.snapToGrid &&
+            state.wallDrag.orientation === "horizontal"
+          ) {
+            // Horizontal: maintain Y, adjust X
+            var newX1 = newP2.x - dirX * originalLength;
+            newP1 = { x: newX1, y: newP2.y };
+          } else if (
+            state.snapToGrid &&
+            state.wallDrag.orientation === "vertical"
+          ) {
+            // Vertical: maintain X, adjust Y
+            var newY1 = newP2.y - dirY * originalLength;
+            newP1 = { x: newP2.x, y: newY1 };
+          } else {
+            // Diagonal or no snapToGrid: adjust both X and Y
+            newP1 = {
+              x: newP2.x - dirX * originalLength,
+              y: newP2.y - dirY * originalLength,
+            };
+          }
+        }
+      }
+
+      // Update wall positions
+      wall.p1.x = newP1.x;
+      wall.p1.y = newP1.y;
+      wall.p2.x = newP2.x;
+      wall.p2.y = newP2.y;
+      state.wallDrag.p = p;
+      draw();
+    }
+
+    // Detect if user is dragging (moved more than 5 pixels)
+    if (state.mouseDownPos && state.drag) {
+      var dx = e.clientX - state.mouseDownPos.x;
+      var dy = e.clientY - state.mouseDownPos.y;
+      var dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > 5) {
+        state.isDragging = true;
+        // Check if we're dragging an antenna (for heatmap optimization)
+        if (!state.isDraggingAntenna) {
+          var isAntenna = false;
+          for (var i = 0; i < state.aps.length; i++) {
+            if (state.aps[i].id === state.drag.id) {
+              isAntenna = true;
               break;
             }
           }
-        }
-
-        draw();
-      }
-      if (state.temp) {
-        // Check if this is a door/window (uses p1/p2 structure, not points array)
-        var isDoorOrWindow =
-          state.selectedElementType === "door" ||
-          state.selectedElementType === "doubleDoor" ||
-          state.selectedElementType === "window";
-
-        if (isDoorOrWindow && state.temp.p1) {
-          // Doors/windows: project onto parent wall, no horizontal/vertical constraint
-          var parentWall = state.temp.parentWall;
-          var snapped = { x: p.x, y: p.y };
-
-          if (parentWall) {
-            // Project mouse onto parent wall segments
-            var wallSegments = [];
-            if (parentWall.points && parentWall.points.length >= 2) {
-              for (var j = 0; j < parentWall.points.length - 1; j++) {
-                wallSegments.push({
-                  p1: parentWall.points[j],
-                  p2: parentWall.points[j + 1],
-                });
-              }
-            } else if (parentWall.p1 && parentWall.p2) {
-              wallSegments.push({ p1: parentWall.p1, p2: parentWall.p2 });
-            }
-
-            // Find closest point on parent wall
-            var minDist = Infinity;
-            for (var j = 0; j < wallSegments.length; j++) {
-              var seg = wallSegments[j];
-              var dx = seg.p2.x - seg.p1.x;
-              var dy = seg.p2.y - seg.p1.y;
-              var l2 = dx * dx + dy * dy;
-              if (l2 > 0) {
-                var t =
-                  ((p.x - seg.p1.x) * (seg.p2.x - seg.p1.x) +
-                   (p.y - seg.p1.y) * (seg.p2.y - seg.p1.y)) /
-                  l2;
-                t = Math.max(0, Math.min(1, t));
-                var proj = {
-                  x: seg.p1.x + t * (seg.p2.x - seg.p1.x),
-                  y: seg.p1.y + t * (seg.p2.y - seg.p1.y),
-                };
-                var dist = hypot(p.x - proj.x, p.y - proj.y);
-                if (dist < minDist) {
-                  minDist = dist;
-                  snapped = proj;
-                }
-              }
-            }
-          }
-
-          // Update preview for door/window (p2)
-          state.temp.p2 = snapped;
-        } else {
-          // Regular walls: use polyline method with horizontal/vertical constraint
-          // Get the reference point for snapping (last point in polyline, or first point if starting)
-          var referencePoint = null;
-          if (state.temp.points && state.temp.points.length > 0) {
-            referencePoint = state.temp.points[state.temp.points.length - 1];
-          } else if (state.temp.p1) {
-            referencePoint = state.temp.p1;
-          }
-
-          var snapped = { x: p.x, y: p.y };
-
-          // In assisted drawing mode, constrain to horizontal or vertical movement only
-          if (state.snapToGrid && referencePoint) {
-            var dx = Math.abs(p.x - referencePoint.x);
-            var dy = Math.abs(p.y - referencePoint.y);
-
-            // Determine if movement is more horizontal or vertical
-            if (dx > dy) {
-              // Horizontal movement - keep Y coordinate from reference point
-              snapped.y = referencePoint.y;
-            } else {
-              // Vertical movement - keep X coordinate from reference point
-              snapped.x = referencePoint.x;
-            }
-          }
-
-          // Apply snapping to wall endpoints and intersections (this may override the constraint)
-          snapped = snapWallPoint(snapped, referencePoint);
-
-          // Update preview for polyline
-          if (state.temp.points && state.temp.points.length > 0) {
-            state.temp.preview = snapped;
-          } else {
-            // Fallback for old structure
-            state.temp.p2 = snapped;
+          if (isAntenna) {
+            state.isDraggingAntenna = true;
           }
         }
-        draw();
       }
-    });
+    }
 
-    window.addEventListener("mouseup", function (e) {
-      // Stop 3D panning
-      if (state.isPanning3D) {
-        state.isPanning3D = false;
-        return;
+    if (!state.drag && !state.temp) return;
+    if (state.drag && state.isDragging) {
+      var transition = state.viewModeTransition;
+      if (transition > 0 && state.dragStartWorld && state.dragStartScreen) {
+        // In 3D view, use iterative refinement to find world position
+        // that projects to the current mouse position
+        var rect = canvas.getBoundingClientRect();
+        var targetScreenX = e.clientX - rect.left;
+        var targetScreenY = e.clientY - rect.top;
+
+        // Use coverage height for dragging to match visual representation
+        // The antenna dot is displayed at coverage height to align with coverage pattern
+        var coverageHeight = 1.5;
+
+        // Start with the initial world position
+        var worldX = state.dragStartWorld.x;
+        var worldY = state.dragStartWorld.y;
+
+        // Calculate screen delta from start position
+        var screenDeltaX = targetScreenX - state.dragStartScreen.x;
+        var screenDeltaY = targetScreenY - state.dragStartScreen.y;
+
+        // Project the start position to see current screen position at coverage height
+        var startScreen = projectToCanvas3D(
+          state.dragStartWorld.x,
+          state.dragStartWorld.y,
+          coverageHeight
+        );
+
+        // Calculate scale factor by projecting a small offset at coverage height
+        var testOffset = 1.0; // 1 meter
+        var testScreen1 = projectToCanvas3D(
+          state.dragStartWorld.x + testOffset,
+          state.dragStartWorld.y,
+          coverageHeight
+        );
+        var testScreen2 = projectToCanvas3D(
+          state.dragStartWorld.x,
+          state.dragStartWorld.y + testOffset,
+          coverageHeight
+        );
+
+        var scaleX =
+          testOffset /
+          Math.max(0.1, Math.abs(testScreen1.x - startScreen.x));
+        var scaleY =
+          testOffset /
+          Math.max(0.1, Math.abs(testScreen2.y - startScreen.y));
+
+        // Account for camera rotation around Y axis
+        var cosY = Math.cos(state.cameraRotationY || 0);
+        var sinY = Math.sin(state.cameraRotationY || 0);
+
+        // Convert screen delta to world delta
+        // Screen X/Y movement maps to world X/Y with rotation
+        var worldDeltaX =
+          (screenDeltaX * cosY - screenDeltaY * sinY) * scaleX;
+        var worldDeltaY =
+          (screenDeltaX * sinY + screenDeltaY * cosY) * scaleY;
+
+        // Apply delta
+        worldX = state.dragStartWorld.x + worldDeltaX;
+        worldY = state.dragStartWorld.y + worldDeltaY;
+
+        // Refine by projecting and adjusting at coverage height
+        var projected = projectToCanvas3D(worldX, worldY, coverageHeight);
+        var errorX = targetScreenX - projected.x;
+        var errorY = targetScreenY - projected.y;
+
+        // Apply correction if error is significant
+        if (Math.abs(errorX) > 0.5 || Math.abs(errorY) > 0.5) {
+          var correctX = (errorX * cosY - errorY * sinY) * scaleX * 0.5;
+          var correctY = (errorX * sinY + errorY * cosY) * scaleY * 0.5;
+          worldX += correctX;
+          worldY += correctY;
+        }
+
+        state.drag.x = worldX;
+        state.drag.y = worldY;
+      } else {
+        // In 2D view, use standard coordinate conversion
+        state.drag.x = p.x;
+        state.drag.y = p.y;
       }
 
-      // Stop 3D rotation
-      if (state.isRotating3D) {
-        state.isRotating3D = false;
-        return;
-      }
-
-      // Finalize drag selection
-      if (state.isSelecting && state.selectionBox) {
-        var selectedWalls = findWallsInSelectionBox(state.selectionBox);
-        state.selectedWallIds = selectedWalls.map(function (w) {
-          return w.id;
-        });
-        // For backward compatibility, set selectedWallId to first selected wall
-        state.selectedWallId =
-          selectedWalls.length > 0 ? selectedWalls[0].id : null;
-        state.isSelecting = false;
-        state.selectionBox = null;
-        renderWalls(); // Update sidebar to highlight selected walls
-        draw();
-        return;
-      }
-
-      // Calibration is now handled by click-click, no drag needed
-      // Mouseup handler for calibration removed
-
-      if (state.tempFloorPlane && state.floorPlaneDragStart) {
-        // Finish drawing floor plane
-        var start = state.floorPlaneDragStart;
-        var p = pointerPos(e);
-        var minX = Math.min(start.x, p.x);
-        var maxX = Math.max(start.x, p.x);
-        var minY = Math.min(start.y, p.y);
-        var maxY = Math.max(start.y, p.y);
-
-        // Only create if rectangle has non-zero area
-        if (Math.abs(maxX - minX) > 0.1 && Math.abs(maxY - minY) > 0.1) {
-          // Convert world coordinates to image pixel coordinates
-          // This makes the floor plane "stick" to the image
-          if (state.backgroundImage) {
-            var imgWidth = state.backgroundImage.width;
-            var imgHeight = state.backgroundImage.height;
-
-            // Convert world coords to image pixel coords
-            var worldToImage = function (wx, wy) {
-              return {
-                x: (wx / state.w) * imgWidth,
-                y: (wy / state.h) * imgHeight,
+      // Update antenna position in array immediately for real-time calculations
+      // This ensures any calculations use the current drag position
+      if (state.drag && state.isDraggingAntenna) {
+        for (var j = 0; j < state.aps.length; j++) {
+          if (state.aps[j].id === state.drag.id) {
+            // Store original position if not already stored
+            if (!state.aps[j]._originalDragPos) {
+              state.aps[j]._originalDragPos = {
+                x: state.aps[j].x,
+                y: state.aps[j].y,
               };
-            };
-
-            var imgP1 = worldToImage(minX, minY);
-            var imgP2 = worldToImage(maxX, minY);
-            var imgP3 = worldToImage(maxX, maxY);
-            var imgP4 = worldToImage(minX, maxY);
-
-            var newFloorPlane = {
-              id: "floorPlane_" + state.floorPlanes.length,
-              // Store in image pixel coordinates
-              imgP1: imgP1,
-              imgP2: imgP2,
-              imgP3: imgP3,
-              imgP4: imgP4,
-              // Also store world coordinates for RF calculations
-              p1: { x: minX, y: minY },
-              p2: { x: maxX, y: minY },
-              p3: { x: maxX, y: maxY },
-              p4: { x: minX, y: maxY },
-              attenuation: state.floorPlaneAttenuation,
-              height: state.floorPlaneHeight || 0,
-              type: state.floorPlaneType || "horizontal",
-              inclination:
-                state.floorPlaneType === "inclined"
-                ? state.floorPlaneInclination || 0
-                : 0,
-              inclinationDirection:
-                state.floorPlaneType === "inclined"
-                ? state.floorPlaneInclinationDirection || 0
-                : 0,
-              name: "Floor Plane " + (state.floorPlanes.length + 1),
-            };
-            saveState(); // Save state before adding floor plane
-            state.floorPlanes.push(newFloorPlane);
-          } else {
-            // No image - store in world coordinates as before
-            var newFloorPlane = {
-              id: "floorPlane_" + state.floorPlanes.length,
-              p1: { x: minX, y: minY },
-              p2: { x: maxX, y: minY },
-              p3: { x: maxX, y: maxY },
-              p4: { x: minX, y: maxY },
-              attenuation: state.floorPlaneAttenuation,
-              height: state.floorPlaneHeight || 0,
-              type: state.floorPlaneType || "horizontal",
-              inclination:
-                state.floorPlaneType === "inclined"
-                ? state.floorPlaneInclination || 0
-                : 0,
-              inclinationDirection:
-                state.floorPlaneType === "inclined"
-                ? state.floorPlaneInclinationDirection || 0
-                : 0,
-              name: "Floor Plane " + (state.floorPlanes.length + 1),
-            };
-            state.floorPlanes.push(newFloorPlane);
-          }
-          renderFloorPlanes();
-        }
-
-        state.tempFloorPlane = null;
-        state.floorPlaneDragStart = null;
-        draw();
-        return;
-      }
-
-      // Legend dragging is disabled - no check needed
-
-      // If it was a click (not a drag) and an AP was hit, view its pattern and show detail sidebar
-      if (state.drag && !state.isDragging) {
-        var hit = state.drag;
-        // Set viewed state (temporary, shows pattern without full selection)
-        state.viewedApId = hit.id;
-        // Show detail sidebar but don't set selectedApId or highlight
-        state.selectedApForDetail = hit;
-
-        document.getElementById("apDetailSidebar").classList.add("visible");
-        renderApDetails();
-        state.justOpenedApSidebar = true;
-        setTimeout(function () {
-          state.justOpenedApSidebar = false;
-        }, 100);
-
-        // Update sidebar to highlight and scroll to the viewed antenna
-        renderAPs();
-        scrollToSelectedAp();
-        draw(); // Redraw to show the pattern
-        // Stop event propagation to prevent document click handler from closing it
-        e.stopPropagation();
-      }
-
-      // Handle wall drag completion (both single and multi-wall)
-      if (state.wallDrag) {
-        // Clear snap points when wall dragging stops
-        state.wallSnapPoints = [];
-        // Clear drag state, but keep selection (selectedWallIds remains)
-        state.wallDrag = null;
-        draw();
-      }
-
-      // Track antenna position change if an antenna was dragged
-      if (state.drag && state.dragStartWorld && state.isDragging) {
-        // Check if this is an antenna (has id starting with 'ANT' or is in aps array)
-        var isAntenna = false;
-        for (var i = 0; i < state.aps.length; i++) {
-          if (state.aps[i].id === state.drag.id) {
-            isAntenna = true;
-            // Check if position actually changed
-            var oldX = state.dragStartWorld.x;
-            var oldY = state.dragStartWorld.y;
-            var newX = state.drag.x;
-            var newY = state.drag.y;
-            var threshold = 0.01; // 1cm threshold to avoid logging tiny movements
-            if (
-              Math.abs(oldX - newX) > threshold ||
-              Math.abs(oldY - newY) > threshold
-            ) {
-              logAntennaPositionChange(
-                state.drag.id,
-                state.drag.id,
-                oldX,
-                oldY,
-                newX,
-                newY
-              );
             }
+            // Update to drag position temporarily
+            state.aps[j].x = state.drag.x;
+            state.aps[j].y = state.drag.y;
             break;
           }
         }
       }
 
-      // Clear antenna dragging flag and trigger async heatmap update when dragging ends
-      if (state.isDraggingAntenna) {
-        state.isDraggingAntenna = false;
-        // Update the actual antenna position in the array and restore original if needed
-        if (state.drag) {
-          for (var i = 0; i < state.aps.length; i++) {
-            if (state.aps[i].id === state.drag.id) {
-              state.aps[i].x = state.drag.x;
-              state.aps[i].y = state.drag.y;
-              // Clear temporary drag position marker
-              if (state.aps[i]._originalDragPos) {
-                delete state.aps[i]._originalDragPos;
-              }
-              // Enqueue antenna after drag ends in 2D/transition mode
-              scheduleAntennaEnqueue(state.aps[i]);
-              break;
-            }
-          }
-        }
-        // Trigger async heatmap update immediately - start with low-res for fast feedback
-        state.cachedHeatmap = null; // Invalidate cache
-        // Use setTimeout with 0 delay to ensure it runs after current execution
-        // Start with low-res for immediate visual feedback, then refine
-        setTimeout(function () {
-          generateHeatmapAsync(null, true); // true = use low-res first
-        }, 0);
-      }
+      draw();
+    }
+    if (state.temp) {
+      // Check if this is a door/window (uses p1/p2 structure, not points array)
+      var isDoorOrWindow =
+        state.selectedElementType === "door" ||
+        state.selectedElementType === "doubleDoor" ||
+        state.selectedElementType === "window";
 
-      state.drag = null;
-      state.mouseDownPos = null;
-      state.isDragging = false;
-    });
+      if (isDoorOrWindow && state.temp.p1) {
+        // Doors/windows: project onto parent wall, no horizontal/vertical constraint
+        var parentWall = state.temp.parentWall;
+        var snapped = { x: p.x, y: p.y };
 
-    document.addEventListener("keydown", function (e) {
-      if (e.key === "Escape") {
-        // Exit antenna placement mode if active
-        if (state.addingAP) {
-          exitAntennaPlacementMode();
-          return; // Exit early to prevent deselection when exiting placement mode
-        }
-
-        // Close left sidebar if open
-        if (iconSidebarData) {
-          var sidebar = iconSidebarData.sidebar;
-          var iconButtons = document.querySelectorAll(".icon-btn");
-          if (sidebar && sidebar.classList.contains("expanded")) {
-            sidebar.classList.remove("expanded");
-            iconButtons.forEach(function (b) {
-              b.classList.remove("active");
-            });
-            iconSidebarData.currentSection = null;
-            // Hide all sections
-            var sections = document.querySelectorAll(".section-content");
-            sections.forEach(function (s) {
-              s.classList.remove("active");
-            });
-            // Restore legend to default position after sidebar collapse (if not manually moved)
-            setTimeout(function () {
-              constrainLegendPosition(true); // Restore default if not manually moved
-            }, 350); // Wait for transition to complete
-          }
-        }
-
-        // Close right sidebar if open
-        var apDetailSidebar = document.getElementById("apDetailSidebar");
-        if (apDetailSidebar && apDetailSidebar.classList.contains("visible")) {
-          apDetailSidebar.classList.remove("visible");
-        }
-
-        // Deselect all selected items
-        state.selectedApId = null;
-        state.viewedApId = null; // Also clear viewed antenna
-        state.highlight = false;
-        state.selectedApForDetail = null;
-        state.selectedWallId = null;
-        state.selectedWallIds = [];
-        renderWalls(); // Update sidebar to remove highlight
-        renderAPs(); // Update antenna cards to remove highlight
-
-        // Reset scrolling to the very top of the antenna list
-        setTimeout(function () {
-          var apList = document.getElementById("apList");
-          if (apList) {
-            // Try scrolling the list element itself
-            if (apList.scrollTop !== undefined) {
-              apList.scrollTop = 0;
-            }
-            // Also try scrolling the parent sidebar-content container
-            var sidebarContent = apList.closest(".sidebar-content");
-            if (sidebarContent && sidebarContent.scrollTop !== undefined) {
-              sidebarContent.scrollTop = 0;
-            }
-            // Fallback to scrollIntoView on first item
-            var firstItem = apList.querySelector(".list-item");
-            if (firstItem) {
-              firstItem.scrollIntoView({
-                behavior: "smooth",
-                block: "start",
+        if (parentWall) {
+          // Project mouse onto parent wall segments
+          var wallSegments = [];
+          if (parentWall.points && parentWall.points.length >= 2) {
+            for (var j = 0; j < parentWall.points.length - 1; j++) {
+              wallSegments.push({
+                p1: parentWall.points[j],
+                p2: parentWall.points[j + 1],
               });
             }
+          } else if (parentWall.p1 && parentWall.p2) {
+            wallSegments.push({ p1: parentWall.p1, p2: parentWall.p2 });
           }
-        }, 50); // Wait for renderAPs to complete
 
-        draw();
+          // Find closest point on parent wall
+          var minDist = Infinity;
+          for (var j = 0; j < wallSegments.length; j++) {
+            var seg = wallSegments[j];
+            var dx = seg.p2.x - seg.p1.x;
+            var dy = seg.p2.y - seg.p1.y;
+            var l2 = dx * dx + dy * dy;
+            if (l2 > 0) {
+              var t =
+                ((p.x - seg.p1.x) * (seg.p2.x - seg.p1.x) +
+                  (p.y - seg.p1.y) * (seg.p2.y - seg.p1.y)) /
+                l2;
+              t = Math.max(0, Math.min(1, t));
+              var proj = {
+                x: seg.p1.x + t * (seg.p2.x - seg.p1.x),
+                y: seg.p1.y + t * (seg.p2.y - seg.p1.y),
+              };
+              var dist = hypot(p.x - proj.x, p.y - proj.y);
+              if (dist < minDist) {
+                minDist = dist;
+                snapped = proj;
+              }
+            }
+          }
+        }
+
+        // Update preview for door/window (p2)
+        state.temp.p2 = snapped;
+      } else {
+        // Regular walls: use polyline method with horizontal/vertical constraint
+        // Get the reference point for snapping (last point in polyline, or first point if starting)
+        var referencePoint = null;
+        if (state.temp.points && state.temp.points.length > 0) {
+          referencePoint = state.temp.points[state.temp.points.length - 1];
+        } else if (state.temp.p1) {
+          referencePoint = state.temp.p1;
+        }
+
+        var snapped = { x: p.x, y: p.y };
+
+        // In assisted drawing mode, constrain to horizontal or vertical movement only
+        if (state.snapToGrid && referencePoint) {
+          var dx = Math.abs(p.x - referencePoint.x);
+          var dy = Math.abs(p.y - referencePoint.y);
+
+          // Determine if movement is more horizontal or vertical
+          if (dx > dy) {
+            // Horizontal movement - keep Y coordinate from reference point
+            snapped.y = referencePoint.y;
+          } else {
+            // Vertical movement - keep X coordinate from reference point
+            snapped.x = referencePoint.x;
+          }
+        }
+
+        // Apply snapping to wall endpoints and intersections (this may override the constraint)
+        snapped = snapWallPoint(snapped, referencePoint);
+
+        // Update preview for polyline
+        if (state.temp.points && state.temp.points.length > 0) {
+          state.temp.preview = snapped;
+        } else {
+          // Fallback for old structure
+          state.temp.p2 = snapped;
+        }
       }
-    });
+      draw();
+    }
+  });
 
-    if (canvas) canvas.addEventListener("wheel", function (e) {
-      if (state.viewMode === "3d" || state.viewModeTransition > 0.5) {
-        e.preventDefault();
-        var delta = e.deltaY > 0 ? 0.9 : 1.1; // Zoom out or in
-        state.cameraZoom = Math.max(
-          0.3,
-          Math.min(3.0, state.cameraZoom * delta)
-        );
-        draw();
+  window.addEventListener("mouseup", function (e) {
+    // Stop 3D panning
+    if (state.isPanning3D) {
+      state.isPanning3D = false;
+      return;
+    }
+
+    // Stop 3D rotation
+    if (state.isRotating3D) {
+      state.isRotating3D = false;
+      return;
+    }
+
+    // Finalize drag selection
+    if (state.isSelecting && state.selectionBox) {
+      var selectedWalls = findWallsInSelectionBox(state.selectionBox);
+      state.selectedWallIds = selectedWalls.map(function (w) {
+        return w.id;
+      });
+      // For backward compatibility, set selectedWallId to first selected wall
+      state.selectedWallId =
+        selectedWalls.length > 0 ? selectedWalls[0].id : null;
+      state.isSelecting = false;
+      state.selectionBox = null;
+      renderWalls(); // Update sidebar to highlight selected walls
+      draw();
+      return;
+    }
+
+    // Calibration is now handled by click-click, no drag needed
+    // Mouseup handler for calibration removed
+
+    if (state.tempFloorPlane && state.floorPlaneDragStart) {
+      // Finish drawing floor plane
+      var start = state.floorPlaneDragStart;
+      var p = pointerPos(e);
+      var minX = Math.min(start.x, p.x);
+      var maxX = Math.max(start.x, p.x);
+      var minY = Math.min(start.y, p.y);
+      var maxY = Math.max(start.y, p.y);
+
+      // Only create if rectangle has non-zero area
+      if (Math.abs(maxX - minX) > 0.1 && Math.abs(maxY - minY) > 0.1) {
+        // Convert world coordinates to image pixel coordinates
+        // This makes the floor plane "stick" to the image
+        if (state.backgroundImage) {
+          var imgWidth = state.backgroundImage.width;
+          var imgHeight = state.backgroundImage.height;
+
+          // Convert world coords to image pixel coords
+          var worldToImage = function (wx, wy) {
+            return {
+              x: (wx / state.w) * imgWidth,
+              y: (wy / state.h) * imgHeight,
+            };
+          };
+
+          var imgP1 = worldToImage(minX, minY);
+          var imgP2 = worldToImage(maxX, minY);
+          var imgP3 = worldToImage(maxX, maxY);
+          var imgP4 = worldToImage(minX, maxY);
+
+          var newFloorPlane = {
+            id: "floorPlane_" + state.floorPlanes.length,
+            // Store in image pixel coordinates
+            imgP1: imgP1,
+            imgP2: imgP2,
+            imgP3: imgP3,
+            imgP4: imgP4,
+            // Also store world coordinates for RF calculations
+            p1: { x: minX, y: minY },
+            p2: { x: maxX, y: minY },
+            p3: { x: maxX, y: maxY },
+            p4: { x: minX, y: maxY },
+            attenuation: state.floorPlaneAttenuation,
+            height: state.floorPlaneHeight || 0,
+            type: state.floorPlaneType || "horizontal",
+            inclination:
+              state.floorPlaneType === "inclined"
+                ? state.floorPlaneInclination || 0
+                : 0,
+            inclinationDirection:
+              state.floorPlaneType === "inclined"
+                ? state.floorPlaneInclinationDirection || 0
+                : 0,
+            name: "Floor Plane " + (state.floorPlanes.length + 1),
+          };
+          saveState(); // Save state before adding floor plane
+          state.floorPlanes.push(newFloorPlane);
+        } else {
+          // No image - store in world coordinates as before
+          var newFloorPlane = {
+            id: "floorPlane_" + state.floorPlanes.length,
+            p1: { x: minX, y: minY },
+            p2: { x: maxX, y: minY },
+            p3: { x: maxX, y: maxY },
+            p4: { x: minX, y: maxY },
+            attenuation: state.floorPlaneAttenuation,
+            height: state.floorPlaneHeight || 0,
+            type: state.floorPlaneType || "horizontal",
+            inclination:
+              state.floorPlaneType === "inclined"
+                ? state.floorPlaneInclination || 0
+                : 0,
+            inclinationDirection:
+              state.floorPlaneType === "inclined"
+                ? state.floorPlaneInclinationDirection || 0
+                : 0,
+            name: "Floor Plane " + (state.floorPlanes.length + 1),
+          };
+          state.floorPlanes.push(newFloorPlane);
+        }
+        renderFloorPlanes();
       }
-    });
 
-    // Prevent context menu on right click when in 3D mode or when rotating
-    if (canvas) canvas.addEventListener("contextmenu", function (e) {
+      state.tempFloorPlane = null;
+      state.floorPlaneDragStart = null;
+      draw();
+      return;
+    }
+
+    // Legend dragging is disabled - no check needed
+
+    // If it was a click (not a drag) and an AP was hit, view its pattern and show detail sidebar
+    if (state.drag && !state.isDragging) {
+      var hit = state.drag;
+      // Set viewed state (temporary, shows pattern without full selection)
+      state.viewedApId = hit.id;
+      // Show detail sidebar but don't set selectedApId or highlight
+      state.selectedApForDetail = hit;
+
+      document.getElementById("apDetailSidebar").classList.add("visible");
+      renderApDetails();
+      state.justOpenedApSidebar = true;
+      setTimeout(function () {
+        state.justOpenedApSidebar = false;
+      }, 100);
+
+      // Update sidebar to highlight and scroll to the viewed antenna
+      renderAPs();
+      scrollToSelectedAp();
+      draw(); // Redraw to show the pattern
+      // Stop event propagation to prevent document click handler from closing it
+      e.stopPropagation();
+    }
+
+    // Handle wall drag completion (both single and multi-wall)
+    if (state.wallDrag) {
+      // Clear snap points when wall dragging stops
+      state.wallSnapPoints = [];
+      // Clear drag state, but keep selection (selectedWallIds remains)
+      state.wallDrag = null;
+      draw();
+    }
+
+    // Track antenna position change if an antenna was dragged
+    if (state.drag && state.dragStartWorld && state.isDragging) {
+      // Check if this is an antenna (has id starting with 'ANT' or is in aps array)
+      var isAntenna = false;
+      for (var i = 0; i < state.aps.length; i++) {
+        if (state.aps[i].id === state.drag.id) {
+          isAntenna = true;
+          // Check if position actually changed
+          var oldX = state.dragStartWorld.x;
+          var oldY = state.dragStartWorld.y;
+          var newX = state.drag.x;
+          var newY = state.drag.y;
+          var threshold = 0.01; // 1cm threshold to avoid logging tiny movements
+          if (
+            Math.abs(oldX - newX) > threshold ||
+            Math.abs(oldY - newY) > threshold
+          ) {
+            logAntennaPositionChange(
+              state.drag.id,
+              state.drag.id,
+              oldX,
+              oldY,
+              newX,
+              newY
+            );
+          }
+          break;
+        }
+      }
+    }
+
+    // Clear antenna dragging flag and trigger async heatmap update when dragging ends
+    if (state.isDraggingAntenna) {
+      state.isDraggingAntenna = false;
+      // Update the actual antenna position in the array and restore original if needed
+      if (state.drag) {
+        for (var i = 0; i < state.aps.length; i++) {
+          if (state.aps[i].id === state.drag.id) {
+            state.aps[i].x = state.drag.x;
+            state.aps[i].y = state.drag.y;
+            // Clear temporary drag position marker
+            if (state.aps[i]._originalDragPos) {
+              delete state.aps[i]._originalDragPos;
+            }
+            // Enqueue antenna after drag ends in 2D/transition mode
+            scheduleAntennaEnqueue(state.aps[i]);
+            break;
+          }
+        }
+      }
+      // Trigger async heatmap update immediately - start with low-res for fast feedback
+      state.cachedHeatmap = null; // Invalidate cache
+      // Use setTimeout with 0 delay to ensure it runs after current execution
+      // Start with low-res for immediate visual feedback, then refine
+      setTimeout(function () {
+        generateHeatmapAsync(null, true); // true = use low-res first
+      }, 0);
+    }
+
+    state.drag = null;
+    state.mouseDownPos = null;
+    state.isDragging = false;
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") {
+      // Exit antenna placement mode if active
+      if (state.addingAP) {
+        exitAntennaPlacementMode();
+        return; // Exit early to prevent deselection when exiting placement mode
+      }
+
+      // Close left sidebar if open
+      if (iconSidebarData) {
+        var sidebar = iconSidebarData.sidebar;
+        var iconButtons = document.querySelectorAll(".icon-btn");
+        if (sidebar && sidebar.classList.contains("expanded")) {
+          sidebar.classList.remove("expanded");
+          iconButtons.forEach(function (b) {
+            b.classList.remove("active");
+          });
+          iconSidebarData.currentSection = null;
+          // Hide all sections
+          var sections = document.querySelectorAll(".section-content");
+          sections.forEach(function (s) {
+            s.classList.remove("active");
+          });
+          // Restore legend to default position after sidebar collapse (if not manually moved)
+          setTimeout(function () {
+            constrainLegendPosition(true); // Restore default if not manually moved
+          }, 350); // Wait for transition to complete
+        }
+      }
+
+      // Close right sidebar if open
+      var apDetailSidebar = document.getElementById("apDetailSidebar");
+      if (apDetailSidebar && apDetailSidebar.classList.contains("visible")) {
+        apDetailSidebar.classList.remove("visible");
+      }
+
+      // Deselect all selected items
+      state.selectedApId = null;
+      state.viewedApId = null; // Also clear viewed antenna
+      state.highlight = false;
+      state.selectedApForDetail = null;
+      state.selectedWallId = null;
+      state.selectedWallIds = [];
+      renderWalls(); // Update sidebar to remove highlight
+      renderAPs(); // Update antenna cards to remove highlight
+
+      // Reset scrolling to the very top of the antenna list
+      setTimeout(function () {
+        var apList = document.getElementById("apList");
+        if (apList) {
+          // Try scrolling the list element itself
+          if (apList.scrollTop !== undefined) {
+            apList.scrollTop = 0;
+          }
+          // Also try scrolling the parent sidebar-content container
+          var sidebarContent = apList.closest(".sidebar-content");
+          if (sidebarContent && sidebarContent.scrollTop !== undefined) {
+            sidebarContent.scrollTop = 0;
+          }
+          // Fallback to scrollIntoView on first item
+          var firstItem = apList.querySelector(".list-item");
+          if (firstItem) {
+            firstItem.scrollIntoView({
+              behavior: "smooth",
+              block: "start",
+            });
+          }
+        }
+      }, 50); // Wait for renderAPs to complete
+
+      draw();
+    }
+  });
+
+  if (canvas) canvas.addEventListener("wheel", function (e) {
+    if (state.viewMode === "3d" || state.viewModeTransition > 0.5) {
+      e.preventDefault();
+      var delta = e.deltaY > 0 ? 0.9 : 1.1; // Zoom out or in
+      state.cameraZoom = Math.max(
+        0.3,
+        Math.min(3.0, state.cameraZoom * delta)
+      );
+      draw();
+    }
+  });
+
+  // Prevent context menu on right click when in 3D mode or when rotating
+  if (canvas) canvas.addEventListener("contextmenu", function (e) {
+    if (
+      state.viewMode === "3d" ||
+      state.viewModeTransition > 0.5 ||
+      state.isRotating3D
+    ) {
+      e.preventDefault();
+    }
+  });
+
+  // Also prevent context menu on Three.js canvas in 3D mode
+  if (state.threeCanvas) {
+    state.threeCanvas.addEventListener("contextmenu", function (e) {
       if (
         state.viewMode === "3d" ||
         state.viewModeTransition > 0.5 ||
@@ -1745,424 +1757,412 @@
         e.preventDefault();
       }
     });
+  }
 
-    // Also prevent context menu on Three.js canvas in 3D mode
-    if (state.threeCanvas) {
-      state.threeCanvas.addEventListener("contextmenu", function (e) {
+  window.addEventListener("resize", function () {
+    draw();
+    // Constrain legend position when window resizes
+    constrainLegendPosition();
+  });
+
+  
+  // AI ADD: Ensure canvas renders once all resources (CSS, images) are loaded
+  window.addEventListener("load", function () {
+    draw();
+  });
+
+  // Store default legend position (kept for compatibility; actual positioning is CSS-driven)
+
+  window.addEventListener("mousemove", function (e) {
+    // Handle AP tooltip (only if not in drawing mode)
+    if (
+      state.showTooltip &&
+      !state.addingWall &&
+      !state.addingAP &&
+      !state.isCalibrating
+    ) {
+      var tooltip = document.getElementById("apTooltip");
+      var canvas = document.getElementById("plot");
+      if (tooltip && canvas) {
+        var canvasRect = canvas.getBoundingClientRect();
+        // Get exact cursor tip position relative to viewport
+        var cursorX = e.clientX;
+        var cursorY = e.clientY;
+
+        // Check if cursor tip is over canvas
         if (
-          state.viewMode === "3d" ||
-          state.viewModeTransition > 0.5 ||
-          state.isRotating3D
+          cursorX >= canvasRect.left &&
+          cursorX <= canvasRect.right &&
+          cursorY >= canvasRect.top &&
+          cursorY <= canvasRect.bottom
         ) {
-          e.preventDefault();
-        }
-      });
-    }
+          // Get pixel coordinates of cursor tip relative to canvas
+          var pixelX = cursorX - canvasRect.left;
+          var pixelY = cursorY - canvasRect.top;
 
-    window.addEventListener("resize", function () {
-      draw();
-      // Constrain legend position when window resizes
-      constrainLegendPosition();
-    });
+          // Convert cursor tip pixel coordinates to world coordinates
+          var worldX = window.invx(pixelX);
+          var worldY = window.invy(pixelY);
 
+          var csvValue = null;
+          // YOUSEF COMMENT CSV
+          // if (
+          //   state.csvCoverageData &&
+          //   state.csvCoverageGrid &&
+          //   state.view === "rssi"
+          // ) {
+          //   csvValue = interpolateRsrpFromCsv(worldX, worldY);
+          // }
 
-    // AI ADD: Ensure canvas renders once all resources (CSS, images) are loaded
-    window.addEventListener("load", function () {
-      draw();
-    });
+          var best = bestApAt(worldX, worldY);
 
-    // Store default legend position (kept for compatibility; actual positioning is CSS-driven)
+          // Show tooltip if we have CSV data or an AP
+          if (csvValue !== null || (best && best.ap)) {
+            var value, unit, modeName, tooltipText;
 
-    window.addEventListener("mousemove", function (e) {
-      // Handle AP tooltip (only if not in drawing mode)
-      if (
-        state.showTooltip &&
-        !state.addingWall &&
-        !state.addingAP &&
-        !state.isCalibrating
-      ) {
-        var tooltip = document.getElementById("apTooltip");
-        var canvas = document.getElementById("plot");
-        if (tooltip && canvas) {
-          var canvasRect = canvas.getBoundingClientRect();
-          // Get exact cursor tip position relative to viewport
-          var cursorX = e.clientX;
-          var cursorY = e.clientY;
-
-          // Check if cursor tip is over canvas
-          if (
-            cursorX >= canvasRect.left &&
-            cursorX <= canvasRect.right &&
-            cursorY >= canvasRect.top &&
-            cursorY <= canvasRect.bottom
-          ) {
-            // Get pixel coordinates of cursor tip relative to canvas
-            var pixelX = cursorX - canvasRect.left;
-            var pixelY = cursorY - canvasRect.top;
-
-            // Convert cursor tip pixel coordinates to world coordinates
-            var worldX = invx(pixelX);
-            var worldY = invy(pixelY);
-
-            var csvValue = null;
-            // YOUSEF COMMENT CSV
-            // if (
-            //   state.csvCoverageData &&
-            //   state.csvCoverageGrid &&
-            //   state.view === "rssi"
-            // ) {
-            //   csvValue = interpolateRsrpFromCsv(worldX, worldY);
-            // }
-
-            var best = bestApAt(worldX, worldY);
-
-            // Show tooltip if we have CSV data or an AP
-            if (csvValue !== null || (best && best.ap)) {
-              var value, unit, modeName, tooltipText;
-
-              // If CSV coverage data is available, use it
-              if (csvValue !== null) {
-                value = csvValue;
+            // If CSV coverage data is available, use it
+            if (csvValue !== null) {
+              value = csvValue;
+              unit = "dBm";
+              modeName = "RSRP";
+              tooltipText =
+                "Coverage Map\n" +
+                modeName +
+                ": " +
+                value.toFixed(1) +
+                " " +
+                unit;
+            } else if (best && best.ap) {
+              // Calculate value based on current view mode
+              if (state.view === "rssi") {
+                value = best.rssiDbm;
                 unit = "dBm";
-                modeName = "RSRP";
-                tooltipText =
-                  "Coverage Map\n" +
-                  modeName +
-                  ": " +
-                  value.toFixed(1) +
-                  " " +
-                  unit;
-              } else if (best && best.ap) {
-                // Calculate value based on current view mode
-                if (state.view === "rssi") {
-                  value = best.rssiDbm;
-                  unit = "dBm";
-                  modeName = "RSSI";
-                } else if (state.view === "snr") {
-                  value = best.rssiDbm - state.noise;
-                  unit = "dB";
-                  modeName = "SNR";
-                } else if (state.view === "cci") {
-                  // Count interfering antennas (power > -85, same channel as best server)
-                  value = countInterferingAntennas(worldX, worldY, best.ap);
-                  unit = "";
-                  modeName = "CCI Count";
-                } else if (state.view === "thr") {
-                  var Idbm2 = cciAt(worldX, worldY, best.ap);
-                  var sinr = sinrAt(best.rssiDbm, Idbm2);
-                  value = throughputFromSinr(sinr);
-                  unit = "Mbps";
-                  modeName = "Throughput";
-                } else if (state.view === "best") {
-                  value = null;
-                  unit = "";
-                  modeName = "Best Server";
-                } else if (state.view === "servch") {
-                  value = best.ap.ch || "N/A";
-                  unit = "";
-                  modeName = "Serving Channel";
-                } else {
-                  value = best.rssiDbm;
-                  unit = "dBm";
-                  modeName = "RSSI";
-                }
-
-                // Build tooltip text
-                tooltipText = "Antenna: " + best.ap.id;
-                if (value !== null) {
-                  if (state.view === "servch") {
-                    tooltipText += "\n" + modeName + ": " + value;
-                  } else if (state.view === "cci") {
-                    // CCI count is an integer, no decimal places
-                    tooltipText += "\n" + modeName + ": " + Math.round(value) + (unit ? " " + unit : "");
-                  } else {
-                    tooltipText +=
-                      "\n" + modeName + ": " + value.toFixed(1) + " " + unit;
-                  }
-                } else {
-                  tooltipText += "\n" + modeName;
-                }
+                modeName = "RSSI";
+              } else if (state.view === "snr") {
+                value = best.rssiDbm - state.noise;
+                unit = "dB";
+                modeName = "SNR";
+              } else if (state.view === "cci") {
+                // Count interfering antennas (power > -85, same channel as best server)
+                value = countInterferingAntennas(worldX, worldY, best.ap);
+                unit = "";
+                modeName = "CCI Count";
+              } else if (state.view === "thr") {
+                var Idbm2 = cciAt(worldX, worldY, best.ap);
+                var sinr = sinrAt(best.rssiDbm, Idbm2);
+                value = throughputFromSinr(sinr);
+                unit = "Mbps";
+                modeName = "Throughput";
+              } else if (state.view === "best") {
+                value = null;
+                unit = "";
+                modeName = "Best Server";
+              } else if (state.view === "servch") {
+                value = best.ap.ch || "N/A";
+                unit = "";
+                modeName = "Serving Channel";
+              } else {
+                value = best.rssiDbm;
+                unit = "dBm";
+                modeName = "RSSI";
               }
 
-              tooltip.textContent = tooltipText;
-
-              // Position tooltip at the tip of the pointer
-              // cursorY is top of cursor, cursor tip is at bottom (~18px below for standard cursor)
-              var cursorTipY = cursorY - 25; // Cursor tip position
-
-              // Show tooltip first to get dimensions
-              tooltip.style.display = "block";
-              var tooltipWidth = tooltip.offsetWidth;
-              var tooltipHeight = tooltip.offsetHeight;
-
-              // Position tooltip at cursor tip with small offset to avoid covering cursor
-              tooltip.style.left = cursorX - 280 + "px"; // 10px offset to the right of cursor tip
-              tooltip.style.top = cursorTipY - 37 + "px"; // 10px offset below cursor tip
-              tooltip.style.transform = "none"; // No transform needed
-              tooltip.classList.add("visible");
-            } else {
-              tooltip.classList.remove("visible");
+              // Build tooltip text
+              tooltipText = "Antenna: " + best.ap.id;
+              if (value !== null) {
+                if (state.view === "servch") {
+                  tooltipText += "\n" + modeName + ": " + value;
+                } else if (state.view === "cci") {
+                  // CCI count is an integer, no decimal places
+                  tooltipText += "\n" + modeName + ": " + Math.round(value) + (unit ? " " + unit : "");
+                } else {
+                  tooltipText +=
+                    "\n" + modeName + ": " + value.toFixed(1) + " " + unit;
+                }
+              } else {
+                tooltipText += "\n" + modeName;
+              }
             }
+
+            tooltip.textContent = tooltipText;
+
+            // Position tooltip at the tip of the pointer
+            // cursorY is top of cursor, cursor tip is at bottom (~18px below for standard cursor)
+            var cursorTipY = cursorY - 25; // Cursor tip position
+
+            // Show tooltip first to get dimensions
+            tooltip.style.display = "block";
+            var tooltipWidth = tooltip.offsetWidth;
+            var tooltipHeight = tooltip.offsetHeight;
+
+            // Position tooltip at cursor tip with small offset to avoid covering cursor
+            tooltip.style.left = cursorX - 280 + "px"; // 10px offset to the right of cursor tip
+            tooltip.style.top = cursorTipY - 37 + "px"; // 10px offset below cursor tip
+            tooltip.style.transform = "none"; // No transform needed
+            tooltip.classList.add("visible");
           } else {
             tooltip.classList.remove("visible");
           }
-        }
-      } else if (state.showTooltip) {
-        // Hide tooltip if in drawing mode
-        var tooltip = document.getElementById("apTooltip");
-        if (tooltip) {
+        } else {
           tooltip.classList.remove("visible");
         }
       }
+    } else if (state.showTooltip) {
+      // Hide tooltip if in drawing mode
+      var tooltip = document.getElementById("apTooltip");
+      if (tooltip) {
+        tooltip.classList.remove("visible");
+      }
+    }
 
-      // Legend dragging disabled - legend is fixed in bottom-left corner
-    });
+    // Legend dragging disabled - legend is fixed in bottom-left corner
+  });
 
-    window.addEventListener("keydown", function (e) {
-      // Check if Delete or Backspace key is pressed
-      // Support both modern e.key and legacy keyCode for better browser compatibility
-      var isDeleteKey =
-        e.key === "Delete" ||
-        e.key === "Backspace" ||
-        e.keyCode === 46 || // Delete key
-        e.keyCode === 8;    // Backspace key
+  window.addEventListener("keydown", function (e) {
+    // Check if Delete or Backspace key is pressed
+    // Support both modern e.key and legacy keyCode for better browser compatibility
+    var isDeleteKey =
+      e.key === "Delete" ||
+      e.key === "Backspace" ||
+      e.keyCode === 46 || // Delete key
+      e.keyCode === 8;    // Backspace key
 
+    if (
+      isDeleteKey &&
+      !state.addingWall &&
+      !state.addingAP &&
+      !state.addingFloorPlane
+    ) {
+      // Don't delete if user is editing an input field
+      var activeElement = document.activeElement;
       if (
-        isDeleteKey &&
-        !state.addingWall &&
-        !state.addingAP &&
-        !state.addingFloorPlane
+        activeElement &&
+        (activeElement.tagName === "INPUT" ||
+          activeElement.tagName === "TEXTAREA")
       ) {
-        // Don't delete if user is editing an input field
-        var activeElement = document.activeElement;
-        if (
-          activeElement &&
-          (activeElement.tagName === "INPUT" ||
-           activeElement.tagName === "TEXTAREA")
-        ) {
-          // User is editing a text field, allow normal backspace behavior
-          return;
-        }
-
-        // Prevent default behavior (e.g., browser back navigation)
-        e.preventDefault();
-
-        // Check if there's anything to delete
-        // Check for selectedApId (from select button) or viewedApId (from canvas click, not drag)
-        var antennaToDelete = null;
-        if (state.selectedApId) {
-          antennaToDelete = state.selectedApId;
-        } else if (state.viewedApId && !state.isDraggingAntenna) {
-          // Antenna is selected via canvas click (not being dragged)
-          antennaToDelete = state.viewedApId;
-        }
-
-        var hasSelection =
-          antennaToDelete !== null ||
-          state.selectedWallIds.length > 0 ||
-          state.selectedWallId !== null;
-
-        if (!hasSelection) return;
-
-        // Save state BEFORE deletion for undo
-        saveState();
-
-        var deleted = false;
-
-        // Delete selected antenna (either from select button or canvas click, not while dragging)
-        if (antennaToDelete) {
-          for (var i = 0; i < state.aps.length; i++) {
-            if (state.aps[i].id === antennaToDelete) {
-              state.aps.splice(i, 1);
-              state.selectedApId = null;
-              state.viewedApId = null; // Clear viewed state
-              state.highlight = false;
-              state.selectedApForDetail = null;
-              state.drag = null; // Clear drag state
-              state.isDraggingAntenna = false; // Clear dragging flag
-              var apDetailSidebar = document.getElementById("apDetailSidebar");
-              if (apDetailSidebar)
-                apDetailSidebar.classList.remove("visible");
-
-              // Cancel any pending heatmap updates and invalidate cache IMMEDIATELY
-              // This prevents the old cached heatmap from being rendered even for a single frame
-              if (state.heatmapUpdateRequestId !== null) {
-                cancelAnimationFrame(state.heatmapUpdateRequestId);
-                state.heatmapUpdateRequestId = null;
-              }
-              // Clear cache BEFORE any draw() calls to prevent flash
-              state.cachedHeatmap = null;
-              state.cachedHeatmapAntennaCount = 0;
-              state.heatmapUpdatePending = true; // Set to true to prevent using any stale cache
-              state.heatmapWorkerCallback = null; // Clear any pending worker callback
-
-              deleted = true;
-              break;
-            }
-          }
-        }
-
-        // Delete selected walls
-        if (state.selectedWallIds.length > 0) {
-          // Delete walls in reverse order to maintain correct indices
-          for (var i = state.walls.length - 1; i >= 0; i--) {
-            if (state.selectedWallIds.indexOf(state.walls[i].id) !== -1) {
-              state.walls.splice(i, 1);
-              deleted = true;
-            }
-          }
-          state.selectedWallIds = [];
-          state.selectedWallId = null;
-          state.wallDrag = null;
-        } else if (state.selectedWallId) {
-          // Handle single wall selection (backward compatibility)
-          for (var i = 0; i < state.walls.length; i++) {
-            if (state.walls[i].id === state.selectedWallId) {
-              state.walls.splice(i, 1);
-              state.selectedWallId = null;
-              state.wallDrag = null;
-              deleted = true;
-              break;
-            }
-          }
-        }
-
-        if (deleted) {
-          renderAPs();
-          renderWalls();
-
-          // Start heatmap regeneration BEFORE draw() to minimize delay
-          if (state.showVisualization) {
-            generateHeatmapAsync(null, true); // Start with low-res for fast update
-          }
-
-          // Draw after starting regeneration - validation will prevent using stale cache
-          draw();
-        }
+        // User is editing a text field, allow normal backspace behavior
         return;
       }
 
-      // Check if ESC key is pressed (keyCode 27 or key === 'Escape')
-      if ((e.keyCode === 27 || e.key === "Escape") && state.addingWall) {
-        // Finish or cancel wall drawing
-        var isDoorWindow =
-          state.selectedElementType === "door" ||
-          state.selectedElementType === "doubleDoor" ||
-          state.selectedElementType === "window";
+      // Prevent default behavior (e.g., browser back navigation)
+      e.preventDefault();
 
-        if (isDoorWindow) {
-          // Doors/windows: just cancel (they finish on second click)
-          state.temp = null;
-          state.wallSnapPoints = [];
-        } else if (
-          state.temp &&
-          state.temp.points &&
-          state.temp.points.length >= 2
-        ) {
-          // Finish polyline if there are at least 2 points
-          finishWallPolyline();
-        } else {
-          // Cancel drawing
-          state.temp = null;
-          state.wallSnapPoints = [];
-        }
-        state.addingWall = false;
-        // Update button appearance
-        var addBtn = document.getElementById("addWall");
-        if (addBtn) {
-          addBtn.className = addBtn.className.replace(" toggled", "");
-          addBtn.textContent = getAddButtonText(false);
-        }
-        draw();
-      } else if ((e.keyCode === 27 || e.key === "Escape") && state.addingAP) {
-        // Terminate antenna placement
-        state.addingAP = false;
-        // Update button appearance
-        var addAPBtn = document.getElementById("addAP");
-        if (addAPBtn) {
-          addAPBtn.className = addAPBtn.className.replace(" toggled", "");
-          addAPBtn.textContent = "Ã°Å¸â€œÂ¡ Add Antenna";
-        }
-        draw();
-      } else if (
-        (e.keyCode === 27 || e.key === "Escape") &&
-        state.addingFloorPlane
-      ) {
-        // Terminate floor plane drawing
-        state.addingFloorPlane = false;
-        state.tempFloorPlane = null;
-        state.floorPlaneDragStart = null;
-        // Update button appearance
-        var addFloorPlaneBtn = document.getElementById("addFloorPlane");
-        if (addFloorPlaneBtn) {
-          addFloorPlaneBtn.className = addFloorPlaneBtn.className.replace(
-            " toggled",
-            ""
-          );
-          addFloorPlaneBtn.textContent = "Ã°Å¸â€œÂ Add Floor Plane";
-        }
-        draw();
-      } else if (
-        (e.keyCode === 27 || e.key === "Escape") &&
-        state.isCalibrating
-      ) {
-        // Cancel calibration line drawing (clear temp, but keep calibration mode active)
-        state.tempCalibration = null;
-        state.tempCalibrationPixels = null;
-        // Also clear the final calibration line if it exists
-        state.calibrationLine = null;
-        state.calibrationPixels = null;
-        draw();
-      } else if (
-        (e.keyCode === 27 || e.key === "Escape") &&
-        state.selectedApId
-      ) {
-        // Deselect selected antenna
-        state.selectedApId = null;
-        state.viewedApId = null; // Also clear viewed antenna
-        state.highlight = false;
-        state.selectedApForDetail = null;
-        var apDetailSidebar = document.getElementById("apDetailSidebar");
-        if (apDetailSidebar) apDetailSidebar.classList.remove("visible");
-        renderAPs(); // Update button states
+      // Check if there's anything to delete
+      // Check for selectedApId (from select button) or viewedApId (from canvas click, not drag)
+      var antennaToDelete = null;
+      if (state.selectedApId) {
+        antennaToDelete = state.selectedApId;
+      } else if (state.viewedApId && !state.isDraggingAntenna) {
+        // Antenna is selected via canvas click (not being dragged)
+        antennaToDelete = state.viewedApId;
+      }
 
-        // Reset scrolling to the very top of the antenna list
-        setTimeout(function () {
-          var apList = document.getElementById("apList");
-          if (apList) {
-            // Try scrolling the list element itself
-            if (apList.scrollTop !== undefined) {
-              apList.scrollTop = 0;
+      var hasSelection =
+        antennaToDelete !== null ||
+        state.selectedWallIds.length > 0 ||
+        state.selectedWallId !== null;
+
+      if (!hasSelection) return;
+
+      // Save state BEFORE deletion for undo
+      saveState();
+
+      var deleted = false;
+
+      // Delete selected antenna (either from select button or canvas click, not while dragging)
+      if (antennaToDelete) {
+        for (var i = 0; i < state.aps.length; i++) {
+          if (state.aps[i].id === antennaToDelete) {
+            state.aps.splice(i, 1);
+            state.selectedApId = null;
+            state.viewedApId = null; // Clear viewed state
+            state.highlight = false;
+            state.selectedApForDetail = null;
+            state.drag = null; // Clear drag state
+            state.isDraggingAntenna = false; // Clear dragging flag
+            var apDetailSidebar = document.getElementById("apDetailSidebar");
+            if (apDetailSidebar)
+              apDetailSidebar.classList.remove("visible");
+            
+            // Cancel any pending heatmap updates and invalidate cache IMMEDIATELY
+            // This prevents the old cached heatmap from being rendered even for a single frame
+            if (state.heatmapUpdateRequestId !== null) {
+              cancelAnimationFrame(state.heatmapUpdateRequestId);
+              state.heatmapUpdateRequestId = null;
             }
-            // Also try scrolling the parent sidebar-content container
-            var sidebarContent = apList.closest(".sidebar-content");
-            if (sidebarContent && sidebarContent.scrollTop !== undefined) {
-              sidebarContent.scrollTop = 0;
-            }
-            // Fallback to scrollIntoView on first item
-            var firstItem = apList.querySelector(".list-item");
-            if (firstItem) {
-              firstItem.scrollIntoView({
-                behavior: "smooth",
-                block: "start",
-              });
-            }
+            // Clear cache BEFORE any draw() calls to prevent flash
+            state.cachedHeatmap = null;
+            state.cachedHeatmapAntennaCount = 0;
+            state.heatmapUpdatePending = true; // Set to true to prevent using any stale cache
+            state.heatmapWorkerCallback = null; // Clear any pending worker callback
+            
+            deleted = true;
+            break;
           }
-        }, 50); // Wait for renderAPs to complete
+        }
+      }
 
-        draw();
-      } else if (
-        (e.keyCode === 27 || e.key === "Escape") &&
-        (state.selectedWallId || state.selectedWallIds.length > 0)
-      ) {
-        // Deselect all walls
-        state.selectedWallId = null;
+      // Delete selected walls
+      if (state.selectedWallIds.length > 0) {
+        // Delete walls in reverse order to maintain correct indices
+        for (var i = state.walls.length - 1; i >= 0; i--) {
+          if (state.selectedWallIds.indexOf(state.walls[i].id) !== -1) {
+            state.walls.splice(i, 1);
+            deleted = true;
+          }
+        }
         state.selectedWallIds = [];
+        state.selectedWallId = null;
         state.wallDrag = null;
+      } else if (state.selectedWallId) {
+        // Handle single wall selection (backward compatibility)
+        for (var i = 0; i < state.walls.length; i++) {
+          if (state.walls[i].id === state.selectedWallId) {
+            state.walls.splice(i, 1);
+            state.selectedWallId = null;
+            state.wallDrag = null;
+            deleted = true;
+            break;
+          }
+        }
+      }
+
+      if (deleted) {
+        renderAPs();
         renderWalls();
+        
+        // Start heatmap regeneration BEFORE draw() to minimize delay
+        if (state.showVisualization) {
+          generateHeatmapAsync(null, true); // Start with low-res for fast update
+        }
+        
+        // Draw after starting regeneration - validation will prevent using stale cache
         draw();
       }
-    });
+      return;
+    }
+
+    // Check if ESC key is pressed (keyCode 27 or key === 'Escape')
+    if ((e.keyCode === 27 || e.key === "Escape") && state.addingWall) {
+      // Finish or cancel wall drawing
+      var isDoorWindow =
+        state.selectedElementType === "door" ||
+        state.selectedElementType === "doubleDoor" ||
+        state.selectedElementType === "window";
+
+      if (isDoorWindow) {
+        // Doors/windows: just cancel (they finish on second click)
+        state.temp = null;
+        state.wallSnapPoints = [];
+      } else if (
+        state.temp &&
+        state.temp.points &&
+        state.temp.points.length >= 2
+      ) {
+        // Finish polyline if there are at least 2 points
+        finishWallPolyline();
+      } else {
+        // Cancel drawing
+        state.temp = null;
+        state.wallSnapPoints = [];
+      }
+      state.addingWall = false;
+      // Update button appearance
+      var addBtn = document.getElementById("addWall");
+      if (addBtn) {
+        addBtn.className = addBtn.className.replace(" toggled", "");
+        addBtn.textContent = getAddButtonText(false);
+      }
+      draw();
+    } else if ((e.keyCode === 27 || e.key === "Escape") && state.addingAP) {
+      // Terminate antenna placement
+      state.addingAP = false;
+      // Update button appearance
+      var addAPBtn = document.getElementById("addAP");
+      if (addAPBtn) {
+        addAPBtn.className = addAPBtn.className.replace(" toggled", "");
+        addAPBtn.textContent = "Ã°Å¸â€œÂ¡ Add Antenna";
+      }
+      draw();
+    } else if (
+      (e.keyCode === 27 || e.key === "Escape") &&
+      state.addingFloorPlane
+    ) {
+      // Terminate floor plane drawing
+      state.addingFloorPlane = false;
+      state.tempFloorPlane = null;
+      state.floorPlaneDragStart = null;
+      // Update button appearance
+      var addFloorPlaneBtn = document.getElementById("addFloorPlane");
+      if (addFloorPlaneBtn) {
+        addFloorPlaneBtn.className = addFloorPlaneBtn.className.replace(
+          " toggled",
+          ""
+        );
+        addFloorPlaneBtn.textContent = "Ã°Å¸â€œÂ Add Floor Plane";
+      }
+      draw();
+    } else if (
+      (e.keyCode === 27 || e.key === "Escape") &&
+      state.isCalibrating
+    ) {
+      // Cancel calibration line drawing (clear temp, but keep calibration mode active)
+      state.tempCalibration = null;
+      state.tempCalibrationPixels = null;
+      // Also clear the final calibration line if it exists
+      state.calibrationLine = null;
+      state.calibrationPixels = null;
+      draw();
+    } else if (
+      (e.keyCode === 27 || e.key === "Escape") &&
+      state.selectedApId
+    ) {
+      // Deselect selected antenna
+      state.selectedApId = null;
+      state.viewedApId = null; // Also clear viewed antenna
+      state.highlight = false;
+      state.selectedApForDetail = null;
+      var apDetailSidebar = document.getElementById("apDetailSidebar");
+      if (apDetailSidebar) apDetailSidebar.classList.remove("visible");
+      renderAPs(); // Update button states
+
+      // Reset scrolling to the very top of the antenna list
+      setTimeout(function () {
+        var apList = document.getElementById("apList");
+        if (apList) {
+          // Try scrolling the list element itself
+          if (apList.scrollTop !== undefined) {
+            apList.scrollTop = 0;
+          }
+          // Also try scrolling the parent sidebar-content container
+          var sidebarContent = apList.closest(".sidebar-content");
+          if (sidebarContent && sidebarContent.scrollTop !== undefined) {
+            sidebarContent.scrollTop = 0;
+          }
+          // Fallback to scrollIntoView on first item
+          var firstItem = apList.querySelector(".list-item");
+          if (firstItem) {
+            firstItem.scrollIntoView({
+              behavior: "smooth",
+              block: "start",
+            });
+          }
+        }
+      }, 50); // Wait for renderAPs to complete
+
+      draw();
+    } else if (
+      (e.keyCode === 27 || e.key === "Escape") &&
+      (state.selectedWallId || state.selectedWallIds.length > 0)
+    ) {
+      // Deselect all walls
+      state.selectedWallId = null;
+      state.selectedWallIds = [];
+      state.wallDrag = null;
+      renderWalls();
+      draw();
+    }
+  });
 
   }); // end DOMContentLoaded
 
