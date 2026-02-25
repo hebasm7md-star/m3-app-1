@@ -13,7 +13,18 @@ class Combined(CombinedTemplate):
     self.last_index = 0
     self._reset_session()
 
-    filepath = "_/theme/index.html"
+    # NEW - load HTML content from table and use blob URL
+    html_content = anvil.server.call('get_asset_file', 'index.html')
+    
+    # Convert to a blob URL so iframe can use it
+    js.window.eval("""
+      window._createBlobUrl = function(content) {
+        var blob = new Blob([content], {type: 'text/html'});
+        return URL.createObjectURL(blob);
+      }
+    """)
+    
+    filepath = js.window._createBlobUrl(html_content)
     html_panel = HtmlPanel(
       html=f"""
                 <style>
