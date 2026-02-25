@@ -1,4 +1,5 @@
 allow_embedding: false
+db_schema: null
 dependencies: []
 name: M3 App 1
 package_name: M3_App_1
