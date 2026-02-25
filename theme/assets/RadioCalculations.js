@@ -136,7 +136,7 @@ var RadioCalculations = (function () {
       _modelLoss              = deps.modelLoss;
       _getAngleDependentGain  = deps.getAngleDependentGain;
       _propModel              = deps.propModel;
-      console.log('RadioCalculations initialized.');
+      // console.log('RadioCalculations initialized.');
     },
 
     // Expose all calculation functions

@@ -76,20 +76,8 @@ var OptimizationSystem = (function () {
     }
 
     var gridData = new Float32Array(totalBins);
-    for (var r = 0; r < rows; r++) {
-      for (var c = 0; c < cols; c++) {
-        // -90 degree rotation (counter-clockwise)
-        // Maps frontend (c, r) to backend (old_x, old_y)
-        // old_width = rows, old_height = cols
-        // old_x = (rows - 1) - r
-        // old_y = c
-        var backendX = (rows - 1) - r;
-        var backendY = c;
-        var i = backendY * rows + backendX; // using rows as old_width
-
-        var frontendIndex = r * cols + c;
-        gridData[frontendIndex] = Number(rsrpValues[i]);
-      }
+    for (var i = 0; i < totalBins; i++) {
+      gridData[i] = Number(rsrpValues[i]);
     }
 
     state.optimizationRsrpGrid = {
@@ -301,7 +289,7 @@ var OptimizationSystem = (function () {
       if (changesMade) {
         if (window.saveState) window.saveState();
         if (window.renderAPs) window.renderAPs();
-
+        
         var canvas = document.getElementById("plot");
         if (canvas && typeof window.draw === 'function') {
           // Re-generate heatmap and redraw
@@ -317,7 +305,7 @@ var OptimizationSystem = (function () {
       // If optimization is marked as completed by backend, stop polling
       if (status === "completed" || status === "error" || status === 'finished') {
         stopOptimizationPolling();
-
+        
         if (status === "completed" || status === 'finished') {
           if (footerBadge) {
             footerBadge.textContent = 'COMPLETED';

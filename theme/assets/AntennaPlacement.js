@@ -760,7 +760,7 @@
     var count = parseInt(countInput.value);
 
     if (isNaN(count) || count < 1 || count > 100) {
-      alert("Please enter a valid number between 1 and 100.");
+      NotificationSystem.warning("Please enter a valid number between 1 and 100.");
       return;
     }
 
@@ -775,11 +775,11 @@
       "<p>You are about to automatically place <strong>" + count + " antenna(s)</strong> on the canvas.</p>" +
       "<ul>" +
       "<li>They will be distributed evenly in a grid pattern.</li>";
-
+      
     if (state.aps && state.aps.length > 0) {
       confirmMsg += "<li><strong>Warning:</strong> All existing antennas will be removed!</li>";
     }
-
+    
     confirmMsg += "</ul><p>Do you want to proceed?</p>";
 
     NotificationSystem.confirm(confirmMsg, "Confirm Automatic Placement", function(confirmed) {
@@ -796,14 +796,14 @@
     var countInput = document.getElementById("autoPlaceCount");
     var viewModeName =
       state.view === "rssi"
-      ? "RSSI"
-      : state.view === "snr"
-      ? "SNR"
-      : state.view === "cci"
-      ? "CCI Count"
-      : state.view === "thr"
-      ? "Throughput"
-      : "Signal";
+        ? "RSSI"
+        : state.view === "snr"
+          ? "SNR"
+          : state.view === "cci"
+            ? "CCI Count"
+            : state.view === "thr"
+              ? "Throughput"
+              : "Signal";
     console.log("Placing " + count + " antenna(s) in grid pattern...");
 
     saveState(); // Save state BEFORE mutating state.aps (fixes auto-placement undo issue)
@@ -879,7 +879,7 @@
     //showAnvilNotification("Successfully placed " + positions.length + " antenna(s)!", "Success", "success");
 
     setTimeout(function () {
-
+ 
       // Auto-download RSRP for each placed antenna (staggered to avoid browser blocking)
       // state.aps.forEach(function (ap, idx) {
       //   setTimeout(function () {
@@ -919,7 +919,8 @@
         state.addingWall = false;
         state.addingFloorPlane = false;
         state.isCalibrating = false;
-        addAPBtn.textContent = "Placing...";
+        var label = addAPBtn.querySelector("#addAPBtnLabel");
+        if (label) label.textContent = "Placing..."; else addAPBtn.textContent = "Placing...";
         if (canvas) {
           canvas.style.cursor = "crosshair";
         }

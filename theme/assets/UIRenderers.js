@@ -157,12 +157,12 @@
           }
 
           renderAPs(); // Update button states
-
+          
           // Start heatmap regeneration BEFORE draw() to minimize delay and prevent flash
           if (state.showVisualization) {
             generateHeatmapAsync(null, true); // Start with low-res for fast update
           }
-
+          
           // Draw after starting regeneration - validation will prevent using stale cache
           draw();
           return false;
@@ -371,7 +371,7 @@
                       var existingPattern = state.antennaPatterns[i];
                       // Check by name and frequency (primary check)
                       if (existingPattern.name === pattern.name &&
-                          existingPattern.frequency === pattern.frequency) {
+                        existingPattern.frequency === pattern.frequency) {
                         patternExists = true;
                         existingPatternIndex = i;
                         break;
@@ -576,12 +576,12 @@
           renderAPs();
           renderApDetails(); // Update right sidebar if this antenna is selected
           updateActiveAntennaStats(); // Update active antenna stats
-
+          
           // Start heatmap regeneration BEFORE draw() to minimize delay and prevent flash
           if (state.showVisualization) {
             generateHeatmapAsync(null, true); // Start with low-res for fast update
           }
-
+          
           // Draw after starting regeneration - validation will prevent using stale cache
           draw();
         };
@@ -596,7 +596,7 @@
             state.selectedApId = null;
             state.highlight = false;
           }
-
+          
           // Cancel any pending heatmap updates and invalidate cache IMMEDIATELY
           // This prevents the old cached heatmap from being rendered even for a single frame
           if (state.heatmapUpdateRequestId !== null) {
@@ -608,15 +608,15 @@
           state.cachedHeatmapAntennaCount = 0;
           state.heatmapUpdatePending = true; // Set to true to prevent using any stale cache
           state.heatmapWorkerCallback = null; // Clear any pending worker callback
-
+          
           renderAPs();
           updateActiveAntennaStats(); // Update active antenna stats
-
+          
           // Start heatmap regeneration BEFORE draw() to minimize delay
           if (state.showVisualization) {
             generateHeatmapAsync(null, true); // Start with low-res for fast update
           }
-
+          
           // Draw after starting regeneration - validation will prevent using stale cache
           draw();
         };
@@ -651,7 +651,7 @@
           '" placeholder="Tx" title="Tx Power (dBm)">' +
           '<input type="number" step="0.5" value="' +
           a.gt +
-          '" placeholder="Gain" title="Antenna Gain (dBi)">' +
+          '" placeholder="Gain" title="Peak Gain (dBi)">' +
           '<input type="number" step="1" value="' +
           a.ch +
           '" placeholder="Ch" title="Channel">' +
@@ -981,34 +981,34 @@
         var inclination = fp.inclination !== undefined ? fp.inclination : 0;
         var inclinationDir =
           fp.inclinationDirection !== undefined
-          ? fp.inclinationDirection
-          : 0;
+            ? fp.inclinationDirection
+            : 0;
 
         content.innerHTML =
-          '<label style="font-size:12px; margin-top:4px;">Attenuation (dB):</label>' +
+          '<label style="font-size:10.5px; margin-top:4px;">Attenuation (dB):</label>' +
           '<input type="number" step="0.5" value="' +
           fp.attenuation +
           '" title="Attenuation (dB)" style="margin-bottom:8px;">' +
-          '<label style="font-size:12px; margin-top:4px;">Height (m):</label>' +
+          '<label style="font-size:11px; margin-top:4px;">Height (m):</label>' +
           '<input type="number" step="0.1" value="' +
           height +
           '" title="Height in meters" style="margin-bottom:8px;">' +
-          '<label style="font-size:12px; margin-top:4px;">Type:</label>' +
+          '<label style="font-size:10.5px; margin-top:4px;">Type:</label>' +
           '<select style="margin-bottom:8px;"><option value="horizontal"' +
           (planeType === "horizontal" ? " selected" : "") +
           '>Horizontal</option><option value="inclined"' +
           (planeType === "inclined" ? " selected" : "") +
           ">Inclined</option></select>" +
           (planeType === "inclined"
-           ? '<label style="font-size:12px; margin-top:4px;">Inclination (\u00B0):</label>' +
-           '<input type="number" step="1" value="' +
-           inclination +
-           '" title="Inclination angle" style="margin-bottom:8px;">' +
-           '<label style="font-size:12px; margin-top:4px;">Direction (\u00B0):</label>' +
-           '<input type="number" step="1" value="' +
-           inclinationDir +
-           '" title="Inclination direction">'
-           : "");
+            ? '<label style="font-size:10.5px; margin-top:4px;">Inclination (\u00B0):</label>' +
+            '<input type="number" step="1" value="' +
+            inclination +
+            '" title="Inclination angle" style="margin-bottom:8px;">' +
+            '<label style="font-size:10.5px; margin-top:4px;">Direction (\u00B0):</label>' +
+            '<input type="number" step="1" value="' +
+            inclinationDir +
+            '" title="Inclination direction">'
+            : "");
 
         var inputs = content.getElementsByTagName("input");
         var selects = content.getElementsByTagName("select");
@@ -1150,8 +1150,8 @@
             if (state.selectedWallId === w.id) {
               state.selectedWallId =
                 state.selectedWallIds.length > 0
-                ? state.selectedWallIds[0]
-                : null;
+                  ? state.selectedWallIds[0]
+                  : null;
             }
           } else {
             // Add to selection
@@ -1222,10 +1222,10 @@
           if (!w.width) {
             w.width =
               w.elementType === "window"
-              ? 1.5
-              : w.elementType === "doubleDoor"
-              ? 2.4
-              : 1.2;
+                ? 1.5
+                : w.elementType === "doubleDoor"
+                  ? 2.4
+                  : 1.2;
           }
           var currentWidth = w.width;
           contentHTML +=
@@ -1298,10 +1298,10 @@
         // Find the loss input (last input if width exists, or first input if not)
         var lossInput =
           w.elementType === "door" ||
-          w.elementType === "doubleDoor" ||
-          w.elementType === "window"
-          ? inp[inp.length - 1]
-          : inp[0];
+            w.elementType === "doubleDoor" ||
+            w.elementType === "window"
+            ? inp[inp.length - 1]
+            : inp[0];
         if (lossInput) {
           // Prevent click from closing sidebar
           lossInput.onclick = function (e) {
@@ -1405,17 +1405,8 @@
         content: !!content,
       });
       if (content) {
-        var noApBg = state.darkMode ? "rgba(15, 23, 42, 0.8)" : "white";
-        var noApText = state.darkMode ? "#e2e8f0" : "#1e293b";
-        var noApLabel = state.darkMode ? "#94a3b8" : "#64748b";
         content.innerHTML =
-          '<div class="card" style="background: ' +
-          noApBg +
-          "; color: " +
-          noApText +
-          '; padding: 20px;"><p style="color: ' +
-          noApLabel +
-          '; text-align: center;">No AP selected</p></div>';
+          '<div class="card ap-detail-card"><p class="ap-detail-label" style="text-align: center;">No AP selected</p></div>';
       }
       if (document.getElementById("apDetailTitle")) {
         document.getElementById("apDetailTitle").textContent = "AP Details";
@@ -1427,294 +1418,121 @@
       document.getElementById("apDetailTitle").textContent = "Details for " + ap.id;
     }
 
-    // Ensure content is visible and has proper styling
-    // Check for dark mode and set appropriate colors
-    if (state.darkMode) {
-      content.style.background = "rgba(30, 41, 59, 0.95)";
-      content.style.color = "#e2e8f0";
-    } else {
-      content.style.background = "white";
-      content.style.color = "#1e293b";
-    }
     content.style.opacity = "1";
     content.style.visibility = "visible";
 
-    // Build HTML string with explicit inline styles to ensure visibility
-    // Use dark mode colors if enabled
-    var bgColor = state.darkMode ? "rgba(15, 23, 42, 0.8)" : "white";
-    var textColor = state.darkMode ? "#e2e8f0" : "#1e293b";
-    var labelColor = state.darkMode ? "#94a3b8" : "#64748b";
-    var borderColor = state.darkMode ? "#334155" : "#e2e8f0";
-    var inputBg = state.darkMode ? "rgba(15, 23, 42, 0.8)" : "#f8fafc";
-    var shadowColor = state.darkMode
-      ? "rgba(0, 0, 0, 0.3)"
-      : "rgba(0, 0, 0, 0.06)";
-
+    var dis = state.isOptimizing ? " disabled" : "";
     var html =
-      '<div style="background: ' +
-      bgColor +
-      " !important; color: " +
-      textColor +
-      " !important; padding: 16px; border-radius: 12px; margin-bottom: 16px; box-shadow: 0 2px 8px " +
-      shadowColor +
-      "; border: 1px solid " +
-      borderColor +
-      ';">' +
-      '<h3 style="font-size: 16px; font-weight: 600; color: ' +
-      textColor +
-      ' !important; margin: 0 0 12px 0; display: block;">Configuration</h3>' +
+      '<div class="ap-detail-card">' +
+      '<h3 class="ap-detail-section-title">Configuration</h3>' +
       '<div style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 4px;">' +
-      '<label style="font-size: 12px; font-weight: 500; color: ' +
-      labelColor +
-      ' !important; text-transform: uppercase; letter-spacing: 0.5px; display: block;">ANTENNA ID</label>' +
-      '<input type="text" id="apDetailId" value="' +
-      (ap.id || "") +
-      '"' + (state.isOptimizing ? ' disabled' : '') +
-      ' style="background: ' +
-      inputBg +
-      "; border: 2px solid " +
-      borderColor +
-      "; border-radius: 8px; padding: 8px 12px; font-size: 14px; color: " +
-      textColor +
-      ' !important; font-family: inherit; width: 100%; box-sizing: border-box;">' +
+      '<label class="ap-detail-label">ANTENNA ID</label>' +
+      '<input type="text" id="apDetailId" class="ap-detail-input" value="' +
+      (ap.id || "") + '"' + dis + '>' +
       "</div>" +
       '<div style="display: flex; gap: 10px; align-items: flex-end; margin-bottom: 12px;">' +
       '<div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 100px;">' +
-      '<label style="font-size: 12px; font-weight: 500; color: ' +
-      labelColor +
-      ' !important; text-transform: uppercase; letter-spacing: 0.5px; display: block;">Tx Power (dBm)</label>' +
-      '<input type="number" id="apDetailTx" step="0.5" value="' +
-      (ap.tx || 15) +
-      '"' + (state.isOptimizing ? ' disabled' : '') +
-      ' style="background: ' +
-      inputBg +
-      "; border: 2px solid " +
-      borderColor +
-      "; border-radius: 8px; padding: 8px 12px; font-size: 14px; color: " +
-      textColor +
-      ' !important; font-family: inherit; width: 100%; box-sizing: border-box;">' +
+      '<label class="ap-detail-label">Tx Power (dBm)</label>' +
+      '<input type="number" id="apDetailTx" class="ap-detail-input" step="0.5" value="' +
+      (ap.tx || 15) + '"' + dis + '>' +
       "</div>" +
       '<div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 100px;">' +
-      '<label style="font-size: 12px; font-weight: 500; color: ' +
-      labelColor +
-      ' !important; text-transform: uppercase; letter-spacing: 0.5px; display: block;">Antenna Gain (dBi)</label>' +
-      '<input type="number" id="apDetailGt" step="0.5" value="' +
-      (ap.gt || 2) +
-      '"' + (state.isOptimizing ? ' disabled' : '') +
-      ' style="background: ' +
-      inputBg +
-      "; border: 2px solid " +
-      borderColor +
-      "; border-radius: 8px; padding: 8px 12px; font-size: 14px; color: " +
-      textColor +
-      ' !important; font-family: inherit; width: 100%; box-sizing: border-box;">' +
-      "</div>" +
-      "</div>" +
+      '<label class="ap-detail-label">Peak Gain (dBi)</label>' +
+      '<input type="number" id="apDetailGt" class="ap-detail-input" step="0.5" value="' +
+      (ap.gt || 2) + '"' + dis + '>' +
+      "</div></div>" +
       '<div style="display: flex; gap: 10px; align-items: flex-end; margin-bottom: 12px;">' +
       '<div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 100px;">' +
-      '<label style="font-size: 12px; font-weight: 500; color: ' +
-      labelColor +
-      ' !important; text-transform: uppercase; letter-spacing: 0.5px; display: block;">Channel</label>' +
-      '<input type="number" id="apDetailCh" step="1" value="' +
-      (ap.ch || 1) +
-      '"' + (state.isOptimizing ? ' disabled' : '') +
-      ' style="background: ' +
-      inputBg +
-      "; border: 2px solid " +
-      borderColor +
-      "; border-radius: 8px; padding: 8px 12px; font-size: 14px; color: " +
-      textColor +
-      ' !important; font-family: inherit; width: 100%; box-sizing: border-box;">' +
-      "</div>" +
-      "</div>" +
-      '<h3 style="font-size: 16px; font-weight: 600; color: ' +
-      textColor +
-      ' !important; margin: 20px 0 12px 0; display: block;">Antenna Orientation</h3>' +
+      '<label class="ap-detail-label">Channel</label>' +
+      '<input type="number" id="apDetailCh" class="ap-detail-input" step="1" value="' +
+      (ap.ch || 1) + '"' + dis + '>' +
+      "</div></div>" +
+      '<h3 class="ap-detail-section-title" style="margin-top: 20px;">Antenna Orientation</h3>' +
       '<div style="display: flex; gap: 10px; align-items: flex-end; margin-bottom: 12px;">' +
       '<div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 100px;">' +
-      '<label style="font-size: 12px; font-weight: 500; color: ' +
-      labelColor +
-      ' !important; text-transform: uppercase; letter-spacing: 0.5px; display: block;">Azimuth (\u00B0)</label>' +
-      '<input type="number" id="apDetailAzimuth" step="5" value="' +
-      (ap.azimuth || 0) +
-      '"' + (state.isOptimizing ? ' disabled' : '') +
-      ' style="background: ' +
-      inputBg +
-      "; border: 2px solid " +
-      borderColor +
-      "; border-radius: 8px; padding: 8px 12px; font-size: 14px; color: " +
-      textColor +
-      ' !important; font-family: inherit; width: 100%; box-sizing: border-box;">' +
+      '<label class="ap-detail-label">Azimuth (\u00B0)</label>' +
+      '<input type="number" id="apDetailAzimuth" class="ap-detail-input" step="5" value="' +
+      (ap.azimuth || 0) + '"' + dis + '>' +
       "</div>" +
       '<div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 100px;">' +
-      '<label style="font-size: 12px; font-weight: 500; color: ' +
-      labelColor +
-      ' !important; text-transform: uppercase; letter-spacing: 0.5px; display: block;">Tilt (\u00B0)</label>' +
-      '<input type="number" id="apDetailTilt" step="5" value="' +
-      (ap.tilt || 0) +
-      '"' + (state.isOptimizing ? ' disabled' : '') +
-      ' style="background: ' +
-      inputBg +
-      "; border: 2px solid " +
-      borderColor +
-      "; border-radius: 8px; padding: 8px 12px; font-size: 14px; color: " +
-      textColor +
-      ' !important; font-family: inherit; width: 100%; box-sizing: border-box;">' +
-      "</div>" +
-      "</div>" +
-      '<h3 style="font-size: 16px; font-weight: 600; color: ' +
-      textColor +
-      ' !important; margin: 20px 0 12px 0; display: block;">Position</h3>' +
+      '<label class="ap-detail-label">Tilt (\u00B0)</label>' +
+      '<input type="number" id="apDetailTilt" class="ap-detail-input" step="5" value="' +
+      (ap.tilt || 0) + '"' + dis + '>' +
+      "</div></div>" +
+      '<h3 class="ap-detail-section-title" style="margin-top: 20px;">Position</h3>' +
       '<div style="display: flex; gap: 10px; align-items: flex-end; margin-bottom: 12px;">' +
       '<div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 100px;">' +
-      '<label style="font-size: 12px; font-weight: 500; color: ' +
-      labelColor +
-      ' !important; text-transform: uppercase; letter-spacing: 0.5px; display: block;">X Position (m)</label>' +
-      '<input type="number" id="apDetailX" step="0.1" value="' +
-      (ap.x || 0).toFixed(2) +
-      '"' + (state.isOptimizing ? ' disabled' : '') +
-      ' style="background: ' +
-      inputBg +
-      "; border: 2px solid " +
-      borderColor +
-      "; border-radius: 8px; padding: 8px 12px; font-size: 14px; color: " +
-      textColor +
-      ' !important; font-family: inherit; width: 100%; box-sizing: border-box;">' +
+      '<label class="ap-detail-label">X Position (m)</label>' +
+      '<input type="number" id="apDetailX" class="ap-detail-input" step="0.1" value="' +
+      (ap.x || 0).toFixed(2) + '"' + dis + '>' +
       "</div>" +
       '<div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 100px;">' +
-      '<label style="font-size: 12px; font-weight: 500; color: ' +
-      labelColor +
-      ' !important; text-transform: uppercase; letter-spacing: 0.5px; display: block;">Y Position (m)</label>' +
-      '<input type="number" id="apDetailY" step="0.1" value="' +
-      (ap.y || 0).toFixed(2) +
-      '"' + (state.isOptimizing ? ' disabled' : '') +
-      ' style="background: ' +
-      inputBg +
-      "; border: 2px solid " +
-      borderColor +
-      "; border-radius: 8px; padding: 8px 12px; font-size: 14px; color: " +
-      textColor +
-      ' !important; font-family: inherit; width: 100%; box-sizing: border-box;">' +
-      "</div>" +
-      "</div>" +
-      '<h3 style="font-size: 16px; font-weight: 600; color: ' +
-      textColor +
-      ' !important; margin: 20px 0 12px 0; display: block;">Antenna Pattern</h3>' +
+      '<label class="ap-detail-label">Y Position (m)</label>' +
+      '<input type="number" id="apDetailY" class="ap-detail-input" step="0.1" value="' +
+      (ap.y || 0).toFixed(2) + '"' + dis + '>' +
+      "</div></div>" +
+      '<h3 class="ap-detail-section-title" style="margin-top: 20px;">Antenna Pattern</h3>' +
       (function () {
         // Only use pattern if antenna has one assigned - don't fall back to default if no patterns exist
         var pattern = ap.antennaPattern || (state.antennaPatterns.length > 0 ? getDefaultAntennaPattern() : null);
-        var isCustom = !!ap.antennaPattern;
         var patternInfo = "";
 
         if (pattern) {
           patternInfo =
-            '<div style="background: ' +
-            inputBg +
-            "; border: 2px solid " +
-            borderColor +
-            '; border-radius: 8px; padding: 12px; margin-bottom: 12px;">' +
+            '<div class="ap-detail-pattern-block">' +
             '<div style="margin-bottom: 8px;">' +
-            '<label style="font-size: 11px; font-weight: 500; color: ' +
-            labelColor +
-            ' !important; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">Pattern Type</label>' +
-            '<div style="font-size: 13px; color: ' +
-            textColor +
-            ' !important; font-weight: 500;">' +
-            (isCustom ? "Custom Pattern" : "Global Pattern") +
-            "</div>" +
-            "</div>" +
-            '<div style="margin-bottom: 8px;">' +
-            '<label style="font-size: 11px; font-weight: 500; color: ' +
-            labelColor +
-            ' !important; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">Pattern Name</label>' +
-            '<div style="font-size: 13px; color: ' +
-            textColor +
-            ' !important;">' +
+            '<label class="ap-detail-label">Pattern Name</label>' +
+            '<div class="ap-detail-value">' +
             (pattern.name || "N/A") +
-            "</div>" +
-            "</div>" +
+            "</div></div>" +
             '<div style="display: flex; gap: 10px; margin-bottom: 8px;">' +
             '<div style="flex: 1;">' +
-            '<label style="font-size: 11px; font-weight: 500; color: ' +
-            labelColor +
-            ' !important; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">Frequency</label>' +
-            '<div style="font-size: 13px; color: ' +
-            textColor +
-            ' !important;">' +
+            '<label class="ap-detail-label">Frequency</label>' +
+            '<div class="ap-detail-value">' +
             (pattern.frequency || "N/A") +
-            " MHz</div>" +
-            "</div>" +
+            " MHz</div></div>" +
             '<div style="flex: 1;">' +
-            '<label style="font-size: 11px; font-weight: 500; color: ' +
-            labelColor +
-            ' !important; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">Peak Gain</label>' +
-            '<div style="font-size: 13px; color: ' +
-            textColor +
-            ' !important;">' +
+            '<label class="ap-detail-label">Peak Gain</label>' +
+            '<div class="ap-detail-value">' +
             (pattern.gain || "N/A") +
-            " dBi</div>" +
-            "</div>" +
-            "</div>" +
+            " dBi</div></div></div>" +
             '<div style="display: flex; gap: 10px;">' +
             '<div style="flex: 1;">' +
-            '<label style="font-size: 11px; font-weight: 500; color: ' +
-            labelColor +
-            ' !important; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">Horizontal Points</label>' +
-            '<div style="font-size: 13px; color: ' +
-            textColor +
-            ' !important;">' +
+            '<label class="ap-detail-label">Horizontal Points</label>' +
+            '<div class="ap-detail-value">' +
             (pattern.horizontalData ? pattern.horizontalData.length : 0) +
-            "</div>" +
-            "</div>" +
+            "</div></div>" +
             '<div style="flex: 1;">' +
-            '<label style="font-size: 11px; font-weight: 500; color: ' +
-            labelColor +
-            ' !important; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">Vertical Points</label>' +
-            '<div style="font-size: 13px; color: ' +
-            textColor +
-            ' !important;">' +
+            '<label class="ap-detail-label">Vertical Points</label>' +
+            '<div class="ap-detail-value">' +
             (pattern.verticalData ? pattern.verticalData.length : 0) +
-            "</div>" +
-            "</div>" +
-            "</div>" +
-            (ap.antennaPatternFileName
-             ? '<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e2e8f0;">' +
-             '<label style="font-size: 11px; font-weight: 500; color: #64748b !important; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">File Name</label>' +
-             '<div style="font-size: 12px; color: #10b981 !important; font-weight: 500;">' +
-             ap.antennaPatternFileName +
-             "</div>" +
-             "</div>"
-             : "") +
-            "</div>";
+            "</div></div></div></div>";
         } else {
           patternInfo =
-            '<div style="background: #fef2f2; border: 2px solid #fecaca; border-radius: 8px; padding: 12px; margin-bottom: 12px;">' +
-            '<div style="font-size: 13px; color: #dc2626 !important; text-align: center;">No antenna pattern loaded</div>' +
-            "</div>";
+            '<div class="ap-detail-no-pattern">No antenna pattern loaded</div>';
         }
         return patternInfo;
       })() +
-      '<h3 style="font-size: 16px; font-weight: 600; color: ' +
-      textColor +
-      ' !important; margin: 20px 0 12px 0; display: block;">Status</h3>' +
+      '<h3 class="ap-detail-section-title" style="margin-top: 20px;">Status</h3>' +
       '<div style="margin-bottom: 12px;">' +
-      '<button id="apDetailSelect" style="background: ' +
-      (ap.id === state.selectedApId ? "#10b981" : "#e2e8f0") +
-      '; color: ' +
-      (ap.id === state.selectedApId ? "white" : "#64748b") +
-      '; border: none; border-radius: 8px; padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer; width: 100%; transition: background 0.2s; margin-bottom: 8px;">' +
-      (ap.id === state.selectedApId ? "\u2714 Selected" : "Select") +
+      '<button id="apDetailSelect" class="ap-detail-btn ap-detail-btn-select' +
+      (ap.id === state.selectedApId ? " selected" : "") +
+      '"><span class="material-icons">' +
+      (ap.id === state.selectedApId ? "check_circle" : "radio_button_unchecked") +
+      '</span>' +
+      (ap.id === state.selectedApId ? "Selected" : "Select") +
       "</button>" +
-      '<button id="apDetailToggle" style="background: ' +
-      (ap.enabled !== false ? "#ef4444" : "#10b981") +
-      '; color: white; border: none; border-radius: 8px; padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer; width: 100%; transition: background 0.2s; margin-bottom: 8px;">' +
+      '<button id="apDetailToggle" class="ap-detail-btn ap-detail-btn-toggle' +
+      (ap.enabled === false ? " turn-on" : "") +
+      '"><span class="material-icons">' +
+      (ap.enabled !== false ? "power_off" : "power") +
+      '</span>' +
       (ap.enabled !== false ? "Turn Off" : "Turn On") +
       "</button>" +
-      '<button id="apDetailDownloadRsrp" style="background: #3b82f6; color: white; border: none; border-radius: 8px; padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer; width: 100%; transition: background 0.2s;">' +
-      "\u{1F4E5} Download RSRP" +
+      '<button id="apDetailDownloadRsrp" class="ap-detail-btn ap-detail-btn-download">' +
+      '<span class="material-icons">download</span>Download RSRP' +
       "</button>" +
-      "</div>" +
-      "</div>";
+      "</div></div>";
 
     // Clear and set content
     content.innerHTML = "";
@@ -1837,10 +1655,10 @@
         if (
           isNumeric &&
           (key === "tx" ||
-           key === "gt" ||
-           key === "ch" ||
-           key === "azimuth" ||
-           key === "tilt")
+            key === "gt" ||
+            key === "ch" ||
+            key === "azimuth" ||
+            key === "tilt")
         ) {
           if (input) input.addEventListener("blur", function () {
             var value = input.value.trim();
@@ -1928,12 +1746,12 @@
 
           renderAPs();
           renderApDetails();
-
+          
           // Start heatmap regeneration BEFORE draw() to minimize delay and prevent flash
           if (state.showVisualization) {
             generateHeatmapAsync(null, true); // Start with low-res for fast update
           }
-
+          
           // Draw after starting regeneration - validation will prevent using stale cache
           draw();
         });
@@ -2003,12 +1821,12 @@
 
           renderAPs(); // Update button states
           renderApDetails(); // Update the select button state
-
+          
           // Start heatmap regeneration BEFORE draw() to minimize delay and prevent flash
           if (state.showVisualization) {
             generateHeatmapAsync(null, true); // Start with low-res for fast update
           }
-
+          
           // Draw after starting regeneration - validation will prevent using stale cache
           draw();
         });

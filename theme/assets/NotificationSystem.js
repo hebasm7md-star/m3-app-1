@@ -1,7 +1,7 @@
 // 
 // 01-NOTIFICATION-SYSTEM.js - Professional Notification Manager
 // Consolidates: showAnvilNotification(), showAnvilConfirm(), showBackendMessage()
-// Theme: Purple palette (#667eea → #764ba2) matching app design
+// Theme: Deep Violet palette (#6366f1 → #312e81) matching app design
 // 
 
 var NotificationSystem = (function() {
@@ -18,7 +18,7 @@ var NotificationSystem = (function() {
 
   function isDarkMode() {
     return document.documentElement.classList.contains('dark-mode') ||
-      document.body.classList.contains('dark-mode');
+           document.body.classList.contains('dark-mode');
   }
 
   function escapeHtml(str) {
@@ -50,87 +50,87 @@ var NotificationSystem = (function() {
 
       /* Toast base - light bg, colored left border */
       '.notif-toast{',
-      'animation:notif-slideDown 0.35s cubic-bezier(0.21,1.02,0.73,1);',
-      'padding:14px 20px 14px 16px;',
-      'border-radius:8px;',
-      'border-left:5px solid transparent;',
-      'display:flex;',
-      'align-items:center;',
-      'gap:12px;',
-      'font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;',
-      'font-size:14px;',
-      'line-height:1.5;',
-      'box-shadow:0 4px 14px rgba(0,0,0,0.12);',
-      'pointer-events:auto;',
-      'min-width:280px;',
-      'max-width:480px;',
-      'word-break:break-word;',
-      'position:relative;',
+        'animation:notif-slideDown 0.35s cubic-bezier(0.21,1.02,0.73,1);',
+        'padding:10px 16px 10px 14px;',
+        'border-radius:8px;',
+        'border-left:4px solid transparent;',
+        'display:flex;',
+        'align-items:center;',
+        'gap:10px;',
+        'font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;',
+        'font-size:13px;',
+        'line-height:1.5;',
+        'box-shadow:0 4px 14px rgba(0,0,0,0.12);',
+        'pointer-events:auto;',
+        'min-width:280px;',
+        'max-width:480px;',
+        'word-break:break-word;',
+        'position:relative;',
       '}',
 
       /* Toast icon circle */
       '.notif-toast-icon{',
-      'width:28px;height:28px;',
-      'border-radius:50%;',
-      'display:flex;align-items:center;justify-content:center;',
-      'font-size:14px;font-weight:700;',
-      'flex-shrink:0;',
+        'width:24px;height:24px;',
+        'border-radius:50%;',
+        'display:flex;align-items:center;justify-content:center;',
+        'font-size:14px;font-weight:700;',
+        'flex-shrink:0;',
       '}',
 
       /* Toast text */
       '.notif-toast-text{',
-      'flex:1;',
-      'font-weight:500;',
+        'flex:1;',
+        'font-weight:500;',
       '}',
 
       /* Toast close btn */
       '.notif-toast-close{',
-      'background:none;border:none;',
-      'cursor:pointer;',
-      'font-size:16px;',
-      'opacity:0.45;',
-      'transition:opacity 0.2s;',
-      'padding:0 0 0 8px;',
-      'flex-shrink:0;',
-      'line-height:1;',
+        'background:none;border:none;',
+        'cursor:pointer;',
+        'font-size:16px;',
+        'opacity:0.45;',
+        'transition:opacity 0.2s;',
+        'padding:0 0 0 8px;',
+        'flex-shrink:0;',
+        'line-height:1;',
       '}',
       '.notif-toast-close:hover{opacity:0.8}',
 
       /* ---- Success toast ---- */
       '.notif-toast-success{',
-      'background-color:#f0fdf4;',
-      'border-left-color:#10b981;',
-      'color:#065f46;',
+        'background-color:#f0fdf4;',
+        'border-left-color:#10b981;',
+        'color:#065f46;',
       '}',
       '.notif-toast-success .notif-toast-icon{background:#dcfce7;color:#059669}',
       '.notif-toast-success .notif-toast-close{color:#065f46}',
 
       /* ---- Error toast ---- */
       '.notif-toast-error{',
-      'background-color:#fef2f2;',
-      'border-left-color:#ef4444;',
-      'color:#991b1b;',
+        'background-color:#fef2f2;',
+        'border-left-color:#ef4444;',
+        'color:#991b1b;',
       '}',
       '.notif-toast-error .notif-toast-icon{background:#fee2e2;color:#dc2626}',
       '.notif-toast-error .notif-toast-close{color:#991b1b}',
 
       /* ---- Warning toast ---- */
       '.notif-toast-warning{',
-      'background-color:#fffbeb;',
-      'border-left-color:#f59e0b;',
-      'color:#92400e;',
+        'background-color:#fffbeb;',
+        'border-left-color:#f59e0b;',
+        'color:#92400e;',
       '}',
       '.notif-toast-warning .notif-toast-icon{background:#fef3c7;color:#d97706}',
       '.notif-toast-warning .notif-toast-close{color:#92400e}',
 
-      /* ---- Info toast (purple themed) ---- */
+      /* ---- Info toast (deep violet themed) ---- */
       '.notif-toast-info{',
-      'background-color:#eef2ff;',
-      'border-left-color:#667eea;',
-      'color:#3730a3;',
+        'background-color:#f5f3ff;',
+        'border-left-color:#6366f1;',
+        'color:#312e81;',
       '}',
-      '.notif-toast-info .notif-toast-icon{background:#e0e7ff;color:#5a67d8}',
-      '.notif-toast-info .notif-toast-close{color:#3730a3}',
+      '.notif-toast-info .notif-toast-icon{background:#ede9fe;color:#6366f1}',
+      '.notif-toast-info .notif-toast-close{color:#312e81}',
 
       /* ---- Dark mode toast overrides ---- */
       '.dark-mode .notif-toast-success{background:#022c22;border-left-color:#10b981;color:#a7f3d0}',
@@ -145,9 +145,9 @@ var NotificationSystem = (function() {
       '.dark-mode .notif-toast-warning .notif-toast-icon{background:rgba(245,158,11,0.2);color:#fbbf24}',
       '.dark-mode .notif-toast-warning .notif-toast-close{color:#fde68a}',
 
-      '.dark-mode .notif-toast-info{background:#1a1a3e;border-left-color:#667eea;color:#c7d2fe}',
-      '.dark-mode .notif-toast-info .notif-toast-icon{background:rgba(102,126,234,0.2);color:#818cf8}',
-      '.dark-mode .notif-toast-info .notif-toast-close{color:#c7d2fe}',
+      '.dark-mode .notif-toast-info{background:#1e1b4b;border-left-color:#6366f1;color:#ddd6fe}',
+      '.dark-mode .notif-toast-info .notif-toast-icon{background:rgba(99,102,241,0.2);color:#818cf8}',
+      '.dark-mode .notif-toast-info .notif-toast-close{color:#ddd6fe}',
 
       '.dark-mode .notif-toast{box-shadow:0 4px 14px rgba(0,0,0,0.4)}',
 
@@ -155,55 +155,67 @@ var NotificationSystem = (function() {
 
       /* Modal overlay */
       '.notif-modal-overlay{',
-      'position:fixed;top:0;left:0;right:0;bottom:0;',
-      'background:rgba(0,0,0,0.5);',
-      'display:flex;align-items:center;justify-content:center;',
-      'z-index:10001;',
-      'animation:notif-fadeIn 0.2s ease-out;',
-      'backdrop-filter:blur(4px);',
+        'position:fixed;top:0;left:0;right:0;bottom:0;',
+        'background:rgba(0,0,0,0.5);',
+        'display:flex;align-items:center;justify-content:center;',
+        'z-index:10001;',
+        'animation:notif-fadeIn 0.2s ease-out;',
+        'backdrop-filter:blur(4px);',
       '}',
 
       /* Modal box */
       '.notif-modal{',
-      'background:#fff;',
-      'border-radius:14px;',
-      'padding:28px;',
-      'max-width:480px;',
-      'width:90%;',
-      'box-shadow:0 25px 50px rgba(0,0,0,0.2);',
-      'animation:notif-slideUp 0.3s ease-out;',
-      'font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;',
+        'background:#fff;',
+        'border-radius:12px;',
+        'padding:22px;',
+        'max-width:420px;',
+        'width:90%;',
+        'box-shadow:0 25px 50px rgba(0,0,0,0.12);',
+        'animation:notif-slideUp 0.3s ease-out;',
+        'font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;',
+        'border:1px solid rgba(0,0,0,0.04);',
       '}',
 
       /* Modal title */
       '.notif-modal h3{',
-      'margin:0 0 14px 0;',
-      'font-size:17px;',
-      'font-weight:700;',
-      'color:#1e293b;',
-      'display:flex;align-items:center;gap:8px;',
+        'margin:0 0 14px 0;',
+        'font-size:15px;',
+        'font-weight:700;',
+        'color:#1e293b;',
+        'display:flex;align-items:center;',
+        'padding-bottom:10px;',
+        'border-bottom:1px solid #f1f5f9;',
       '}',
 
       /* Modal body text */
       '.notif-modal .notif-modal-body{',
-      'margin:0 0 22px 0;',
-      'font-size:15px;',
-      'color:#475569;',
-      'line-height:1.6;',
-      'word-break:break-word;',
+        'margin:0 0 18px 0;',
+        'font-size:13px;',
+        'color:#475569;',
+        'line-height:1.65;',
+        'word-break:break-word;',
       '}',
-      '.notif-modal .notif-modal-body p {',
-      'margin: 0 0 10px 0;',
+      '.notif-modal .notif-modal-body p{',
+        'margin:0 0 6px 0;',
       '}',
-      '.notif-modal .notif-modal-body p:last-child {',
-      'margin-bottom: 0;',
+      '.notif-modal .notif-modal-body p:last-child{',
+        'margin-bottom:0;',
       '}',
-      '.notif-modal .notif-modal-body ul {',
-      'margin: 8px 0 12px 0;',
-      'padding-left: 24px;',
+      '.notif-modal .notif-modal-body ul{',
+        'margin:6px 0 10px 0;',
+        'padding-left:20px;',
+        'list-style:none;',
       '}',
-      '.notif-modal .notif-modal-body li {',
-      'margin-bottom: 6px;',
+      '.notif-modal .notif-modal-body li{',
+        'margin-bottom:5px;',
+        'position:relative;',
+        'padding-left:14px;',
+      '}',
+      '.notif-modal .notif-modal-body li::before{',
+        'content:"";',
+        'position:absolute;left:0;top:8px;',
+        'width:5px;height:5px;border-radius:50%;',
+        'background:#6366f1;',
       '}',
 
       /* Modal buttons container */
@@ -211,71 +223,84 @@ var NotificationSystem = (function() {
 
       /* Modal buttons */
       '.notif-modal button{',
-      'padding:9px 20px;',
-      'border-radius:8px;',
-      'border:none;',
-      'font-size:13px;',
-      'font-weight:600;',
-      'cursor:pointer;',
-      'transition:all 0.2s ease;',
-      'font-family:inherit;',
+        'padding:7px 16px;',
+        'border-radius:7px;',
+        'border:none;',
+        'font-size:12.5px;',
+        'font-weight:600;',
+        'cursor:pointer;',
+        'transition:all 0.2s ease;',
+        'font-family:inherit;',
       '}',
       '.notif-modal button:hover{transform:translateY(-1px)}',
       '.notif-modal button:active{transform:translateY(0)}',
 
-      /* Primary button - purple gradient matching app theme */
+      /* Primary button - deep violet gradient matching app theme */
       '.notif-btn-primary{',
-      'background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);',
-      'color:#fff;',
-      'box-shadow:0 4px 12px rgba(102,126,234,0.35);',
+        'background:linear-gradient(135deg,#6366f1 0%,#312e81 100%);',
+        'color:#fff;',
+        'box-shadow:0 4px 12px rgba(99,102,241,0.35);',
       '}',
-      '.notif-btn-primary:hover{box-shadow:0 6px 16px rgba(102,126,234,0.5)}',
+      '.notif-btn-primary:hover{box-shadow:0 6px 16px rgba(99,102,241,0.5)}',
 
       /* Secondary button */
       '.notif-btn-secondary{',
-      'background:#f1f5f9;',
-      'color:#475569;',
-      'border:1px solid #e2e8f0;',
+        'background:#f1f5f9;',
+        'color:#475569;',
+        'border:1px solid #e2e8f0;',
       '}',
       '.notif-btn-secondary:hover{background:#e2e8f0;border-color:#cbd5e1}',
 
       /* Danger button (for destructive confirms) */
       '.notif-btn-danger{',
-      'background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);',
-      'color:#fff;',
-      'box-shadow:0 4px 12px rgba(239,68,68,0.35);',
+        'background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);',
+        'color:#fff;',
+        'box-shadow:0 4px 12px rgba(239,68,68,0.35);',
       '}',
       '.notif-btn-danger:hover{box-shadow:0 6px 16px rgba(239,68,68,0.5)}',
 
+      /* Danger modal variant — red accent strip */
+      '.notif-modal-danger{border-top:3px solid #ef4444}',
+      '.notif-modal-danger h3{color:#dc2626}',
+      '.dark-mode .notif-modal-danger h3{color:#f87171}',
+      '.notif-modal-danger .notif-modal-body{color:#64748b}',
+      '.dark-mode .notif-modal-danger .notif-modal-body{color:#94a3b8}',
+
       /* ---- Dark mode modal overrides ---- */
       '.dark-mode .notif-modal{',
-      'background:rgba(30,41,59,0.97);',
-      'border:1px solid #334155;',
-      'box-shadow:0 25px 50px rgba(0,0,0,0.5);',
+        'background:rgba(32,32,38,0.97);',
+        'border:1px solid rgba(255,255,255,0.06);',
+        'box-shadow:0 25px 50px rgba(0,0,0,0.45);',
       '}',
-      '.dark-mode .notif-modal h3{color:#e2e8f0}',
+      '.dark-mode .notif-modal h3{color:#e2e8f0;border-bottom-color:rgba(255,255,255,0.06)}',
       '.dark-mode .notif-modal .notif-modal-body{color:#cbd5e1}',
-      '.dark-mode .notif-btn-secondary{background:#1e293b;color:#cbd5e1;border-color:#475569}',
-      '.dark-mode .notif-btn-secondary:hover{background:#334155;border-color:#64748b}',
-      '.dark-mode .notif-modal-overlay{background:rgba(0,0,0,0.65)}',
+      '.dark-mode .notif-modal .notif-modal-body li::before{background:#a5b4fc}',
+      '.dark-mode .notif-btn-secondary{background:#2a2a30;color:#cbd5e1;border-color:#404048}',
+      '.dark-mode .notif-btn-secondary:hover{background:#3a3a42;border-color:#505058}',
+      '.dark-mode .notif-modal-overlay{background:rgba(0,0,0,0.6)}',
     ].join('');
     document.head.appendChild(style);
   }
+
+  var MATERIAL_ICONS = {
+    success: 'check_circle',
+    error: 'error',
+    warning: 'warning',
+    info: 'info',
+    delete: 'delete'
+  };
 
   function createToast(msg, type) {
     initContainer();
     var toast = document.createElement('div');
     toast.className = 'notif-toast notif-toast-' + type;
 
-    // Icon per type
-    var icons = {success:'✓', error:'✕', warning:'⚠', info:'ℹ'};
-    var icon = icons[type] || 'ℹ';
+    var iconName = MATERIAL_ICONS[type] || 'info';
 
-    // Build toast HTML
     toast.innerHTML =
-      '<span class="notif-toast-icon">' + icon + '</span>' +
+      '<span class="notif-toast-icon"><span class="material-icons" style="font-size:16px">' + iconName + '</span></span>' +
       '<span class="notif-toast-text">' + formatMessage(msg) + '</span>' +
-      '<button class="notif-toast-close" aria-label="Close">&times;</button>';
+      '<button class="notif-toast-close" aria-label="Close"><span class="material-icons" style="font-size:16px">close</span></button>';
 
     // Close button handler
     var closeBtn = toast.querySelector('.notif-toast-close');
@@ -308,21 +333,62 @@ var NotificationSystem = (function() {
     }, 300);
   }
 
+  function prettyFormatMessage(msg, isHtml) {
+    if (isHtml) return msg;
+    if (!msg) return '';
+    var raw = String(msg);
+    var lines = raw.split(/\n/);
+    var html = '';
+    var inList = false;
+
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      var trimmed = line.replace(/^\s+/, '');
+      var isBullet = /^[-•]\s/.test(trimmed);
+
+      if (isBullet) {
+        if (!inList) { html += '<ul style="margin:8px 0;padding-left:20px;">'; inList = true; }
+        html += '<li>' + escapeHtml(trimmed.replace(/^[-•]\s*/, '')) + '</li>';
+      } else {
+        if (inList) { html += '</ul>'; inList = false; }
+        if (trimmed === '') {
+          html += '<div style="height:8px"></div>';
+        } else {
+          html += '<p style="margin:0 0 6px 0">' + escapeHtml(trimmed) + '</p>';
+        }
+      }
+    }
+    if (inList) html += '</ul>';
+    return html;
+  }
+
   function createModal(msg, title, buttons, options) {
     options = options || {};
     var overlay = document.createElement('div');
     overlay.className = 'notif-modal-overlay';
     var modal = document.createElement('div');
-    modal.className = 'notif-modal';
+    var isDanger = buttons.some(function(b) { return b.danger; });
+    modal.className = 'notif-modal' + (isDanger ? ' notif-modal-danger' : '');
 
-    // Title icon based on context
+    var iconColors = {
+      check_circle: '#10b981',
+      error: '#ef4444',
+      warning: '#f59e0b',
+      info: '#6366f1',
+      delete: '#ef4444'
+    };
+
     var titleIcon = '';
     if (options.icon) {
-      titleIcon = '<span style="font-size:20px;">' + options.icon + '</span>';
+      var matIcon = MATERIAL_ICONS[options.icon] || options.icon;
+      var iconColor = iconColors[matIcon] || '#6366f1';
+      var iconBg = isDanger ? 'rgba(239,68,68,0.08)' : 'rgba(99,102,241,0.08)';
+      titleIcon = '<span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;background:' + iconBg + ';margin-right:8px;flex-shrink:0">' +
+        '<span class="material-icons" style="font-size:18px;color:' + iconColor + '">' + matIcon + '</span></span>';
     }
 
-    modal.innerHTML = '<h3>' + titleIcon + (title || 'Message') + '</h3>' +
-      '<div class="notif-modal-body">' + (options.isHtml ? msg : formatMessage(msg)) + '</div>' +
+    modal.innerHTML = '<h3>' + titleIcon + escapeHtml(title || 'Message') + '</h3>' +
+      '<div class="notif-modal-body">' + prettyFormatMessage(msg, options.isHtml) + '</div>' +
       '<div class="notif-modal-buttons"></div>';
 
     var btnContainer = modal.querySelector('.notif-modal-buttons');
@@ -396,7 +462,7 @@ var NotificationSystem = (function() {
       var isDanger = options.danger || false;
       var confirmLabel = options.confirmLabel || 'Confirm';
       var cancelLabel = options.cancelLabel || 'Cancel';
-      var icon = options.icon ;//|| '⚡';
+      var icon = options.icon || (isDanger ? 'warning' : 'info');
       createModal(msg, title || 'Confirm', [
         {label: cancelLabel, primary: false, callback: function() { if (callback) callback(false); }},
         {label: confirmLabel, primary: !isDanger, danger: isDanger, callback: function() { if (callback) callback(true); }}
@@ -404,8 +470,7 @@ var NotificationSystem = (function() {
     },
     backend: function(msg, title, type, buttons) {
       buttons = buttons || [{label:'OK', primary:true, callback:null}];
-      var icons = {success:'✔', error:'✕', warning:'⚠', info:'ℹ'};
-      createModal(msg, title, buttons, {icon: icons[type] || 'ℹ'});
+      createModal(msg, title, buttons, {icon: type || 'info'});
     }
   };
 })();
