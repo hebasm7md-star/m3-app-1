@@ -141,7 +141,7 @@
     if (deleteButton) {
       var selectedValue = select.value;
       if (selectedValue !== "-1" && selectedValue !== null && selectedValue !== "") {
-        deleteButton.style.display = "block";
+        deleteButton.style.display = "flex";
       } else {
         deleteButton.style.display = "none";
       }

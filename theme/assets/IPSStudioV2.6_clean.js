@@ -1,1056 +1,925 @@
 
 /* ========= Core Functions ========= */
-  // Draw image mapped to four corners using triangle-based texture mapping
-  // This makes the image "stick" to the plane like a sticker and rotate with it
-  // Draw image mapped to four world corners with perspective-correct subdivision
-  // This ensures the image "sticks" to the 3D geometry (walls) during zoom/pan
-  // by calculating screen positions for every grid vertex using the 3D projection matrix
-  // rather than linearly interpolating screen corners.
-  function drawProjectedImage(
-    ctx,
+// Draw image mapped to four corners using triangle-based texture mapping
+// This makes the image "stick" to the plane like a sticker and rotate with it
+// Draw image mapped to four world corners with perspective-correct subdivision
+// This ensures the image "sticks" to the 3D geometry (walls) during zoom/pan
+// by calculating screen positions for every grid vertex using the 3D projection matrix
+// rather than linearly interpolating screen corners.
+function drawProjectedImage(
+  ctx,
+  img,
+  srcX,
+  srcY,
+  srcWidth,
+  srcHeight,
+  wP1,
+  wP2,
+  wP3,
+  wP4,
+  projector
+) {
+  // Extract the source image portion to a temporary canvas
+  var tempCanvas = document.createElement("canvas");
+  tempCanvas.width = srcWidth;
+  tempCanvas.height = srcHeight;
+  var tempCtx = tempCanvas.getContext("2d");
+  tempCtx.drawImage(
     img,
     srcX,
     srcY,
     srcWidth,
     srcHeight,
+    0,
+    0,
+    srcWidth,
+    srcHeight
+  );
+
+  var MAX_DEPTH = 3; // 3 levels = 8x8 grid
+
+  function mid(p1, p2) {
+    return { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+  }
+
+  // Subdivide in World Space (w) and Source Space (s)
+  // Then project World -> Screen (d) at the leaf level
+  function subdivide(wP1, wP2, wP3, wP4, sP1, sP2, sP3, sP4, depth) {
+    if (depth >= MAX_DEPTH) {
+      // Leaf level: Project world points to screen points
+      var dP1 = projector(wP1);
+      var dP2 = projector(wP2);
+      var dP3 = projector(wP3);
+      var dP4 = projector(wP4);
+
+      // Draw 2 triangles
+      // Triangle 1: P1, P2, P3
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(dP1.x, dP1.y);
+      ctx.lineTo(dP2.x, dP2.y);
+      ctx.lineTo(dP3.x, dP3.y);
+      ctx.closePath();
+      ctx.clip();
+      drawTriangleTexture(ctx, tempCanvas, sP1, sP2, sP3, dP1, dP2, dP3);
+      ctx.restore();
+
+      // Triangle 2: P1, P3, P4
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(dP1.x, dP1.y);
+      ctx.lineTo(dP3.x, dP3.y);
+      ctx.lineTo(dP4.x, dP4.y);
+      ctx.closePath();
+      ctx.clip();
+      drawTriangleTexture(ctx, tempCanvas, sP1, sP3, sP4, dP1, dP3, dP4);
+      ctx.restore();
+      return;
+    }
+
+    // Calculate midpoints in World Space (Linear interpolation is correct for flat planes)
+    var wM12 = mid(wP1, wP2);
+    var wM23 = mid(wP2, wP3);
+    var wM34 = mid(wP3, wP4);
+    var wM41 = mid(wP4, wP1);
+    var wCenter = mid(wM12, wM34);
+
+    // Calculate midpoints in Source Space
+    var sM12 = mid(sP1, sP2);
+    var sM23 = mid(sP2, sP3);
+    var sM34 = mid(sP3, sP4);
+    var sM41 = mid(sP4, sP1);
+    var sCenter = mid(sM12, sM34);
+
+    // Recurse
+    subdivide(
+      wP1,
+      wM12,
+      wCenter,
+      wM41,
+      sP1,
+      sM12,
+      sCenter,
+      sM41,
+      depth + 1
+    );
+    subdivide(
+      wM12,
+      wP2,
+      wM23,
+      wCenter,
+      sM12,
+      sP2,
+      sM23,
+      sCenter,
+      depth + 1
+    );
+    subdivide(
+      wCenter,
+      wM23,
+      wP3,
+      wM34,
+      sCenter,
+      sM23,
+      sP3,
+      sM34,
+      depth + 1
+    );
+    subdivide(
+      wM41,
+      wCenter,
+      wM34,
+      wP4,
+      sM41,
+      sCenter,
+      sM34,
+      sP4,
+      depth + 1
+    );
+  }
+
+  // Initial Source Corners (relative to temp canvas)
+  var sP1 = { x: 0, y: 0 };
+  var sP2 = { x: srcWidth, y: 0 };
+  var sP3 = { x: srcWidth, y: srcHeight };
+  var sP4 = { x: 0, y: srcHeight };
+
+  // Calculate outer boundary for clipping
+  // We project the 4 corners to establish the clip path
+  var clipP1 = projector(wP1);
+  var clipP2 = projector(wP2);
+  var clipP3 = projector(wP3);
+  var clipP4 = projector(wP4);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(clipP1.x, clipP1.y);
+  ctx.lineTo(clipP2.x, clipP2.y);
+  ctx.lineTo(clipP3.x, clipP3.y);
+  ctx.lineTo(clipP4.x, clipP4.y);
+  ctx.closePath();
+  ctx.clip();
+
+  subdivide(wP1, wP2, wP3, wP4, sP1, sP2, sP3, sP4, 0);
+
+  ctx.restore();
+}
+
+// Draw a triangle with texture mapping (helper function)
+function drawTriangleTexture(
+  ctx,
+  img,
+  srcP1,
+  srcP2,
+  srcP3,
+  dstP1,
+  dstP2,
+  dstP3
+) {
+  // Calculate affine transform matrix for triangle mapping
+  // We need to map: srcP1->dstP1, srcP2->dstP2, srcP3->dstP3
+
+  // Calculate vectors from srcP1
+  var ux = srcP2.x - srcP1.x;
+  var uy = srcP2.y - srcP1.y;
+  var vx = srcP3.x - srcP1.x;
+  var vy = srcP3.y - srcP1.y;
+
+  // Calculate vectors from dstP1
+  var dux = dstP2.x - dstP1.x;
+  var duy = dstP2.y - dstP1.y;
+  var dvx = dstP3.x - dstP1.x;
+  var dvy = dstP3.y - dstP1.y;
+
+  // Calculate determinant for solving the system
+  var det = ux * vy - uy * vx;
+  if (Math.abs(det) < 1e-10) return; // Degenerate triangle
+
+  // Solve for transform matrix coefficients
+  // The transform maps source coordinates to destination coordinates
+  var a = (dux * vy - dvx * uy) / det;
+  var b = (duy * vy - dvy * uy) / det;
+  var c = (dvx * ux - dux * vx) / det;
+  var d = (dvy * ux - duy * vx) / det;
+  var e = dstP1.x - a * srcP1.x - c * srcP1.y;
+  var f = dstP1.y - b * srcP1.x - d * srcP1.y;
+
+  // Save current transform state
+  ctx.save();
+
+  // Apply transform and draw the image
+  // The transform maps the source triangle to the destination triangle
+  ctx.setTransform(a, b, c, d, e, f);
+  ctx.drawImage(img, 0, 0);
+
+  // Restore transform state
+  ctx.restore();
+}
+
+// Render coverage pattern as a flat plane at ground level (0m) in 3D view
+// Note: Heatmap is calculated at 1.5m but displayed at 0m
+function renderCoveragePlane3D(ctx, heatmapCanvas, transition) {
+  if (transition <= 0) return; // Only render in 3D view
+
+  var displayHeight = 0; // Display height at ground level (0m)
+
+  // Define the four corners of the coverage area at ground level
+  // These match the world coordinate system used for antennas
+  var corners = [
+    { x: 0, y: 0, z: displayHeight }, // Bottom-left
+    { x: state.w, y: 0, z: displayHeight }, // Bottom-right
+    { x: state.w, y: state.h, z: displayHeight }, // Top-right
+    { x: 0, y: state.h, z: displayHeight }, // Top-left
+  ];
+
+  // Project corners to 3D canvas coordinates
+  var p1_3d = projectToCanvas3D(corners[0].x, corners[0].y, corners[0].z);
+  var p2_3d = projectToCanvas3D(corners[1].x, corners[1].y, corners[1].z);
+  var p3_3d = projectToCanvas3D(corners[2].x, corners[2].y, corners[2].z);
+  var p4_3d = projectToCanvas3D(corners[3].x, corners[3].y, corners[3].z);
+
+  // Get 2D positions using mx/my to match antenna positioning (includes padding)
+  var p1_2d = { x: mx(0), y: my(0) };
+  var p2_2d = { x: mx(state.w), y: my(0) };
+  var p3_2d = { x: mx(state.w), y: my(state.h) };
+  var p4_2d = { x: mx(0), y: my(state.h) };
+
+  // Interpolate between 2D and 3D positions based on transition
+  var canvasP1 = {
+    x: p1_2d.x + (p1_3d.x - p1_2d.x) * transition,
+    y: p1_2d.y + (p1_3d.y - p1_2d.y) * transition,
+  };
+  var canvasP2 = {
+    x: p2_2d.x + (p2_3d.x - p2_2d.x) * transition,
+    y: p2_2d.y + (p2_3d.y - p2_2d.y) * transition,
+  };
+  var canvasP3 = {
+    x: p3_2d.x + (p3_3d.x - p3_2d.x) * transition,
+    y: p3_2d.y + (p3_3d.y - p3_2d.y) * transition,
+  };
+  var canvasP4 = {
+    x: p4_2d.x + (p4_3d.x - p4_2d.x) * transition,
+    y: p4_2d.y + (p4_3d.y - p4_2d.y) * transition,
+  };
+
+  // Render the heatmap as a textured plane
+  ctx.save();
+  ctx.globalAlpha = 0.85; // Slightly transparent so walls/APs are visible
+
+  // World Points mapping to image corners - ensure correct coordinate mapping
+  // The heatmap image has coordinates: (0,0) top-left to (width,height) bottom-right
+  // World coordinates: (0,0) bottom-left to (w,h) top-right
+  // Standard mapping: Image y=0 (top) -> World y=h (top), Image y=height (bottom) -> World y=0 (bottom)
+  // So we map: Image(0,0) -> World(0,h), Image(width,0) -> World(w,h),
+  //            Image(width,height) -> World(w,0), Image(0,height) -> World(0,0)
+  var wP1 = { x: 0, y: state.h }; // Top-left in world = Image(0,0)
+  var wP2 = { x: state.w, y: state.h }; // Top-right in world = Image(width,0)
+  var wP3 = { x: state.w, y: 0 }; // Bottom-right in world = Image(width,height)
+  var wP4 = { x: 0, y: 0 }; // Bottom-left in world = Image(0,height)
+
+  var projector = function (p) {
+    var p2d = { x: mx(p.x), y: my(p.y) };
+    // Render at 0m (ground) but heatmap is calculated at 1.5m
+    var p3d = projectToCanvas3D(p.x, p.y, 0); // Display at z=0m (ground)
+    return {
+      x: p2d.x + (p3d.x - p2d.x) * transition,
+      y: p2d.y + (p3d.y - p2d.y) * transition,
+    };
+  };
+
+  // Draw pattern - the pattern is already calculated correctly accounting for antenna positions
+  // and azimuth, so we just need to map it correctly to world coordinates
+  drawProjectedImage(
+    ctx,
+    heatmapCanvas,
+    0,
+    0,
+    heatmapCanvas.width,
+    heatmapCanvas.height,
     wP1,
     wP2,
     wP3,
     wP4,
     projector
-  ) {
-    // Extract the source image portion to a temporary canvas
-    var tempCanvas = document.createElement("canvas");
-    tempCanvas.width = srcWidth;
-    tempCanvas.height = srcHeight;
-    var tempCtx = tempCanvas.getContext("2d");
-    tempCtx.drawImage(
-      img,
-      srcX,
-      srcY,
-      srcWidth,
-      srcHeight,
-      0,
-      0,
-      srcWidth,
-      srcHeight
-    );
+  );
 
-    var MAX_DEPTH = 3; // 3 levels = 8x8 grid
+  ctx.restore();
+}
 
-    function mid(p1, p2) {
-      return { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+// Fast 3D projection - converts 2D wall coordinates to 3D canvas coordinates
+// worldX, worldY are the 2D coordinates (same as used in 2D mode)
+// height is the wall height in meters
+function projectToCanvas3D(worldX, worldY, height) {
+  // Convert 2D coordinates to 3D space (centered)
+  var x = worldX - state.w / 2;
+  var z = (worldY - state.h / 2); // Flip on y-axis
+  var y = height;
+
+  // Apply camera rotation
+  var rotX = state.cameraRotationX;
+  var rotY = state.cameraRotationY;
+
+  // Rotate around Y axis (horizontal rotation)
+  var cosY = Math.cos(rotY);
+  var sinY = Math.sin(rotY);
+  var x1 = x * cosY - z * sinY;
+  var z1 = x * sinY + z * cosY;
+  var y1 = y;
+
+  // Rotate around X axis (vertical rotation)
+  var cosX = Math.cos(rotX);
+  var sinX = Math.sin(rotX);
+  var x2 = x1;
+  var y2 = y1 * cosX - z1 * sinX;
+  var z2 = y1 * sinX + z1 * cosX;
+
+  // Apply zoom
+  var zoom = state.cameraZoom;
+  x2 *= zoom;
+  y2 *= zoom;
+  z2 *= zoom;
+
+  // Perspective projection - preserve 2D orientation
+  // Coordinate mapping: worldX -> x (right), worldY -> z (depth), height -> y (up)
+  // With cameraRotationY = 0, X rotation tilts view down while preserving horizontal orientation
+  var distance = Math.max(z2 + 20, 1); // Camera distance
+  var fov = 500;
+  var scale = fov / distance;
+
+  // Apply camera pan (after rotation, before projection)
+  x2 += state.cameraPanX;
+  z2 += state.cameraPanY;
+
+  // Project to screen - preserve 2D directions
+  // x2 (worldX) maps directly to screen X (right)
+  // z2 (worldY after rotation) provides depth/base Y position
+  // y2 (height after rotation) adds vertical offset
+  var screenX = x2 * scale;
+  // Use z2 for base Y position (worldY), y2 adds vertical offset from height
+  // Negate screenY to fix y-axis mirroring for z2 (depth), but y2 (height) must go UP (negative screen Y)
+  // z2 increases "down" the screen (depth). y2 increases "up" in 3D.
+  // We want higher y2 to result in lower screenY.
+  // screenY = -z2*scale (base ground) - y2*scale (height offset)
+  var screenY = -(z2 * scale + y2 * scale);
+
+  // Map to canvas coordinates - preserve 2D coordinate system
+  var baseScale =
+    (Math.min(canvas.width, canvas.height) / Math.max(state.w, state.h)) *
+    0.8;
+  var canvasX =
+    pad() +
+    ((state.w / 2 + (screenX * baseScale) / fov) *
+     (canvas.width - 2 * pad())) /
+    state.w;
+  var canvasY =
+    pad() +
+    ((state.h / 2 + (screenY * baseScale) / fov) *
+     (canvas.height - 2 * pad())) /
+    state.h;
+
+  return { x: canvasX, y: canvasY, depth: z2 };
+}
+
+// Unproject screen coordinates back to world coordinates at a given height
+// Uses a simpler approach: projects two nearby points and interpolates
+function unprojectFromCanvas3D(screenX, screenY, targetHeight) {
+  // Use the inverse of the 2D mapping as a starting point
+  var worldX = invx(screenX);
+  var worldY = invy(screenY);
+
+  // In 3D view, we need to account for perspective
+  // For dragging, we can use a simpler approach: track the delta in screen space
+  // and convert it proportionally to world space
+  // But for now, use the 2D inverse mapping which should be close enough
+  // The main issue is axis inversion, which we'll handle in the drag handler
+
+  return { x: worldX, y: worldY };
+}
+
+/* AI COMMENT — state, elementTypes, wallTypes moved to Config.js */
+
+// Get button text based on selected element type
+function getAddButtonText(isDrawing) {
+  if (isDrawing) {
+    return "Drawing...";
+  }
+  var elementNames = {
+    wall: "Add Wall",
+    door: "Add Door",
+    doubleDoor: "Add Double Door",
+    window: "Add Window",
+    floorPlane: "Add Floor Plane",
+  };
+  return elementNames[state.selectedElementType] || "";
+}
+
+// Count how many walls of a specific type exist
+function countWallsByType(wallType) {
+  var count = 0;
+  for (var i = 0; i < state.walls.length; i++) {
+    if (state.walls[i].type === wallType) {
+      count++;
     }
+  }
+  return count;
+}
 
-    // Subdivide in World Space (w) and Source Space (s)
-    // Then project World -> Screen (d) at the leaf level
-    function subdivide(wP1, wP2, wP3, wP4, sP1, sP2, sP3, sP4, depth) {
-      if (depth >= MAX_DEPTH) {
-        // Leaf level: Project world points to screen points
-        var dP1 = projector(wP1);
-        var dP2 = projector(wP2);
-        var dP3 = projector(wP3);
-        var dP4 = projector(wP4);
+// Generate wall name based on type
+function generateWallName(wallType) {
+  var typeInfo = wallTypes[wallType];
+  var typeName = typeInfo ? typeInfo.name : "Wall";
+  var count = countWallsByType(wallType);
+  return typeName + "_" + (count + 1);
+}
 
-        // Draw 2 triangles
-        // Triangle 1: P1, P2, P3
-        ctx.save();
-        ctx.beginPath();
-        ctx.moveTo(dP1.x, dP1.y);
-        ctx.lineTo(dP2.x, dP2.y);
-        ctx.lineTo(dP3.x, dP3.y);
-        ctx.closePath();
-        ctx.clip();
-        drawTriangleTexture(ctx, tempCanvas, sP1, sP2, sP3, dP1, dP2, dP3);
-        ctx.restore();
+var canvas = document.getElementById("plot"),
+  ctx = canvas.getContext("2d");
+// Enable image smoothing for smoother rendering
+ctx.imageSmoothingEnabled = true;
+ctx.imageSmoothingQuality = "high";
 
-        // Triangle 2: P1, P3, P4
-        ctx.save();
-        ctx.beginPath();
-        ctx.moveTo(dP1.x, dP1.y);
-        ctx.lineTo(dP3.x, dP3.y);
-        ctx.lineTo(dP4.x, dP4.y);
-        ctx.closePath();
-        ctx.clip();
-        drawTriangleTexture(ctx, tempCanvas, sP1, sP3, sP4, dP1, dP3, dP4);
-        ctx.restore();
-        return;
-      }
+// Initialize after DOM and all scripts are loaded
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", function () {
+    if (typeof initHeatmapWorker === "function") initHeatmapWorker();
+    setTimeout(function() { if (typeof initThreeJS === "function") initThreeJS(); }, 100);
+  });
+} else {
+  // DOM already loaded
+  if (typeof initHeatmapWorker === "function") initHeatmapWorker();
+  setTimeout(function() { if (typeof initThreeJS === "function") initThreeJS(); }, 100);
+}
 
-      // Calculate midpoints in World Space (Linear interpolation is correct for flat planes)
-      var wM12 = mid(wP1, wP2);
-      var wM23 = mid(wP2, wP3);
-      var wM34 = mid(wP3, wP4);
-      var wM41 = mid(wP4, wP1);
-      var wCenter = mid(wM12, wM34);
+var _propModel = new PropagationModel25D({
+  frequency:      state.freq,
+  N:              state.N,
+  verticalFactor: 2.0,
+  shapeFactor:    3.0,
+  referenceOffset: 0.0
+});
 
-      // Calculate midpoints in Source Space
-      var sM12 = mid(sP1, sP2);
-      var sM23 = mid(sP2, sP3);
-      var sM34 = mid(sP3, sP4);
-      var sM41 = mid(sP4, sP1);
-      var sCenter = mid(sM12, sM34);
+// Keep model config in sync with state changes
+function _syncPropModel() {
+  _propModel.freq = state.freq;
+  _propModel.N    = state.N;
+}
 
-      // Recurse
-      subdivide(
-        wP1,
-        wM12,
-        wCenter,
-        wM41,
-        sP1,
-        sM12,
-        sCenter,
-        sM41,
-        depth + 1
-      );
-      subdivide(
-        wM12,
-        wP2,
-        wM23,
-        wCenter,
-        sM12,
-        sP2,
-        sM23,
-        sCenter,
-        depth + 1
-      );
-      subdivide(
-        wCenter,
-        wM23,
-        wP3,
-        wM34,
-        sCenter,
-        sM23,
-        sP3,
-        sM34,
-        depth + 1
-      );
-      subdivide(
-        wM41,
-        wCenter,
-        wM34,
-        wP4,
-        sM41,
-        sCenter,
-        sM34,
-        sP4,
-        depth + 1
-      );
-    }
+// wallsLoss  kept inline (app-specific door/window/thickness logic below)
 
-    // Initial Source Corners (relative to temp canvas)
-    var sP1 = { x: 0, y: 0 };
-    var sP2 = { x: srcWidth, y: 0 };
-    var sP3 = { x: srcWidth, y: srcHeight };
-    var sP4 = { x: 0, y: srcHeight };
 
-    // Calculate outer boundary for clipping
-    // We project the 4 corners to establish the clip path
-    var clipP1 = projector(wP1);
-    var clipP2 = projector(wP2);
-    var clipP3 = projector(wP3);
-    var clipP4 = projector(wP4);
 
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(clipP1.x, clipP1.y);
-    ctx.lineTo(clipP2.x, clipP2.y);
-    ctx.lineTo(clipP3.x, clipP3.y);
-    ctx.lineTo(clipP4.x, clipP4.y);
-    ctx.closePath();
-    ctx.clip();
 
-    subdivide(wP1, wP2, wP3, wP4, sP1, sP2, sP3, sP4, 0);
+function p525(ax, ay, x, y) {
+  _syncPropModel();
+  var d = Math.max(hypot(x - ax, y - ay), 0.5);
+  return _propModel.fspl(state.freq, d) +
+    _propModel.groundPlaneLoss({x:ax, y:ay}, {x:x, y:y}, state.groundPlane) +
+    _propModel.floorPlanesLoss({x:ax, y:ay}, {x:x, y:y}, state.floorPlanes);
+}
 
-    ctx.restore();
+function modelLoss(ax, ay, x, y) {
+  _syncPropModel();
+
+  if (state.model === "p525") {
+    return p525(ax, ay, x, y);
   }
 
-  // Draw a triangle with texture mapping (helper function)
-  function drawTriangleTexture(
-    ctx,
-    img,
-    srcP1,
-    srcP2,
-    srcP3,
-    dstP1,
-    dstP2,
-    dstP3
-  ) {
-    // Calculate affine transform matrix for triangle mapping
-    // We need to map: srcP1->dstP1, srcP2->dstP2, srcP3->dstP3
+  // Default: p25d
+  return _propModel.p25dLoss(
+    {x: ax, y: ay},
+    {x: x, y: y},
+    state.walls,
+    state.floorPlanes,
+    state.groundPlane,
+    state.elementTypes
+  );
+}
 
-    // Calculate vectors from srcP1
-    var ux = srcP2.x - srcP1.x;
-    var uy = srcP2.y - srcP1.y;
-    var vx = srcP3.x - srcP1.x;
-    var vy = srcP3.y - srcP1.y;
 
-    // Calculate vectors from dstP1
-    var dux = dstP2.x - dstP1.x;
-    var duy = dstP2.y - dstP1.y;
-    var dvx = dstP3.x - dstP1.x;
-    var dvy = dstP3.y - dstP1.y;
 
-    // Calculate determinant for solving the system
-    var det = ux * vy - uy * vx;
-    if (Math.abs(det) < 1e-10) return; // Degenerate triangle
 
-    // Solve for transform matrix coefficients
-    // The transform maps source coordinates to destination coordinates
-    var a = (dux * vy - dvx * uy) / det;
-    var b = (duy * vy - dvy * uy) / det;
-    var c = (dvx * ux - dux * vx) / det;
-    var d = (dvy * ux - duy * vx) / det;
-    var e = dstP1.x - a * srcP1.x - c * srcP1.y;
-    var f = dstP1.y - b * srcP1.x - d * srcP1.y;
-
-    // Save current transform state
-    ctx.save();
-
-    // Apply transform and draw the image
-    // The transform maps the source triangle to the destination triangle
-    ctx.setTransform(a, b, c, d, e, f);
-    ctx.drawImage(img, 0, 0);
-
-    // Restore transform state
-    ctx.restore();
+// ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Initialize standalone modules with dependencies ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
+function getAngleDependentGain(ap, x, y) {
+  var effectiveAp = ap;
+  if (!ap.antennaPattern && state.antennaPatterns.length > 0) {
+    effectiveAp = Object.assign({}, ap, { antennaPattern: getDefaultAntennaPattern() });
   }
+  return _propModel.getAngleDependentGain(effectiveAp, { x: x, y: y });
+}
 
-  // Render coverage pattern as a flat plane at ground level (0m) in 3D view
-  // Note: Heatmap is calculated at 1.5m but displayed at 0m
-  function renderCoveragePlane3D(ctx, heatmapCanvas, transition) {
-    if (transition <= 0) return; // Only render in 3D view
+function rssi(tx, gt, L) {
+  return _propModel.rssi(tx, gt, L);
+}
 
-    var displayHeight = 0; // Display height at ground level (0m)
+window.modelLoss             = modelLoss;
+window.getAngleDependentGain = getAngleDependentGain;
+window.rssi                  = rssi;
 
-    // Define the four corners of the coverage area at ground level
-    // These match the world coordinate system used for antennas
-    var corners = [
-      { x: 0, y: 0, z: displayHeight }, // Bottom-left
-      { x: state.w, y: 0, z: displayHeight }, // Bottom-right
-      { x: state.w, y: state.h, z: displayHeight }, // Top-right
-      { x: 0, y: state.h, z: displayHeight }, // Top-left
+RadioCalculations.init({
+  state:                  state,
+  modelLoss:              modelLoss,
+  getAngleDependentGain:  getAngleDependentGain,
+  propModel:              _propModel
+});
+
+DataExportSystem.init({
+  state: state
+});
+
+
+
+void 0; // placeholder - original block commented out above
+
+// Render ground plane with uploaded image as texture
+function renderGroundPlane(ctx, transition) {
+  if (!state.groundPlane || !state.groundPlane.enabled) return;
+
+  // Ground plane is always present, render it even without image
+  // Render in both 2D and 3D views
+  var is3D = transition > 0;
+
+  // Ground plane corners in world coordinates (at z=0, which is the floor)
+  // If we have an image with aspect ratio, preserve it by centering and fitting
+  var corners;
+  if (state.backgroundImage && state.backgroundImageAspectRatio && 
+      state.backgroundImageDisplayWidth && state.backgroundImageDisplayHeight) {
+    // Calculate centered position for the image
+    var offsetX = (state.w - state.backgroundImageDisplayWidth) / 2;
+    var offsetY = (state.h - state.backgroundImageDisplayHeight) / 2;
+
+    corners = [
+      { x: offsetX, y: offsetY, z: 0 }, // Bottom-left
+      { x: offsetX + state.backgroundImageDisplayWidth, y: offsetY, z: 0 }, // Bottom-right
+      { x: offsetX + state.backgroundImageDisplayWidth, y: offsetY + state.backgroundImageDisplayHeight, z: 0 }, // Top-right
+      { x: offsetX, y: offsetY + state.backgroundImageDisplayHeight, z: 0 }, // Top-left
     ];
+  } else {
+    // No image or no aspect ratio info - use full canvas
+    corners = [
+      { x: 0, y: 0, z: 0 }, // Bottom-left
+      { x: state.w, y: 0, z: 0 }, // Bottom-right
+      { x: state.w, y: state.h, z: 0 }, // Top-right
+      { x: 0, y: state.h, z: 0 }, // Top-left
+    ];
+  }
 
-    // Project corners to 3D canvas coordinates
-    var p1_3d = projectToCanvas3D(corners[0].x, corners[0].y, corners[0].z);
-    var p2_3d = projectToCanvas3D(corners[1].x, corners[1].y, corners[1].z);
-    var p3_3d = projectToCanvas3D(corners[2].x, corners[2].y, corners[2].z);
-    var p4_3d = projectToCanvas3D(corners[3].x, corners[3].y, corners[3].z);
+  // Calculate corner positions based on view mode
+  var corners2D;
+  if (state.backgroundImage && state.backgroundImageAspectRatio && 
+      state.backgroundImageDisplayWidth && state.backgroundImageDisplayHeight) {
+    // Use adjusted corners for image
+    var offsetX = (state.w - state.backgroundImageDisplayWidth) / 2;
+    var offsetY = (state.h - state.backgroundImageDisplayHeight) / 2;
+    corners2D = [
+      { x: mx(offsetX), y: my(offsetY) },
+      { x: mx(offsetX + state.backgroundImageDisplayWidth), y: my(offsetY) },
+      { x: mx(offsetX + state.backgroundImageDisplayWidth), y: my(offsetY + state.backgroundImageDisplayHeight) },
+      { x: mx(offsetX), y: my(offsetY + state.backgroundImageDisplayHeight) },
+    ];
+  } else {
+    // Use full canvas corners
+    corners2D = [
+      { x: mx(0), y: my(0) },
+      { x: mx(state.w), y: my(0) },
+      { x: mx(state.w), y: my(state.h) },
+      { x: mx(0), y: my(state.h) },
+    ];
+  }
 
-    // Get 2D positions using mx/my to match antenna positioning (includes padding)
-    var p1_2d = { x: mx(0), y: my(0) };
-    var p2_2d = { x: mx(state.w), y: my(0) };
-    var p3_2d = { x: mx(state.w), y: my(state.h) };
-    var p4_2d = { x: mx(0), y: my(state.h) };
+  var finalCorners = [];
 
-    // Interpolate between 2D and 3D positions based on transition
-    var canvasP1 = {
-      x: p1_2d.x + (p1_3d.x - p1_2d.x) * transition,
-      y: p1_2d.y + (p1_3d.y - p1_2d.y) * transition,
-    };
-    var canvasP2 = {
-      x: p2_2d.x + (p2_3d.x - p2_2d.x) * transition,
-      y: p2_2d.y + (p2_3d.y - p2_2d.y) * transition,
-    };
-    var canvasP3 = {
-      x: p3_2d.x + (p3_3d.x - p3_2d.x) * transition,
-      y: p3_2d.y + (p3_3d.y - p3_2d.y) * transition,
-    };
-    var canvasP4 = {
-      x: p4_2d.x + (p4_3d.x - p4_2d.x) * transition,
-      y: p4_2d.y + (p4_3d.y - p4_2d.y) * transition,
-    };
+  if (is3D) {
+    // Project corners to 3D
+    var projectedCorners = [];
+    for (var i = 0; i < corners.length; i++) {
+      var corner = corners[i];
+      var projected = projectToCanvas3D(corner.x, corner.y, corner.z);
+      projectedCorners.push(projected);
+    }
 
-    // Render the heatmap as a textured plane
-    ctx.save();
-    ctx.globalAlpha = 0.85; // Slightly transparent so walls/APs are visible
+    // Interpolate between 2D and 3D positions
+    for (var i = 0; i < corners.length; i++) {
+      finalCorners.push({
+        x:
+          corners2D[i].x +
+          (projectedCorners[i].x - corners2D[i].x) * transition,
+        y:
+          corners2D[i].y +
+          (projectedCorners[i].y - corners2D[i].y) * transition,
+      });
+    }
+  } else {
+    // Pure 2D view - use 2D corners directly
+    finalCorners = corners2D;
+  }
 
-    // World Points mapping to image corners - ensure correct coordinate mapping
-    // The heatmap image has coordinates: (0,0) top-left to (width,height) bottom-right
-    // World coordinates: (0,0) bottom-left to (w,h) top-right
-    // Standard mapping: Image y=0 (top) -> World y=h (top), Image y=height (bottom) -> World y=0 (bottom)
-    // So we map: Image(0,0) -> World(0,h), Image(width,0) -> World(w,h),
-    //            Image(width,height) -> World(w,0), Image(0,height) -> World(0,0)
-    var wP1 = { x: 0, y: state.h }; // Top-left in world = Image(0,0)
-    var wP2 = { x: state.w, y: state.h }; // Top-right in world = Image(width,0)
-    var wP3 = { x: state.w, y: 0 }; // Bottom-right in world = Image(width,height)
-    var wP4 = { x: 0, y: 0 }; // Bottom-left in world = Image(0,height)
+  // Draw the ground plane with the background image
+  ctx.save();
 
+  // First, draw grey background for the entire canvas area
+  ctx.globalAlpha = 1.0;
+  ctx.fillStyle = "#b8b8b8"; // Grey background
+  var fullCanvasCorners = [
+    { x: mx(0), y: my(0) },
+    { x: mx(state.w), y: my(0) },
+    { x: mx(state.w), y: my(state.h) },
+    { x: mx(0), y: my(state.h) },
+  ];
+  var fullCanvasCorners3D = [];
+  if (is3D) {
+    var fullCorners = [
+      { x: 0, y: 0, z: 0 },
+      { x: state.w, y: 0, z: 0 },
+      { x: state.w, y: state.h, z: 0 },
+      { x: 0, y: state.h, z: 0 },
+    ];
+    for (var i = 0; i < fullCorners.length; i++) {
+      var projected = projectToCanvas3D(fullCorners[i].x, fullCorners[i].y, fullCorners[i].z);
+      fullCanvasCorners3D.push(projected);
+    }
+    // Interpolate between 2D and 3D positions
+    for (var i = 0; i < fullCanvasCorners.length; i++) {
+      fullCanvasCorners[i] = {
+        x: fullCanvasCorners[i].x + (fullCanvasCorners3D[i].x - fullCanvasCorners[i].x) * transition,
+        y: fullCanvasCorners[i].y + (fullCanvasCorners3D[i].y - fullCanvasCorners[i].y) * transition,
+      };
+    }
+  }
+  ctx.beginPath();
+  ctx.moveTo(fullCanvasCorners[0].x, fullCanvasCorners[0].y);
+  ctx.lineTo(fullCanvasCorners[1].x, fullCanvasCorners[1].y);
+  ctx.lineTo(fullCanvasCorners[2].x, fullCanvasCorners[2].y);
+  ctx.lineTo(fullCanvasCorners[3].x, fullCanvasCorners[3].y);
+  ctx.closePath();
+  ctx.fill();
+
+  // Calculate average depth for lighting/shading (only in 3D)
+  var avgDepth = 0;
+  var lightFactor = 1.0;
+  if (is3D) {
+    var projectedCorners = [];
+    for (var i = 0; i < corners.length; i++) {
+      var corner = corners[i];
+      var projected = projectToCanvas3D(corner.x, corner.y, corner.z);
+      projectedCorners.push(projected);
+    }
+    avgDepth =
+      (projectedCorners[0].depth +
+       projectedCorners[1].depth +
+       projectedCorners[2].depth +
+       projectedCorners[3].depth) /
+      4;
+    lightFactor = Math.max(0.7, Math.min(1.0, 1.0 - avgDepth * 0.01));
+  }
+
+  // If image is uploaded, use it as texture on the ground plane
+  if (state.backgroundImage) {
+    ctx.globalAlpha = state.backgroundImageAlpha;
+    ctx.globalCompositeOperation = "source-over";
+
+    // Define projector lambda for ground plane (z=0)
     var projector = function (p) {
       var p2d = { x: mx(p.x), y: my(p.y) };
-      // Render at 0m (ground) but heatmap is calculated at 1.5m
-      var p3d = projectToCanvas3D(p.x, p.y, 0); // Display at z=0m (ground)
+      var p3d = projectToCanvas3D(p.x, p.y, 0); // Ground planes at z=0
       return {
         x: p2d.x + (p3d.x - p2d.x) * transition,
         y: p2d.y + (p3d.y - p2d.y) * transition,
       };
     };
 
-    // Draw pattern - the pattern is already calculated correctly accounting for antenna positions
-    // and azimuth, so we just need to map it correctly to world coordinates
+    // Use drawProjectedImage for both 2D and 3D views to ensure consistent rendering
     drawProjectedImage(
       ctx,
-      heatmapCanvas,
+      state.backgroundImage,
       0,
       0,
-      heatmapCanvas.width,
-      heatmapCanvas.height,
-      wP1,
-      wP2,
-      wP3,
-      wP4,
+      state.backgroundImage.width,
+      state.backgroundImage.height,
+      corners[0],
+      corners[1],
+      corners[2],
+      corners[3],
       projector
     );
-
-    ctx.restore();
   }
+  // Note: Grey background is already drawn above, so we don't need to draw it again here
 
-  // Fast 3D projection - converts 2D wall coordinates to 3D canvas coordinates
-  // worldX, worldY are the 2D coordinates (same as used in 2D mode)
-  // height is the wall height in meters
-  function projectToCanvas3D(worldX, worldY, height) {
-    // Convert 2D coordinates to 3D space (centered)
-    var x = worldX - state.w / 2;
-    var z = (worldY - state.h / 2); // Flip on y-axis
-    var y = height;
+  ctx.restore();
+}
 
-    // Apply camera rotation
-    var rotX = state.cameraRotationX;
-    var rotY = state.cameraRotationY;
-
-    // Rotate around Y axis (horizontal rotation)
-    var cosY = Math.cos(rotY);
-    var sinY = Math.sin(rotY);
-    var x1 = x * cosY - z * sinY;
-    var z1 = x * sinY + z * cosY;
-    var y1 = y;
-
-    // Rotate around X axis (vertical rotation)
-    var cosX = Math.cos(rotX);
-    var sinX = Math.sin(rotX);
-    var x2 = x1;
-    var y2 = y1 * cosX - z1 * sinX;
-    var z2 = y1 * sinX + z1 * cosX;
-
-    // Apply zoom
-    var zoom = state.cameraZoom;
-    x2 *= zoom;
-    y2 *= zoom;
-    z2 *= zoom;
-
-    // Perspective projection - preserve 2D orientation
-    // Coordinate mapping: worldX -> x (right), worldY -> z (depth), height -> y (up)
-    // With cameraRotationY = 0, X rotation tilts view down while preserving horizontal orientation
-    var distance = Math.max(z2 + 20, 1); // Camera distance
-    var fov = 500;
-    var scale = fov / distance;
-
-    // Apply camera pan (after rotation, before projection)
-    x2 += state.cameraPanX;
-    z2 += state.cameraPanY;
-
-    // Project to screen - preserve 2D directions
-    // x2 (worldX) maps directly to screen X (right)
-    // z2 (worldY after rotation) provides depth/base Y position
-    // y2 (height after rotation) adds vertical offset
-    var screenX = x2 * scale;
-    // Use z2 for base Y position (worldY), y2 adds vertical offset from height
-    // Negate screenY to fix y-axis mirroring for z2 (depth), but y2 (height) must go UP (negative screen Y)
-    // z2 increases "down" the screen (depth). y2 increases "up" in 3D.
-    // We want higher y2 to result in lower screenY.
-    // screenY = -z2*scale (base ground) - y2*scale (height offset)
-    var screenY = -(z2 * scale + y2 * scale);
-
-    // Map to canvas coordinates - preserve 2D coordinate system
-    var baseScale =
-      (Math.min(canvas.width, canvas.height) / Math.max(state.w, state.h)) *
-      0.8;
-    var canvasX =
-      pad() +
-      ((state.w / 2 + (screenX * baseScale) / fov) *
-        (canvas.width - 2 * pad())) /
-      state.w;
-    var canvasY =
-      pad() +
-      ((state.h / 2 + (screenY * baseScale) / fov) *
-        (canvas.height - 2 * pad())) /
-      state.h;
-
-    return { x: canvasX, y: canvasY, depth: z2 };
-  }
-
-  // Unproject screen coordinates back to world coordinates at a given height
-  // Uses a simpler approach: projects two nearby points and interpolates
-  function unprojectFromCanvas3D(screenX, screenY, targetHeight) {
-    // Use the inverse of the 2D mapping as a starting point
-    var worldX = invx(screenX);
-    var worldY = invy(screenY);
-
-    // In 3D view, we need to account for perspective
-    // For dragging, we can use a simpler approach: track the delta in screen space
-    // and convert it proportionally to world space
-    // But for now, use the 2D inverse mapping which should be close enough
-    // The main issue is axis inversion, which we'll handle in the drag handler
-
-    return { x: worldX, y: worldY };
-  }
-
-  /* AI COMMENT — state, elementTypes, wallTypes moved to Config.js */
-
-  // Get button text based on selected element type
-  function getAddButtonText(isDrawing) {
-    if (isDrawing) {
-      return "Drawing...";
-    }
-    var elementNames = {
-      wall: "Add Wall",
-      door: "Add Door",
-      doubleDoor: "Add Double Door",
-      window: "Add Window",
-      floorPlane: "Add Floor Plane",
-    };
-    return elementNames[state.selectedElementType] || "";
-  }
-
-  // Count how many walls of a specific type exist
-  function countWallsByType(wallType) {
-    var count = 0;
-    for (var i = 0; i < state.walls.length; i++) {
-      if (state.walls[i].type === wallType) {
-        count++;
-      }
-    }
-    return count;
-  }
-
-  // Generate wall name based on type
-  function generateWallName(wallType) {
-    var typeInfo = wallTypes[wallType];
-    var typeName = typeInfo ? typeInfo.name : "Wall";
-    var count = countWallsByType(wallType);
-    return typeName + "_" + (count + 1);
-  }
-
-  var canvas = document.getElementById("plot"),
-    ctx = canvas.getContext("2d");
-  // Enable image smoothing for smoother rendering
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
-
-  // Initialize after DOM and all scripts are loaded
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", function () {
-      if (typeof initHeatmapWorker === "function") initHeatmapWorker();
-      setTimeout(function() { if (typeof initThreeJS === "function") initThreeJS(); }, 100);
-    });
-  } else {
-    // DOM already loaded
-    if (typeof initHeatmapWorker === "function") initHeatmapWorker();
-    setTimeout(function() { if (typeof initThreeJS === "function") initThreeJS(); }, 100);
-  }
-
-    var _propModel = new PropagationModel25D({
-    frequency:      state.freq,
-    N:              state.N,
-    verticalFactor: 2.0,
-    shapeFactor:    3.0,
-    referenceOffset: 0.0
-    });
-
-    // Keep model config in sync with state changes
-    function _syncPropModel() {
-    _propModel.freq = state.freq;
-    _propModel.N    = state.N;
-    }
-
-    // wallsLoss  kept inline (app-specific door/window/thickness logic below)
-
-
-
-
-    function p525(ax, ay, x, y) {
-    _syncPropModel();
-    var d = Math.max(hypot(x - ax, y - ay), 0.5);
-    return _propModel.fspl(state.freq, d) +
-    _propModel.groundPlaneLoss({x:ax, y:ay}, {x:x, y:y}, state.groundPlane) +
-    _propModel.floorPlanesLoss({x:ax, y:ay}, {x:x, y:y}, state.floorPlanes);
-  }
-
-    function modelLoss(ax, ay, x, y) {
-    _syncPropModel();
-    
-    if (state.model === "p525") {
-      return p525(ax, ay, x, y);
-    }
-    
-    // Default: p25d
-    return _propModel.p25dLoss(
-      {x: ax, y: ay},
-      {x: x, y: y},
-      state.walls,
-      state.floorPlanes,
-      state.groundPlane,
-      state.elementTypes
-    );
-  }
-
-
-
-
-  // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Initialize standalone modules with dependencies ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
-  function getAngleDependentGain(ap, x, y) {
-    var effectiveAp = ap;
-    if (!ap.antennaPattern && state.antennaPatterns.length > 0) {
-      effectiveAp = Object.assign({}, ap, { antennaPattern: getDefaultAntennaPattern() });
-    }
-    return _propModel.getAngleDependentGain(effectiveAp, { x: x, y: y });
-  }
-
-  function rssi(tx, gt, L) {
-    return _propModel.rssi(tx, gt, L);
-  }
-
-  window.modelLoss             = modelLoss;
-  window.getAngleDependentGain = getAngleDependentGain;
-  window.rssi                  = rssi;
-
-  RadioCalculations.init({
-    state:                  state,
-    modelLoss:              modelLoss,
-    getAngleDependentGain:  getAngleDependentGain,
-    propModel:              _propModel
-  });
-
-  DataExportSystem.init({
-state: state
-  });
-
-
-  
-  void 0; // placeholder - original block commented out above
-  
-  // Render ground plane with uploaded image as texture
-  function renderGroundPlane(ctx, transition) {
-    if (!state.groundPlane || !state.groundPlane.enabled) return;
-
-    // Ground plane is always present, render it even without image
-    // Render in both 2D and 3D views
-    var is3D = transition > 0;
-
-    // Ground plane corners in world coordinates (at z=0, which is the floor)
-    // If we have an image with aspect ratio, preserve it by centering and fitting
-    var corners;
-    if (state.backgroundImage && state.backgroundImageAspectRatio && 
-        state.backgroundImageDisplayWidth && state.backgroundImageDisplayHeight) {
-      // Calculate centered position for the image
-      var offsetX = (state.w - state.backgroundImageDisplayWidth) / 2;
-      var offsetY = (state.h - state.backgroundImageDisplayHeight) / 2;
-      
-      corners = [
-        { x: offsetX, y: offsetY, z: 0 }, // Bottom-left
-        { x: offsetX + state.backgroundImageDisplayWidth, y: offsetY, z: 0 }, // Bottom-right
-        { x: offsetX + state.backgroundImageDisplayWidth, y: offsetY + state.backgroundImageDisplayHeight, z: 0 }, // Top-right
-        { x: offsetX, y: offsetY + state.backgroundImageDisplayHeight, z: 0 }, // Top-left
-      ];
-    } else {
-      // No image or no aspect ratio info - use full canvas
-      corners = [
-        { x: 0, y: 0, z: 0 }, // Bottom-left
-        { x: state.w, y: 0, z: 0 }, // Bottom-right
-        { x: state.w, y: state.h, z: 0 }, // Top-right
-        { x: 0, y: state.h, z: 0 }, // Top-left
-      ];
-    }
-
-    // Calculate corner positions based on view mode
-    var corners2D;
-    if (state.backgroundImage && state.backgroundImageAspectRatio && 
-        state.backgroundImageDisplayWidth && state.backgroundImageDisplayHeight) {
-      // Use adjusted corners for image
-      var offsetX = (state.w - state.backgroundImageDisplayWidth) / 2;
-      var offsetY = (state.h - state.backgroundImageDisplayHeight) / 2;
-      corners2D = [
-        { x: mx(offsetX), y: my(offsetY) },
-        { x: mx(offsetX + state.backgroundImageDisplayWidth), y: my(offsetY) },
-        { x: mx(offsetX + state.backgroundImageDisplayWidth), y: my(offsetY + state.backgroundImageDisplayHeight) },
-        { x: mx(offsetX), y: my(offsetY + state.backgroundImageDisplayHeight) },
-      ];
-    } else {
-      // Use full canvas corners
-      corners2D = [
-        { x: mx(0), y: my(0) },
-        { x: mx(state.w), y: my(0) },
-        { x: mx(state.w), y: my(state.h) },
-        { x: mx(0), y: my(state.h) },
-      ];
-    }
-
-    var finalCorners = [];
-
-    if (is3D) {
-      // Project corners to 3D
-      var projectedCorners = [];
-      for (var i = 0; i < corners.length; i++) {
-        var corner = corners[i];
-        var projected = projectToCanvas3D(corner.x, corner.y, corner.z);
-        projectedCorners.push(projected);
-      }
-
-      // Interpolate between 2D and 3D positions
-      for (var i = 0; i < corners.length; i++) {
-        finalCorners.push({
-          x:
-            corners2D[i].x +
-            (projectedCorners[i].x - corners2D[i].x) * transition,
-          y:
-            corners2D[i].y +
-            (projectedCorners[i].y - corners2D[i].y) * transition,
-        });
-      }
-    } else {
-      // Pure 2D view - use 2D corners directly
-      finalCorners = corners2D;
-    }
-
-    // Draw the ground plane with the background image
-    ctx.save();
-
-    // First, draw grey background for the entire canvas area
-    ctx.globalAlpha = 1.0;
-    ctx.fillStyle = "#b8b8b8"; // Grey background
-    var fullCanvasCorners = [
-      { x: mx(0), y: my(0) },
-      { x: mx(state.w), y: my(0) },
-      { x: mx(state.w), y: my(state.h) },
-      { x: mx(0), y: my(state.h) },
-    ];
-    var fullCanvasCorners3D = [];
-    if (is3D) {
-      var fullCorners = [
-        { x: 0, y: 0, z: 0 },
-        { x: state.w, y: 0, z: 0 },
-        { x: state.w, y: state.h, z: 0 },
-        { x: 0, y: state.h, z: 0 },
-      ];
-      for (var i = 0; i < fullCorners.length; i++) {
-        var projected = projectToCanvas3D(fullCorners[i].x, fullCorners[i].y, fullCorners[i].z);
-        fullCanvasCorners3D.push(projected);
-      }
-      // Interpolate between 2D and 3D positions
-      for (var i = 0; i < fullCanvasCorners.length; i++) {
-        fullCanvasCorners[i] = {
-          x: fullCanvasCorners[i].x + (fullCanvasCorners3D[i].x - fullCanvasCorners[i].x) * transition,
-          y: fullCanvasCorners[i].y + (fullCanvasCorners3D[i].y - fullCanvasCorners[i].y) * transition,
-        };
-      }
-    }
-    ctx.beginPath();
-    ctx.moveTo(fullCanvasCorners[0].x, fullCanvasCorners[0].y);
-    ctx.lineTo(fullCanvasCorners[1].x, fullCanvasCorners[1].y);
-    ctx.lineTo(fullCanvasCorners[2].x, fullCanvasCorners[2].y);
-    ctx.lineTo(fullCanvasCorners[3].x, fullCanvasCorners[3].y);
-    ctx.closePath();
-    ctx.fill();
-
-    // Calculate average depth for lighting/shading (only in 3D)
-    var avgDepth = 0;
-    var lightFactor = 1.0;
-    if (is3D) {
-      var projectedCorners = [];
-      for (var i = 0; i < corners.length; i++) {
-        var corner = corners[i];
-        var projected = projectToCanvas3D(corner.x, corner.y, corner.z);
-        projectedCorners.push(projected);
-      }
-      avgDepth =
-        (projectedCorners[0].depth +
-          projectedCorners[1].depth +
-          projectedCorners[2].depth +
-          projectedCorners[3].depth) /
-        4;
-      lightFactor = Math.max(0.7, Math.min(1.0, 1.0 - avgDepth * 0.01));
-    }
-
-    // If image is uploaded, use it as texture on the ground plane
-    if (state.backgroundImage) {
-      ctx.globalAlpha = state.backgroundImageAlpha;
-      ctx.globalCompositeOperation = "source-over";
-
-      // Define projector lambda for ground plane (z=0)
-      var projector = function (p) {
-        var p2d = { x: mx(p.x), y: my(p.y) };
-        var p3d = projectToCanvas3D(p.x, p.y, 0); // Ground planes at z=0
-        return {
-          x: p2d.x + (p3d.x - p2d.x) * transition,
-          y: p2d.y + (p3d.y - p2d.y) * transition,
-        };
-      };
-
-      // Use drawProjectedImage for both 2D and 3D views to ensure consistent rendering
-      drawProjectedImage(
-        ctx,
-        state.backgroundImage,
-        0,
-        0,
-        state.backgroundImage.width,
-        state.backgroundImage.height,
-        corners[0],
-        corners[1],
-        corners[2],
-        corners[3],
-        projector
+function draw() {
+  // Smooth transition between 2D and 3D
+  var needsRedraw = false;
+  if (state.viewMode !== state.viewModeTarget) {
+    // Animate transition
+    var transitionSpeed = 0.08; // Slower for smoother transition
+    if (state.viewModeTarget === "3d") {
+      state.viewModeTransition = Math.min(
+        1,
+        state.viewModeTransition + transitionSpeed
       );
+      if (state.viewModeTransition >= 1) {
+        state.viewMode = "3d";
+        state.viewModeTransition = 1;
+      }
+      needsRedraw = true;
+    } else {
+      state.viewModeTransition = Math.max(
+        0,
+        state.viewModeTransition - transitionSpeed
+      );
+      if (state.viewModeTransition <= 0) {
+        state.viewMode = "2d";
+        state.viewModeTransition = 0;
+      }
+      needsRedraw = true;
     }
-    // Note: Grey background is already drawn above, so we don't need to draw it again here
-
-    ctx.restore();
   }
 
-  function draw() {
-    // Smooth transition between 2D and 3D
-    var needsRedraw = false;
-    if (state.viewMode !== state.viewModeTarget) {
-      // Animate transition
-      var transitionSpeed = 0.08; // Slower for smoother transition
-      if (state.viewModeTarget === "3d") {
-        state.viewModeTransition = Math.min(
-          1,
-          state.viewModeTransition + transitionSpeed
-        );
-        if (state.viewModeTransition >= 1) {
-          state.viewMode = "3d";
-          state.viewModeTransition = 1;
+  // Update Three.js camera if in 3D mode
+  var transition = state.viewModeTransition;
+  if (transition > 0 && state.useThreeJS && state.threeRenderer) {
+    updateThreeJSCamera();
+    // Update pointer-events based on view mode
+    updateThreeCanvasPointerEvents();
+  } else {
+    // Ensure pointer-events is 'none' in 2D mode
+    updateThreeCanvasPointerEvents();
+  }
+
+  // Continue animation if transitioning (will be called again at end of function)
+
+  // Generate color map for best view mode to ensure distinct colors for each AP
+  if (state.view === "best") {
+    state.apColorMap = getAPColorMap(state.aps);
+  } else {
+    state.apColorMap = null; // Clear color map for other views
+  }
+
+  // Hard safety: while in antenna placement mode, always force the AP detail sidebar closed
+  // so no other code path can leave it visible during placement.
+  if (state.addingAP) {
+    state.selectedApForDetail = null;
+    var forcedSidebar = document.getElementById("apDetailSidebar");
+    if (forcedSidebar) {
+      forcedSidebar.classList.remove("visible");
+    }
+  }
+
+  // Set cursor based on current action
+  if (
+    state.addingWall ||
+    state.addingAP ||
+    state.addingFloorPlane ||
+    state.isCalibrating
+  ) {
+    canvas.style.cursor = "crosshair";
+  } else if (state.viewMode === "3d" || state.viewModeTransition > 0) {
+    if (state.isPanning3D) {
+      canvas.style.cursor = "move";
+    } else if (state.isRotating3D) {
+      canvas.style.cursor = "grabbing";
+    } else {
+      canvas.style.cursor = "grab";
+    }
+  } else {
+    canvas.style.cursor = "default";
+  }
+
+  var parent = canvas.parentNode;
+  canvas.width = parent.clientWidth - 4;
+  canvas.height = parent.clientHeight - 4;
+
+  var unit = "dBm",
+    modeName = "RSSI",
+    numericLegend = true;
+  if (state.view === "snr") {
+    unit = "dB";
+    modeName = "SNR";
+  }
+  if (state.view === "sinr") {
+    unit = "dB";
+    modeName = "SINR";
+  }
+  if (state.view === "cci") {
+    unit = "";
+    modeName = "CCI Count";
+    // Use a categorical legend for discrete interference counts
+    numericLegend = false;
+  }
+  if (state.view === "thr") {
+    unit = "Mbps";
+    modeName = "Throughput";
+  }
+  if (state.view === "best") {
+    unit = "";
+    modeName = "Best Server";
+    numericLegend = false;
+  }
+  if (state.view === "servch") {
+    unit = "";
+    modeName = "Serving Channel";
+    numericLegend = false;
+  }
+
+  document.getElementById("legendUnit").textContent = unit;
+  document.getElementById("modeName").textContent = modeName;
+  document.getElementById("legendBar").style.display = numericLegend ? "block" : "none";
+  document.getElementById("legendMin").style.display = numericLegend ? "inline" : "none";
+  document.getElementById("legendMax").style.display = numericLegend ? "inline" : "none";
+
+  // Only generate and render heatmap if visualization is enabled
+  var off = null;
+  if (state.showVisualization) {
+    // During antenna dragging: recalculate heatmap in real-time at optimized resolution for smooth movement
+    // When not dragging: use cache if available, or generate at full resolution
+    if (state.isDraggingAntenna) {
+      // OPTIMIZATION: Balanced resolution + simplified calculations during drag for speed
+      if (state.aps.length > 0) {
+        // Use 0.75x resolution multiplier for good balance between speed and quality
+        var resolutionMultiplier = 1.6;
+        // Use normal grid step size for maximum detail during drag
+        var dragRes = state.res * 8; // Use normal grid cells for better detail
+        var baseCols = Math.max(20, Math.floor(state.w / dragRes));
+        var baseRows = Math.max(14, Math.floor(state.h / dragRes));
+        var cols = Math.floor(baseCols * resolutionMultiplier);
+        var rows = Math.floor(baseRows * resolutionMultiplier);
+        var dx = state.w / cols,
+          dy = state.h / rows;
+        var img = ctx.createImageData(cols, rows);
+
+        // Cache selectedAP lookup (only once, not per pixel)
+        var selectedAP = null,
+          i;
+        for (i = 0; i < state.aps.length; i++) {
+          if (state.aps[i].id === state.selectedApId) {
+            selectedAP = state.aps[i];
+            break;
+          }
         }
-        needsRedraw = true;
-      } else {
-        state.viewModeTransition = Math.max(
-          0,
-          state.viewModeTransition - transitionSpeed
-        );
-        if (state.viewModeTransition <= 0) {
-          state.viewMode = "2d";
-          state.viewModeTransition = 0;
+        var useOnlySelected = state.highlight && selectedAP && selectedAP.enabled !== false;
+
+        // Cache noise value
+        var noiseVal = state.noise;
+
+        // Simplified gain function for drag (use static gain, skip complex pattern calculations)
+        function getSimpleGain(ap) {
+          return ap.gt || 0; // Just use static gain during drag for speed
         }
-        needsRedraw = true;
-      }
-    }
 
-    // Update Three.js camera if in 3D mode
-    var transition = state.viewModeTransition;
-    if (transition > 0 && state.useThreeJS && state.threeRenderer) {
-      updateThreeJSCamera();
-      // Update pointer-events based on view mode
-      updateThreeCanvasPointerEvents();
-    } else {
-      // Ensure pointer-events is 'none' in 2D mode
-      updateThreeCanvasPointerEvents();
-    }
+        // Optimized loop - skip CSV, skip complex views during drag
+        var isRSSI = state.view === "rssi";
+        var isSNR = state.view === "snr";
+        var isSINR = state.view === "sinr";
+        var isBest = state.view === "best";
+        var isServCh = state.view === "servch";
+        var isCCI = state.view === "cci";
+        var isThr = state.view === "thr";
 
-    // Continue animation if transitioning (will be called again at end of function)
-
-    // Generate color map for best view mode to ensure distinct colors for each AP
-    if (state.view === "best") {
-      state.apColorMap = getAPColorMap(state.aps);
-    } else {
-      state.apColorMap = null; // Clear color map for other views
-    }
-
-    // Hard safety: while in antenna placement mode, always force the AP detail sidebar closed
-    // so no other code path can leave it visible during placement.
-    if (state.addingAP) {
-      state.selectedApForDetail = null;
-      var forcedSidebar = document.getElementById("apDetailSidebar");
-      if (forcedSidebar) {
-        forcedSidebar.classList.remove("visible");
-      }
-    }
-
-    // Set cursor based on current action
-    if (
-      state.addingWall ||
-      state.addingAP ||
-      state.addingFloorPlane ||
-      state.isCalibrating
-    ) {
-      canvas.style.cursor = "crosshair";
-    } else if (state.viewMode === "3d" || state.viewModeTransition > 0) {
-      if (state.isPanning3D) {
-        canvas.style.cursor = "move";
-      } else if (state.isRotating3D) {
-        canvas.style.cursor = "grabbing";
-      } else {
-        canvas.style.cursor = "grab";
-      }
-    } else {
-      canvas.style.cursor = "default";
-    }
-
-    var parent = canvas.parentNode;
-    canvas.width = parent.clientWidth - 4;
-    canvas.height = parent.clientHeight - 4;
-
-    var unit = "dBm",
-      modeName = "RSSI",
-      numericLegend = true;
-    if (state.view === "snr") {
-      unit = "dB";
-      modeName = "SNR";
-    }
-    if (state.view === "sinr") {
-      unit = "dB";
-      modeName = "SINR";
-    }
-    if (state.view === "cci") {
-      unit = "";
-      modeName = "CCI Count";
-      // Use a categorical legend for discrete interference counts
-      numericLegend = false;
-    }
-    if (state.view === "thr") {
-      unit = "Mbps";
-      modeName = "Throughput";
-    }
-    if (state.view === "best") {
-      unit = "";
-      modeName = "Best Server";
-      numericLegend = false;
-    }
-    if (state.view === "servch") {
-      unit = "";
-      modeName = "Serving Channel";
-      numericLegend = false;
-    }
-
-    document.getElementById("legendUnit").textContent = unit;
-    document.getElementById("modeName").textContent = modeName;
-    document.getElementById("legendBar").style.display = numericLegend ? "block" : "none";
-    document.getElementById("legendMin").style.display = numericLegend ? "inline" : "none";
-    document.getElementById("legendMax").style.display = numericLegend ? "inline" : "none";
-
-    // Only generate and render heatmap if visualization is enabled
-    var off = null;
-    if (state.showVisualization) {
-      // During antenna dragging: recalculate heatmap in real-time at optimized resolution for smooth movement
-      // When not dragging: use cache if available, or generate at full resolution
-      if (state.isDraggingAntenna) {
-        // OPTIMIZATION: Balanced resolution + simplified calculations during drag for speed
-        if (state.aps.length > 0) {
-          // Use 0.75x resolution multiplier for good balance between speed and quality
-          var resolutionMultiplier = 1.6;
-          // Use normal grid step size for maximum detail during drag
-          var dragRes = state.res * 8; // Use normal grid cells for better detail
-          var baseCols = Math.max(20, Math.floor(state.w / dragRes));
-          var baseRows = Math.max(14, Math.floor(state.h / dragRes));
-          var cols = Math.floor(baseCols * resolutionMultiplier);
-          var rows = Math.floor(baseRows * resolutionMultiplier);
-          var dx = state.w / cols,
-            dy = state.h / rows;
-          var img = ctx.createImageData(cols, rows);
-
-          // Cache selectedAP lookup (only once, not per pixel)
-          var selectedAP = null,
-            i;
-          for (i = 0; i < state.aps.length; i++) {
-            if (state.aps[i].id === state.selectedApId) {
-              selectedAP = state.aps[i];
-              break;
-            }
-          }
-          var useOnlySelected = state.highlight && selectedAP && selectedAP.enabled !== false;
-
-          // Cache noise value
-          var noiseVal = state.noise;
-
-          // Simplified gain function for drag (use static gain, skip complex pattern calculations)
-          function getSimpleGain(ap) {
-            return ap.gt || 0; // Just use static gain during drag for speed
-          }
-
-          // Optimized loop - skip CSV, skip complex views during drag
-          var isRSSI = state.view === "rssi";
-          var isSNR = state.view === "snr";
-          var isSINR = state.view === "sinr";
-          var isBest = state.view === "best";
-          var isServCh = state.view === "servch";
-          var isCCI = state.view === "cci";
-          var isThr = state.view === "thr";
-
-          // Support RSSI, SNR, SINR, Best Server, Serving Channel, CCI, and Throughput during drag (with simplified calculations)
-          if (!isRSSI && !isSNR && !isSINR && !isBest && !isServCh && !isCCI && !isThr) {
-            // Fallback: don't use cached heatmap during drag (it has old positions) - set to null to prevent deformed pattern flash
-            // The heatmap will be regenerated when drag ends
-            off = null;
-          } else {
-            // Simplified best AP calculation function for dragging (uses getSimpleGain)
-            function bestApAtSimple(x, y) {
-              var i, best = -1e9, ap = null;
-              for (i = 0; i < state.aps.length; i++) {
-                var a = state.aps[i];
-                if (a.enabled === false) continue;
-                var pr = rssi(
-                  a.tx,
-                  getSimpleGain(a),
-                  modelLoss(a.x, a.y, x, y)
-                );
-                if (pr > best) {
-                  best = pr;
-                  ap = a;
-                }
-              }
-              return { ap: ap, rssiDbm: best };
-            }
-
-            // CCI calculation function for dragging (uses getAngleDependentGain for accuracy)
-            function cciAtSimple(x, y, servingAp) {
-              if (!servingAp) return -200;
-              var i, sumLin = 0;
-              for (i = 0; i < state.aps.length; i++) {
-                var ap = state.aps[i];
-                if (ap.enabled === false) continue;
-                if (ap === servingAp) continue;
-                if (ap.ch !== servingAp.ch) continue;
-                var p = _propModel.rssi(
-                  ap.tx,
-                  _propModel.getAngleDependentGain(ap, {x: x, y: y}),
-                  modelLoss(ap.x, ap.y, x, y)
-                );
-                sumLin += dbmToLin(p);
-              }
-              if (sumLin <= 0) return -200;
-              return linToDbm(sumLin);
-            }
-
-            for (var r = 0; r < rows; r++) {
-              var y = (r + 0.5) * dy;
-              for (var c = 0; c < cols; c++) {
-                var x = (c + 0.5) * dx;
-                var idx = 4 * (r * cols + c);
-
-                // SKIP CSV interpolation during drag - too expensive
-                // Use simplified calculations for CCI/Throughput during drag
-
-                if (isBest || isServCh) {
-                  // Best Server and Serving Channel use full bestApAt with angle-dependent gain
-                  var best = useOnlySelected ? { ap: selectedAP, rssiDbm: 0 } : bestApAt(x, y);
-                  if (useOnlySelected && selectedAP) {
-                    // Use angle-dependent gain calculation for accuracy
-                    best.rssiDbm = _propModel.rssi(
-                      selectedAP.tx,
-                      _propModel.getAngleDependentGain(selectedAP, {x: x, y: y}),
-                      modelLoss(selectedAP.x, selectedAP.y, x, y)
-                    );
-                  }
-
-                  var col;
-                  if (isBest) {
-                    col = best.ap ? colorForAP(best.ap.id) : [200, 200, 200, 230];
-                  } else {
-                    var ch = best.ap ? best.ap.ch : 0;
-                    col = colorForChannel(ch);
-                  }
-                  img.data[idx] = col[0];
-                  img.data[idx + 1] = col[1];
-                  img.data[idx + 2] = col[2];
-                  img.data[idx + 3] = col[3];
-                } else {
-                  // RSSI, SNR, CCI, or Throughput view
-                  // All views use bestApAt with angle-dependent gain for accuracy
-                  var bestN = useOnlySelected ? { ap: selectedAP, rssiDbm: 0 } : bestApAt(x, y);
-                  if (useOnlySelected && selectedAP) {
-                    bestN.rssiDbm = _propModel.rssi(
-                      selectedAP.tx,
-                      _propModel.getAngleDependentGain(selectedAP, {x: x, y: y}),
-                      modelLoss(selectedAP.x, selectedAP.y, x, y)
-                    );
-                  }
-
-                  var value;
-                  if (isSNR) {
-                    value = bestN.rssiDbm - noiseVal;
-                  } else if (isSINR) {
-                    if (!bestN.ap) {
-                      value = -Infinity;
-                    } else {
-                      var IdbmDrag = cciAtSimple(x, y, bestN.ap);
-                      value = sinrAt(bestN.rssiDbm, IdbmDrag);
-                    }
-                  } else if (isCCI) {
-                    // Count interfering antennas (power > -85, same channel as best server)
-                    value = bestN.ap ? countInterferingAntennas(x, y, bestN.ap) : 0;
-                  } else if (isThr) {
-                    if (!bestN.ap) {
-                      value = 0; // No AP, no throughput
-                    } else {
-                      var Idbm2 = cciAtSimple(x, y, bestN.ap);
-                      var sinr = sinrAt(bestN.rssiDbm, Idbm2);
-                      value = throughputFromSinr(sinr);
-                    }
-                  } else {
-                    value = bestN.rssiDbm;
-                  }
-
-                  var col;
-                  if (isCCI) {
-                    // Use discrete color map for count values
-                    col = colorForCount(value);
-                  } else {
-                    col = colorNumeric(value);
-                  }
-                  img.data[idx] = col[0];
-                  img.data[idx + 1] = col[1];
-                  img.data[idx + 2] = col[2];
-                  img.data[idx + 3] = col[3];
-                }
-              }
-            }
-
-            // Create canvas and render - use medium quality smoothing for good balance
-            off = document.createElement("canvas");
-            off.width = cols;
-            off.height = rows;
-            var offCtx = off.getContext("2d");
-            offCtx.imageSmoothingEnabled = true;
-            offCtx.imageSmoothingQuality = "medium"; // Medium quality for good balance
-            offCtx.putImageData(img, 0, 0);
-
-            // Don't cache during drag - we want real-time updates
-            // Cache will be updated when drag ends
-          }
-        } else {
-          // No antennas yet, no need to generate heatmap
+        // Support RSSI, SNR, SINR, Best Server, Serving Channel, CCI, and Throughput during drag (with simplified calculations)
+        if (!isRSSI && !isSNR && !isSINR && !isBest && !isServCh && !isCCI && !isThr) {
+          // Fallback: don't use cached heatmap during drag (it has old positions) - set to null to prevent deformed pattern flash
+          // The heatmap will be regenerated when drag ends
           off = null;
-        }
-      } else if (state.cachedHeatmap) {
-        // Use cached heatmap if available (when not dragging)
-        off = state.cachedHeatmap;
-        // If update is pending, it will replace the cache when done
-      } else if (!state.heatmapUpdatePending) {
-        // No cache exists and no update pending - generate synchronously for initial display
-        // This ensures the heatmap shows immediately on first load
-        // Generate if we have antennas OR CSV coverage data
-        if (
-          state.aps.length > 0 ||
-          (state.csvCoverageData && state.csvCoverageGrid)
-        ) {
-          var resolutionMultiplier = 1.5; // High quality rendering
-          var baseCols = Math.max(20, Math.floor(state.w / state.res));
-          var baseRows = Math.max(14, Math.floor(state.h / state.res));
-          var cols = baseCols * resolutionMultiplier;
-          var rows = baseRows * resolutionMultiplier;
-          var dx = state.w / cols,
-            dy = state.h / rows;
-          var img = ctx.createImageData(cols, rows);
-
-          var selectedAP = null,
-            i;
-          for (i = 0; i < state.aps.length; i++) {
-            if (state.aps[i].id === state.selectedApId) {
-              selectedAP = state.aps[i];
-              break;
+        } else {
+          // Simplified best AP calculation function for dragging (uses getSimpleGain)
+          function bestApAtSimple(x, y) {
+            var i, best = -1e9, ap = null;
+            for (i = 0; i < state.aps.length; i++) {
+              var a = state.aps[i];
+              if (a.enabled === false) continue;
+              var pr = rssi(
+                a.tx,
+                getSimpleGain(a),
+                modelLoss(a.x, a.y, x, y)
+              );
+              if (pr > best) {
+                best = pr;
+                ap = a;
+              }
             }
+            return { ap: ap, rssiDbm: best };
           }
-          var useOnlySelected = state.highlight && selectedAP && selectedAP.enabled !== false;
+
+          // CCI calculation function for dragging (uses getAngleDependentGain for accuracy)
+          function cciAtSimple(x, y, servingAp) {
+            if (!servingAp) return -200;
+            var i, sumLin = 0;
+            for (i = 0; i < state.aps.length; i++) {
+              var ap = state.aps[i];
+              if (ap.enabled === false) continue;
+              if (ap === servingAp) continue;
+              if (ap.ch !== servingAp.ch) continue;
+              var p = _propModel.rssi(
+                ap.tx,
+                _propModel.getAngleDependentGain(ap, {x: x, y: y}),
+                modelLoss(ap.x, ap.y, x, y)
+              );
+              sumLin += dbmToLin(p);
+            }
+            if (sumLin <= 0) return -200;
+            return linToDbm(sumLin);
+          }
 
           for (var r = 0; r < rows; r++) {
             var y = (r + 0.5) * dy;
@@ -1058,317 +927,406 @@ state: state
               var x = (c + 0.5) * dx;
               var idx = 4 * (r * cols + c);
 
-              // YOUSEF COMMENT CSV
-              // // Check if CSV coverage data is available and view is RSSI
-              // if (
-              //   state.csvCoverageData &&
-              //   state.csvCoverageGrid &&
-              //   state.view === "rssi"
-              // ) {
-              //   var csvValue = interpolateRsrpFromCsv(x, y);
-              //   if (csvValue !== null && !isNaN(csvValue)) {
-              //     var col = colorNumeric(csvValue);
-              //     img.data[idx] = col[0];
-              //     img.data[idx + 1] = col[1];
-              //     img.data[idx + 2] = col[2];
-              //     img.data[idx + 3] = col[3];
-              //     continue;
-              //   } else {
-              //     img.data[idx] = 0;
-              //     img.data[idx + 1] = 0;
-              //     img.data[idx + 2] = 0;
-              //     img.data[idx + 3] = 0;
-              //     continue;
-              //   }
-              // }
+              // SKIP CSV interpolation during drag - too expensive
+              // Use simplified calculations for CCI/Throughput during drag
 
-              if (state.view === "best") {
-                var best = bestApAt(x, y);
-                if (useOnlySelected) {
-                  best.ap = selectedAP;
-                  best.rssiDbm = rssi(
+              if (isBest || isServCh) {
+                // Best Server and Serving Channel use full bestApAt with angle-dependent gain
+                var best = useOnlySelected ? { ap: selectedAP, rssiDbm: 0 } : bestApAt(x, y);
+                if (useOnlySelected && selectedAP) {
+                  // Use angle-dependent gain calculation for accuracy
+                  best.rssiDbm = _propModel.rssi(
                     selectedAP.tx,
-                    getAngleDependentGain(selectedAP, x, y),
+                    _propModel.getAngleDependentGain(selectedAP, {x: x, y: y}),
                     modelLoss(selectedAP.x, selectedAP.y, x, y)
                   );
                 }
-                var colAP = best.ap
-                  ? colorForAP(best.ap.id)
-                  : [200, 200, 200, 230];
-                img.data[idx] = colAP[0];
-                img.data[idx + 1] = colAP[1];
-                img.data[idx + 2] = colAP[2];
-                img.data[idx + 3] = colAP[3];
-                continue;
-              }
-              if (state.view === "servch") {
-                var best2 = bestApAt(x, y);
-                if (useOnlySelected) {
-                  best2.ap = selectedAP;
-                  best2.rssiDbm = rssi(
+
+                var col;
+                if (isBest) {
+                  col = best.ap ? colorForAP(best.ap.id) : [200, 200, 200, 230];
+                } else {
+                  var ch = best.ap ? best.ap.ch : 0;
+                  col = colorForChannel(ch);
+                }
+                img.data[idx] = col[0];
+                img.data[idx + 1] = col[1];
+                img.data[idx + 2] = col[2];
+                img.data[idx + 3] = col[3];
+              } else {
+                // RSSI, SNR, CCI, or Throughput view
+                // All views use bestApAt with angle-dependent gain for accuracy
+                var bestN = useOnlySelected ? { ap: selectedAP, rssiDbm: 0 } : bestApAt(x, y);
+                if (useOnlySelected && selectedAP) {
+                  bestN.rssiDbm = _propModel.rssi(
                     selectedAP.tx,
-                    getAngleDependentGain(selectedAP, x, y),
+                    _propModel.getAngleDependentGain(selectedAP, {x: x, y: y}),
                     modelLoss(selectedAP.x, selectedAP.y, x, y)
                   );
                 }
-                var ch = best2.ap ? best2.ap.ch : 0;
-                var colCH = colorForChannel(ch);
-                img.data[idx] = colCH[0];
-                img.data[idx + 1] = colCH[1];
-                img.data[idx + 2] = colCH[2];
-                img.data[idx + 3] = colCH[3];
-                continue;
-              }
 
-              var bestN = bestApAt(x, y);
-              if (useOnlySelected) {
-                bestN.ap = selectedAP;
-                bestN.rssiDbm = rssi(
-                  selectedAP.tx,
-                  getAngleDependentGain(selectedAP, x, y),
-                  modelLoss(selectedAP.x, selectedAP.y, x, y)
-                );
-              }
+                var value;
+                if (isSNR) {
+                  value = bestN.rssiDbm - noiseVal;
+                } else if (isSINR) {
+                  if (!bestN.ap) {
+                    value = -Infinity;
+                  } else {
+                    var IdbmDrag = cciAtSimple(x, y, bestN.ap);
+                    value = sinrAt(bestN.rssiDbm, IdbmDrag);
+                  }
+                } else if (isCCI) {
+                  // Count interfering antennas (power > -85, same channel as best server)
+                  value = bestN.ap ? countInterferingAntennas(x, y, bestN.ap) : 0;
+                } else if (isThr) {
+                  if (!bestN.ap) {
+                    value = 0; // No AP, no throughput
+                  } else {
+                    var Idbm2 = cciAtSimple(x, y, bestN.ap);
+                    var sinr = sinrAt(bestN.rssiDbm, Idbm2);
+                    value = throughputFromSinr(sinr);
+                  }
+                } else {
+                  value = bestN.rssiDbm;
+                }
 
-              var value;
-              if (state.view === "rssi") {
-                value = bestN.rssiDbm;
-              } else if (state.view === "snr") {
-                value = bestN.rssiDbm - state.noise;
-              } else if (state.view === "sinr") {
-                var IdbmSinr = cciAt(x, y, bestN.ap);
-                value = sinrAt(bestN.rssiDbm, IdbmSinr);
-              } else if (state.view === "cci") {
-                // Count interfering antennas (power > -85, same channel as best server)
-                value = countInterferingAntennas(x, y, bestN.ap);
-              } else if (state.view === "thr") {
-                var Idbm2 = cciAt(x, y, bestN.ap);
-                var sinr = sinrAt(bestN.rssiDbm, Idbm2);
-                value = throughputFromSinr(sinr);
-              } else {
-                value = bestN.rssiDbm;
+                var col;
+                if (isCCI) {
+                  // Use discrete color map for count values
+                  col = colorForCount(value);
+                } else {
+                  col = colorNumeric(value);
+                }
+                img.data[idx] = col[0];
+                img.data[idx + 1] = col[1];
+                img.data[idx + 2] = col[2];
+                img.data[idx + 3] = col[3];
               }
-
-              var col;
-              if (state.view === "cci") {
-                // Use discrete color map for count values
-                col = colorForCount(value);
-              } else {
-                col = colorNumeric(value);
-              }
-              img.data[idx] = col[0];
-              img.data[idx + 1] = col[1];
-              img.data[idx + 2] = col[2];
-              img.data[idx + 3] = col[3];
             }
           }
 
+          // Create canvas and render - use medium quality smoothing for good balance
           off = document.createElement("canvas");
           off.width = cols;
           off.height = rows;
           var offCtx = off.getContext("2d");
           offCtx.imageSmoothingEnabled = true;
-          offCtx.imageSmoothingQuality = "high";
+          offCtx.imageSmoothingQuality = "medium"; // Medium quality for good balance
           offCtx.putImageData(img, 0, 0);
 
-          state.cachedHeatmap = off;
-          state.cachedHeatmapAntennaCount = state.aps.length; // Store antenna count for validation
-        } else {
-          // No antennas yet, no need to generate heatmap
-          off = null;
-        }
-      } else if (state.heatmapUpdatePending) {
-        // Update is pending - use cached heatmap ONLY if it's still valid (same antenna count)
-        // This prevents disappearing while keeping the display smooth during updates
-        // If antenna count changed (e.g., deletion), cache is invalid and we show nothing
-        if (state.cachedHeatmap && state.cachedHeatmapAntennaCount === state.aps.length) {
-          // Cache is still valid - use it to prevent disappearing
-          off = state.cachedHeatmap;
-        } else {
-          // Cache is invalid or doesn't exist - clear it and show nothing
-          if (state.cachedHeatmap && state.cachedHeatmapAntennaCount !== state.aps.length) {
-            state.cachedHeatmap = null;
-            state.cachedHeatmapAntennaCount = 0;
-          }
-          off = null;
+          // Don't cache during drag - we want real-time updates
+          // Cache will be updated when drag ends
         }
       } else {
-        // No update pending - use cached heatmap ONLY if it's valid
-        // Validate cached heatmap matches current antenna count
-        if (state.cachedHeatmap && state.cachedHeatmapAntennaCount === state.aps.length) {
-          off = state.cachedHeatmap;
-        } else {
-          // Cached heatmap is invalid - clear it immediately
-          if (state.cachedHeatmap && state.cachedHeatmapAntennaCount !== state.aps.length) {
-            state.cachedHeatmap = null;
-            state.cachedHeatmapAntennaCount = 0;
-          }
-          off = null;
-          
-          // If no valid cache and we have antennas, trigger async generation
-          if (
-            !state.isDraggingAntenna &&
-            (state.aps.length > 0 ||
-              (state.csvCoverageData && state.csvCoverageGrid))
-          ) {
-            // No cache and no update pending - fallback: trigger async generation
-            // This handles cases where sync generation didn't run (e.g., no antennas yet, or edge cases)
-            generateHeatmapAsync(null, true); // Start with low-res for fast initial display
+        // No antennas yet, no need to generate heatmap
+        off = null;
+      }
+    } else if (state.cachedHeatmap) {
+      // Use cached heatmap if available (when not dragging)
+      off = state.cachedHeatmap;
+      // If update is pending, it will replace the cache when done
+    } else if (!state.heatmapUpdatePending) {
+      // No cache exists and no update pending - generate synchronously for initial display
+      // This ensures the heatmap shows immediately on first load
+      // Generate if we have antennas OR CSV coverage data
+      if (
+        state.aps.length > 0 ||
+        (state.csvCoverageData && state.csvCoverageGrid)
+      ) {
+        var resolutionMultiplier = 1.5; // High quality rendering
+        var baseCols = Math.max(20, Math.floor(state.w / state.res));
+        var baseRows = Math.max(14, Math.floor(state.h / state.res));
+        var cols = baseCols * resolutionMultiplier;
+        var rows = baseRows * resolutionMultiplier;
+        var dx = state.w / cols,
+          dy = state.h / rows;
+        var img = ctx.createImageData(cols, rows);
+
+        var selectedAP = null,
+          i;
+        for (i = 0; i < state.aps.length; i++) {
+          if (state.aps[i].id === state.selectedApId) {
+            selectedAP = state.aps[i];
+            break;
           }
         }
-      }
-    }
+        var useOnlySelected = state.highlight && selectedAP && selectedAP.enabled !== false;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (var r = 0; r < rows; r++) {
+          var y = (r + 0.5) * dy;
+          for (var c = 0; c < cols; c++) {
+            var x = (c + 0.5) * dx;
+            var idx = 4 * (r * cols + c);
 
-    // XD View Isolation: If in XD tab, we will force a 2D transition for ground plane rendering below.
-    // (Early return removed to allow UI updates and animation cycle to continue)
+            // YOUSEF COMMENT CSV
+            // // Check if CSV coverage data is available and view is RSSI
+            // if (
+            //   state.csvCoverageData &&
+            //   state.csvCoverageGrid &&
+            //   state.view === "rssi"
+            // ) {
+            //   var csvValue = interpolateRsrpFromCsv(x, y);
+            //   if (csvValue !== null && !isNaN(csvValue)) {
+            //     var col = colorNumeric(csvValue);
+            //     img.data[idx] = col[0];
+            //     img.data[idx + 1] = col[1];
+            //     img.data[idx + 2] = col[2];
+            //     img.data[idx + 3] = col[3];
+            //     continue;
+            //   } else {
+            //     img.data[idx] = 0;
+            //     img.data[idx + 1] = 0;
+            //     img.data[idx + 2] = 0;
+            //     img.data[idx + 3] = 0;
+            //     continue;
+            //   }
+            // }
 
-    // Render ground plane (always present, with image as texture if uploaded)
-    // The image is ONLY used as texture on the ground plane, not as a 2D background
-    var transition = state.activeSection === "xd" ? 0 : state.viewModeTransition;
-    var useThree3D =
-      transition > 0 &&
-      state.useThreeJS &&
-      state.threeRenderer &&
-      state.threeScene;
+            if (state.view === "best") {
+              var best = bestApAt(x, y);
+              if (useOnlySelected) {
+                best.ap = selectedAP;
+                best.rssiDbm = rssi(
+                  selectedAP.tx,
+                  getAngleDependentGain(selectedAP, x, y),
+                  modelLoss(selectedAP.x, selectedAP.y, x, y)
+                );
+              }
+              var colAP = best.ap
+                ? colorForAP(best.ap.id)
+                : [200, 200, 200, 230];
+              img.data[idx] = colAP[0];
+              img.data[idx + 1] = colAP[1];
+              img.data[idx + 2] = colAP[2];
+              img.data[idx + 3] = colAP[3];
+              continue;
+            }
+            if (state.view === "servch") {
+              var best2 = bestApAt(x, y);
+              if (useOnlySelected) {
+                best2.ap = selectedAP;
+                best2.rssiDbm = rssi(
+                  selectedAP.tx,
+                  getAngleDependentGain(selectedAP, x, y),
+                  modelLoss(selectedAP.x, selectedAP.y, x, y)
+                );
+              }
+              var ch = best2.ap ? best2.ap.ch : 0;
+              var colCH = colorForChannel(ch);
+              img.data[idx] = colCH[0];
+              img.data[idx + 1] = colCH[1];
+              img.data[idx + 2] = colCH[2];
+              img.data[idx + 3] = colCH[3];
+              continue;
+            }
 
-    // Use Three.js for 3D rendering if available and in 3D mode
-    if (useThree3D) {
-      // Clear Three.js canvas first
-      if (state.threeCanvas) {
-        var threeCtx = state.threeCanvas.getContext("2d");
-        if (threeCtx) {
-          threeCtx.clearRect(
-            0,
-            0,
-            state.threeCanvas.width,
-            state.threeCanvas.height
-          );
+            var bestN = bestApAt(x, y);
+            if (useOnlySelected) {
+              bestN.ap = selectedAP;
+              bestN.rssiDbm = rssi(
+                selectedAP.tx,
+                getAngleDependentGain(selectedAP, x, y),
+                modelLoss(selectedAP.x, selectedAP.y, x, y)
+              );
+            }
+
+            var value;
+            if (state.view === "rssi") {
+              value = bestN.rssiDbm;
+            } else if (state.view === "snr") {
+              value = bestN.rssiDbm - state.noise;
+            } else if (state.view === "sinr") {
+              var IdbmSinr = cciAt(x, y, bestN.ap);
+              value = sinrAt(bestN.rssiDbm, IdbmSinr);
+            } else if (state.view === "cci") {
+              // Count interfering antennas (power > -85, same channel as best server)
+              value = countInterferingAntennas(x, y, bestN.ap);
+            } else if (state.view === "thr") {
+              var Idbm2 = cciAt(x, y, bestN.ap);
+              var sinr = sinrAt(bestN.rssiDbm, Idbm2);
+              value = throughputFromSinr(sinr);
+            } else {
+              value = bestN.rssiDbm;
+            }
+
+            var col;
+            if (state.view === "cci") {
+              // Use discrete color map for count values
+              col = colorForCount(value);
+            } else {
+              col = colorNumeric(value);
+            }
+            img.data[idx] = col[0];
+            img.data[idx + 1] = col[1];
+            img.data[idx + 2] = col[2];
+            img.data[idx + 3] = col[3];
+          }
         }
+
+        off = document.createElement("canvas");
+        off.width = cols;
+        off.height = rows;
+        var offCtx = off.getContext("2d");
+        offCtx.imageSmoothingEnabled = true;
+        offCtx.imageSmoothingQuality = "high";
+        offCtx.putImageData(img, 0, 0);
+
+        state.cachedHeatmap = off;
+        state.cachedHeatmapAntennaCount = state.aps.length; // Store antenna count for validation
+      } else {
+        // No antennas yet, no need to generate heatmap
+        off = null;
       }
-
-      // Render 3D scene with Three.js
-      renderThreeJSScene(transition, off);
-
-      // Three.js renders directly to its canvas, which is overlaid on top
-      // The canvas is already positioned and visible, so no need to composite
-
-      // Hide legacy 3D model when Three.js is active; we only keep the Three.js scene visible.
-      // (Ground plane / background can be migrated to Three.js later.)
+    } else if (state.heatmapUpdatePending) {
+      // Update is pending - use cached heatmap ONLY if it's still valid (same antenna count)
+      // This prevents disappearing while keeping the display smooth during updates
+      // If antenna count changed (e.g., deletion), cache is invalid and we show nothing
+      if (state.cachedHeatmap && state.cachedHeatmapAntennaCount === state.aps.length) {
+        // Cache is still valid - use it to prevent disappearing
+        off = state.cachedHeatmap;
+      } else {
+        // Cache is invalid or doesn't exist - clear it and show nothing
+        if (state.cachedHeatmap && state.cachedHeatmapAntennaCount !== state.aps.length) {
+          state.cachedHeatmap = null;
+          state.cachedHeatmapAntennaCount = 0;
+        }
+        off = null;
+      }
     } else {
-      // Pure 2D rendering or Three.js not available
-      renderGroundPlane(ctx, transition);
+      // No update pending - use cached heatmap ONLY if it's valid
+      // Validate cached heatmap matches current antenna count
+      if (state.cachedHeatmap && state.cachedHeatmapAntennaCount === state.aps.length) {
+        off = state.cachedHeatmap;
+      } else {
+        // Cached heatmap is invalid - clear it immediately
+        if (state.cachedHeatmap && state.cachedHeatmapAntennaCount !== state.aps.length) {
+          state.cachedHeatmap = null;
+          state.cachedHeatmapAntennaCount = 0;
+        }
+        off = null;
+
+        // If no valid cache and we have antennas, trigger async generation
+        if (
+          !state.isDraggingAntenna &&
+          (state.aps.length > 0 ||
+           (state.csvCoverageData && state.csvCoverageGrid))
+        ) {
+          // No cache and no update pending - fallback: trigger async generation
+          // This handles cases where sync generation didn't run (e.g., no antennas yet, or edge cases)
+          generateHeatmapAsync(null, true); // Start with low-res for fast initial display
+        }
+      }
+    }
+  }
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // XD View Isolation: If in XD tab, we will force a 2D transition for ground plane rendering below.
+  // (Early return removed to allow UI updates and animation cycle to continue)
+
+  // Render ground plane (always present, with image as texture if uploaded)
+  // The image is ONLY used as texture on the ground plane, not as a 2D background
+  var transition = state.activeSection === "xd" ? 0 : state.viewModeTransition;
+  var useThree3D =
+    transition > 0 &&
+    state.useThreeJS &&
+    state.threeRenderer &&
+    state.threeScene;
+
+  // Use Three.js for 3D rendering if available and in 3D mode
+  if (useThree3D) {
+    // Clear Three.js canvas first
+    if (state.threeCanvas) {
+      var threeCtx = state.threeCanvas.getContext("2d");
+      if (threeCtx) {
+        threeCtx.clearRect(
+          0,
+          0,
+          state.threeCanvas.width,
+          state.threeCanvas.height
+        );
+      }
     }
 
-    // Draw heatmap only if visualization is enabled
-    // XD Tab Isolation: skip heatmap rendering in XD tab
-    if (state.showVisualization && off && state.activeSection !== 'xd') {
-      // Draw 2D heatmap only when in 2D view (transition = 0)
-      if (transition <= 0) {
-        // Ensure smoothing is enabled when drawing the heatmap
-        ctx.save();
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = "high";
-        
-        // Draw the heatmap with proper scaling
-        var heatmapX = pad();
-        var heatmapY = pad();
-        var heatmapWidth = canvas.width - 2 * pad();
-        var heatmapHeight = canvas.height - 2 * pad();
-        
-        ctx.drawImage(
-          off,
-          heatmapX,
-          heatmapY,
-          heatmapWidth,
-          heatmapHeight
-        );
-        
-        // Draw border around heatmap
-        ctx.strokeStyle = "#374151";
-        ctx.lineWidth = 1;
-        ctx.strokeRect(
-          heatmapX,
-          heatmapY,
-          heatmapWidth,
-          heatmapHeight
-        );
-        ctx.restore();
-      } else if (!state.useThreeJS || !state.threeRenderer) {
-        // In 3D view without Three.js, render coverage pattern as a flat plane at ground level (0m)
-        renderCoveragePlane3D(ctx, off, transition);
-      }
-      // If Three.js is active, heatmap is rendered as texture in renderThreeJSScene
-    } else if (!state.showVisualization) {
-      // Draw border even when visualization is off
+    // Render 3D scene with Three.js
+    renderThreeJSScene(transition, off);
+
+    // Three.js renders directly to its canvas, which is overlaid on top
+    // The canvas is already positioned and visible, so no need to composite
+
+    // Hide legacy 3D model when Three.js is active; we only keep the Three.js scene visible.
+    // (Ground plane / background can be migrated to Three.js later.)
+  } else {
+    // Pure 2D rendering or Three.js not available
+    renderGroundPlane(ctx, transition);
+  }
+
+  // Draw heatmap only if visualization is enabled
+  // XD Tab Isolation: skip heatmap rendering in XD tab
+  if (state.showVisualization && off && state.activeSection !== 'xd') {
+    // Draw 2D heatmap only when in 2D view (transition = 0)
+    if (transition <= 0) {
+      // Ensure smoothing is enabled when drawing the heatmap
+      ctx.save();
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+
+      // Draw the heatmap with proper scaling
+      var heatmapX = pad();
+      var heatmapY = pad();
+      var heatmapWidth = canvas.width - 2 * pad();
+      var heatmapHeight = canvas.height - 2 * pad();
+
+      ctx.drawImage(
+        off,
+        heatmapX,
+        heatmapY,
+        heatmapWidth,
+        heatmapHeight
+      );
+
+      // Draw border around heatmap
       ctx.strokeStyle = "#374151";
       ctx.lineWidth = 1;
       ctx.strokeRect(
-        pad(),
-        pad(),
-        canvas.width - 2 * pad(),
-        canvas.height - 2 * pad()
+        heatmapX,
+        heatmapY,
+        heatmapWidth,
+        heatmapHeight
       );
+      ctx.restore();
+    } else if (!state.useThreeJS || !state.threeRenderer) {
+      // In 3D view without Three.js, render coverage pattern as a flat plane at ground level (0m)
+      renderCoveragePlane3D(ctx, off, transition);
     }
+    // If Three.js is active, heatmap is rendered as texture in renderThreeJSScene
+  } else if (!state.showVisualization) {
+    // Draw border even when visualization is off
+    ctx.strokeStyle = "#374151";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(
+      pad(),
+      pad(),
+      canvas.width - 2 * pad(),
+      canvas.height - 2 * pad()
+    );
+  }
 
-    // Legacy canvas rendering (2D + legacy 3D).
-    // IMPORTANT: When Three.js is active in 3D mode, skip 3D elements (walls, antennas, floor planes)
-    // but keep 2D elements (calibration lines, etc.)
-    // XD Tab Isolation: skip wall/floor rendering in XD tab
-    if (!useThree3D && state.activeSection !== 'xd') {
-      // Floor planes - render with background image as texture in both 2D and 3D
-      // Floor planes use the image portion that the rectangle covers as texture
-      // Sort floor planes by z-depth in 3D view to ensure proper rendering order
-      var floorPlanesToRender = state.floorPlanes.slice();
-      if (transition > 0) {
-        // Sort by average z-depth (higher z = further back, render first)
-        floorPlanesToRender.sort(function (a, b) {
-          var getAvgZ = function (fp) {
-            var baseHeight = fp.height || 0;
-            var planeType = fp.type || "horizontal";
-            var getZForPoint = function (x, y) {
-              var z;
-              if (planeType === "horizontal") {
-                z = baseHeight;
-              } else {
-                var inclination = ((fp.inclination || 0) * Math.PI) / 180;
-                var direction =
-                  ((fp.inclinationDirection || 0) * Math.PI) / 180;
-                var centerX = (fp.p1.x + fp.p2.x + fp.p3.x + fp.p4.x) / 4;
-                var centerY = (fp.p1.y + fp.p2.y + fp.p3.y + fp.p4.y) / 4;
-                var dx = x - centerX;
-                var dy = y - centerY;
-                var distance =
-                  dx * Math.cos(direction) + dy * Math.sin(direction);
-                z = baseHeight + distance * Math.tan(inclination);
-              }
-              // Ensure floor planes are always rendered above the ground plane (z=0)
-              // Add a minimum offset to prevent z-fighting and ensure visibility above ground
-              return Math.max(z, 0.1);
-            };
-            var z1 = getZForPoint(fp.p1.x, fp.p1.y);
-            var z2 = getZForPoint(fp.p2.x, fp.p2.y);
-            var z3 = getZForPoint(fp.p3.x, fp.p3.y);
-            var z4 = getZForPoint(fp.p4.x, fp.p4.y);
-            return (z1 + z2 + z3 + z4) / 4;
-          };
-          return getAvgZ(b) - getAvgZ(a); // Sort descending (higher z first, so lower z renders last on top)
-        });
-      }
-      for (i = 0; i < floorPlanesToRender.length; i++) {
-        var fp = floorPlanesToRender[i];
-
-        if (!state.backgroundImage || !fp.imgP1) {
-          // No image or no image coordinates - use solid gray color
-          ctx.save();
-          ctx.globalAlpha = 1.0;
-          ctx.globalCompositeOperation = "source-over";
-
-          // Calculate Z coordinates for 3D rendering
+  // Legacy canvas rendering (2D + legacy 3D).
+  // IMPORTANT: When Three.js is active in 3D mode, skip 3D elements (walls, antennas, floor planes)
+  // but keep 2D elements (calibration lines, etc.)
+  // XD Tab Isolation: skip wall/floor rendering in XD tab
+  if (!useThree3D && state.activeSection !== 'xd') {
+    // Floor planes - render with background image as texture in both 2D and 3D
+    // Floor planes use the image portion that the rectangle covers as texture
+    // Sort floor planes by z-depth in 3D view to ensure proper rendering order
+    var floorPlanesToRender = state.floorPlanes.slice();
+    if (transition > 0) {
+      // Sort by average z-depth (higher z = further back, render first)
+      floorPlanesToRender.sort(function (a, b) {
+        var getAvgZ = function (fp) {
           var baseHeight = fp.height || 0;
           var planeType = fp.type || "horizontal";
-
           var getZForPoint = function (x, y) {
             var z;
             if (planeType === "horizontal") {
@@ -1389,160 +1347,56 @@ state: state
             // Add a minimum offset to prevent z-fighting and ensure visibility above ground
             return Math.max(z, 0.1);
           };
-
           var z1 = getZForPoint(fp.p1.x, fp.p1.y);
           var z2 = getZForPoint(fp.p2.x, fp.p2.y);
           var z3 = getZForPoint(fp.p3.x, fp.p3.y);
           var z4 = getZForPoint(fp.p4.x, fp.p4.y);
+          return (z1 + z2 + z3 + z4) / 4;
+        };
+        return getAvgZ(b) - getAvgZ(a); // Sort descending (higher z first, so lower z renders last on top)
+      });
+    }
+    for (i = 0; i < floorPlanesToRender.length; i++) {
+      var fp = floorPlanesToRender[i];
 
-          if (transition > 0) {
-            // 3D view - render with proper Z coordinates
-            var p1_2d = { x: mx(fp.p1.x), y: my(fp.p1.y) };
-            var p2_2d = { x: mx(fp.p2.x), y: my(fp.p2.y) };
-            var p3_2d = { x: mx(fp.p3.x), y: my(fp.p3.y) };
-            var p4_2d = { x: mx(fp.p4.x), y: my(fp.p4.y) };
-
-            var p1_3d = projectToCanvas3D(fp.p1.x, fp.p1.y, z1);
-            var p2_3d = projectToCanvas3D(fp.p2.x, fp.p2.y, z2);
-            var p3_3d = projectToCanvas3D(fp.p3.x, fp.p3.y, z3);
-            var p4_3d = projectToCanvas3D(fp.p4.x, fp.p4.y, z4);
-
-            var canvasP1 = {
-              x: p1_2d.x + (p1_3d.x - p1_2d.x) * transition,
-              y: p1_2d.y + (p1_3d.y - p1_2d.y) * transition,
-            };
-            var canvasP2 = {
-              x: p2_2d.x + (p2_3d.x - p2_2d.x) * transition,
-              y: p2_2d.y + (p2_3d.y - p2_2d.y) * transition,
-            };
-            var canvasP3 = {
-              x: p3_2d.x + (p3_3d.x - p3_2d.x) * transition,
-              y: p3_2d.y + (p3_3d.y - p3_2d.y) * transition,
-            };
-            var canvasP4 = {
-              x: p4_2d.x + (p4_3d.x - p4_2d.x) * transition,
-              y: p4_2d.y + (p4_3d.y - p4_2d.y) * transition,
-            };
-
-            ctx.fillStyle = "#8b8b8b";
-            ctx.beginPath();
-            ctx.moveTo(canvasP1.x, canvasP1.y);
-            ctx.lineTo(canvasP2.x, canvasP2.y);
-            ctx.lineTo(canvasP3.x, canvasP3.y);
-            ctx.lineTo(canvasP4.x, canvasP4.y);
-            ctx.closePath();
-            ctx.fill();
-
-            ctx.strokeStyle = "#6b6b6b";
-            ctx.lineWidth = 2;
-            ctx.stroke();
-          } else {
-            // 2D view
-            ctx.fillStyle = "#8b8b8b";
-            ctx.beginPath();
-            ctx.moveTo(mx(fp.p1.x), my(fp.p1.y));
-            ctx.lineTo(mx(fp.p2.x), my(fp.p2.y));
-            ctx.lineTo(mx(fp.p3.x), my(fp.p3.y));
-            ctx.lineTo(mx(fp.p4.x), my(fp.p4.y));
-            ctx.closePath();
-            ctx.fill();
-            ctx.strokeStyle = "#6b6b6b";
-            ctx.lineWidth = 1;
-            ctx.stroke();
-          }
-
-          ctx.restore();
-          continue;
-        }
-
+      if (!state.backgroundImage || !fp.imgP1) {
+        // No image or no image coordinates - use solid gray color
         ctx.save();
+        ctx.globalAlpha = 1.0;
+        ctx.globalCompositeOperation = "source-over";
 
-        var imgWidth = state.backgroundImage.width;
-        var imgHeight = state.backgroundImage.height;
+        // Calculate Z coordinates for 3D rendering
+        var baseHeight = fp.height || 0;
+        var planeType = fp.type || "horizontal";
 
-        // Calculate source rectangle in image pixel coordinates (the portion of image to extract)
-        var srcMinX = Math.min(
-          fp.imgP1.x,
-          fp.imgP2.x,
-          fp.imgP3.x,
-          fp.imgP4.x
-        );
-        var srcMaxX = Math.max(
-          fp.imgP1.x,
-          fp.imgP2.x,
-          fp.imgP3.x,
-          fp.imgP4.x
-        );
-        var srcMinY = Math.min(
-          fp.imgP1.y,
-          fp.imgP2.y,
-          fp.imgP3.y,
-          fp.imgP4.y
-        );
-        var srcMaxY = Math.max(
-          fp.imgP1.y,
-          fp.imgP2.y,
-          fp.imgP3.y,
-          fp.imgP4.y
-        );
+        var getZForPoint = function (x, y) {
+          var z;
+          if (planeType === "horizontal") {
+            z = baseHeight;
+          } else {
+            var inclination = ((fp.inclination || 0) * Math.PI) / 180;
+            var direction =
+              ((fp.inclinationDirection || 0) * Math.PI) / 180;
+            var centerX = (fp.p1.x + fp.p2.x + fp.p3.x + fp.p4.x) / 4;
+            var centerY = (fp.p1.y + fp.p2.y + fp.p3.y + fp.p4.y) / 4;
+            var dx = x - centerX;
+            var dy = y - centerY;
+            var distance =
+              dx * Math.cos(direction) + dy * Math.sin(direction);
+            z = baseHeight + distance * Math.tan(inclination);
+          }
+          // Ensure floor planes are always rendered above the ground plane (z=0)
+          // Add a minimum offset to prevent z-fighting and ensure visibility above ground
+          return Math.max(z, 0.1);
+        };
 
-        // Ensure source coordinates are within image bounds
-        var srcX = Math.max(0, Math.min(Math.floor(srcMinX), imgWidth - 1));
-        var srcY = Math.max(
-          0,
-          Math.min(Math.floor(srcMinY), imgHeight - 1)
-        );
-        var srcWidth = Math.max(
-          1,
-          Math.min(Math.ceil(srcMaxX - srcMinX), imgWidth - srcX)
-        );
-        var srcHeight = Math.max(
-          1,
-          Math.min(Math.ceil(srcMaxY - srcMinY), imgHeight - srcY)
-        );
+        var z1 = getZForPoint(fp.p1.x, fp.p1.y);
+        var z2 = getZForPoint(fp.p2.x, fp.p2.y);
+        var z3 = getZForPoint(fp.p3.x, fp.p3.y);
+        var z4 = getZForPoint(fp.p4.x, fp.p4.y);
 
         if (transition > 0) {
-          // 3D view - render floor plane as a 3D surface with image texture
-          // Calculate Z coordinates for each corner based on height and inclination
-          var baseHeight = fp.height || 0;
-          var planeType = fp.type || "horizontal";
-
-          // Function to calculate Z coordinate for a point on the plane
-          var getZForPoint = function (x, y) {
-            var z;
-            if (planeType === "horizontal") {
-              z = baseHeight;
-            } else {
-              // Inclined plane - calculate Z based on inclination angle and direction
-              var inclination = ((fp.inclination || 0) * Math.PI) / 180; // Convert to radians
-              var direction =
-                ((fp.inclinationDirection || 0) * Math.PI) / 180; // Convert to radians
-
-              // Calculate center of plane
-              var centerX = (fp.p1.x + fp.p2.x + fp.p3.x + fp.p4.x) / 4;
-              var centerY = (fp.p1.y + fp.p2.y + fp.p3.y + fp.p4.y) / 4;
-
-              // Calculate distance from center in the direction of inclination
-              var dx = x - centerX;
-              var dy = y - centerY;
-
-              // Project onto the inclination direction vector
-              var distance =
-                dx * Math.cos(direction) + dy * Math.sin(direction);
-
-              // Calculate Z based on distance and inclination angle
-              z = baseHeight + distance * Math.tan(inclination);
-            }
-            // Ensure floor planes are always rendered above the ground plane (z=0)
-            // Add a minimum offset to prevent z-fighting and ensure visibility above ground
-            return Math.max(z, 0.1);
-          };
-
-          var z1 = getZForPoint(fp.p1.x, fp.p1.y);
-          var z2 = getZForPoint(fp.p2.x, fp.p2.y);
-          var z3 = getZForPoint(fp.p3.x, fp.p3.y);
-          var z4 = getZForPoint(fp.p4.x, fp.p4.y);
-
+          // 3D view - render with proper Z coordinates
           var p1_2d = { x: mx(fp.p1.x), y: my(fp.p1.y) };
           var p2_2d = { x: mx(fp.p2.x), y: my(fp.p2.y) };
           var p3_2d = { x: mx(fp.p3.x), y: my(fp.p3.y) };
@@ -1553,7 +1407,6 @@ state: state
           var p3_3d = projectToCanvas3D(fp.p3.x, fp.p3.y, z3);
           var p4_3d = projectToCanvas3D(fp.p4.x, fp.p4.y, z4);
 
-          // Interpolate between 2D and 3D positions
           var canvasP1 = {
             x: p1_2d.x + (p1_3d.x - p1_2d.x) * transition,
             y: p1_2d.y + (p1_3d.y - p1_2d.y) * transition,
@@ -1571,61 +1424,165 @@ state: state
             y: p4_2d.y + (p4_3d.y - p4_2d.y) * transition,
           };
 
-          // Set opacity for 3D floor plane - fully opaque
-          ctx.globalAlpha = 1.0;
-          ctx.globalCompositeOperation = "source-over";
+          ctx.fillStyle = "#8b8b8b";
+          ctx.beginPath();
+          ctx.moveTo(canvasP1.x, canvasP1.y);
+          ctx.lineTo(canvasP2.x, canvasP2.y);
+          ctx.lineTo(canvasP3.x, canvasP3.y);
+          ctx.lineTo(canvasP4.x, canvasP4.y);
+          ctx.closePath();
+          ctx.fill();
 
-          // Draw the image mapped to the four 3D-projected corners
-          if (srcWidth > 0 && srcHeight > 0) {
-            // Create projector function that maps World (x,y) -> Screen (x,y)
-            // This handles Z-elevation and Perspective projection internally
-            var projector = function (p) {
-              // Calculate Z based on floor plane settings
-              var z = baseHeight;
-              if (planeType !== "horizontal") {
-                var inclination = ((fp.inclination || 0) * Math.PI) / 180;
-                var direction =
-                  ((fp.inclinationDirection || 0) * Math.PI) / 180;
-                var centerX = (fp.p1.x + fp.p2.x + fp.p3.x + fp.p4.x) / 4;
-                var centerY = (fp.p1.y + fp.p2.y + fp.p3.y + fp.p4.y) / 4;
-                var dx = p.x - centerX;
-                var dy = p.y - centerY;
-                var distance =
-                  dx * Math.cos(direction) + dy * Math.sin(direction);
-                z = baseHeight + distance * Math.tan(inclination);
-              }
+          ctx.strokeStyle = "#6b6b6b";
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        } else {
+          // 2D view
+          ctx.fillStyle = "#8b8b8b";
+          ctx.beginPath();
+          ctx.moveTo(mx(fp.p1.x), my(fp.p1.y));
+          ctx.lineTo(mx(fp.p2.x), my(fp.p2.y));
+          ctx.lineTo(mx(fp.p3.x), my(fp.p3.y));
+          ctx.lineTo(mx(fp.p4.x), my(fp.p4.y));
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = "#6b6b6b";
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
 
-              var p2d = { x: mx(p.x), y: my(p.y) };
-              var p3d = projectToCanvas3D(p.x, p.y, z);
+        ctx.restore();
+        continue;
+      }
 
-              return {
-                x: p2d.x + (p3d.x - p2d.x) * transition,
-                y: p2d.y + (p3d.y - p2d.y) * transition,
-              };
-            };
+      ctx.save();
 
-            // Map image using world coordinates and projector
-            drawProjectedImage(
-              ctx,
-              state.backgroundImage,
-              srcX,
-              srcY,
-              srcWidth,
-              srcHeight,
-              fp.p1,
-              fp.p2,
-              fp.p3,
-              fp.p4,
-              projector
-            );
+      var imgWidth = state.backgroundImage.width;
+      var imgHeight = state.backgroundImage.height;
+
+      // Calculate source rectangle in image pixel coordinates (the portion of image to extract)
+      var srcMinX = Math.min(
+        fp.imgP1.x,
+        fp.imgP2.x,
+        fp.imgP3.x,
+        fp.imgP4.x
+      );
+      var srcMaxX = Math.max(
+        fp.imgP1.x,
+        fp.imgP2.x,
+        fp.imgP3.x,
+        fp.imgP4.x
+      );
+      var srcMinY = Math.min(
+        fp.imgP1.y,
+        fp.imgP2.y,
+        fp.imgP3.y,
+        fp.imgP4.y
+      );
+      var srcMaxY = Math.max(
+        fp.imgP1.y,
+        fp.imgP2.y,
+        fp.imgP3.y,
+        fp.imgP4.y
+      );
+
+      // Ensure source coordinates are within image bounds
+      var srcX = Math.max(0, Math.min(Math.floor(srcMinX), imgWidth - 1));
+      var srcY = Math.max(
+        0,
+        Math.min(Math.floor(srcMinY), imgHeight - 1)
+      );
+      var srcWidth = Math.max(
+        1,
+        Math.min(Math.ceil(srcMaxX - srcMinX), imgWidth - srcX)
+      );
+      var srcHeight = Math.max(
+        1,
+        Math.min(Math.ceil(srcMaxY - srcMinY), imgHeight - srcY)
+      );
+
+      if (transition > 0) {
+        // 3D view - render floor plane as a 3D surface with image texture
+        // Calculate Z coordinates for each corner based on height and inclination
+        var baseHeight = fp.height || 0;
+        var planeType = fp.type || "horizontal";
+
+        // Function to calculate Z coordinate for a point on the plane
+        var getZForPoint = function (x, y) {
+          var z;
+          if (planeType === "horizontal") {
+            z = baseHeight;
           } else {
-            // Fallback: draw solid color if image extraction fails
-            ctx.fillStyle = "#8b8b8b";
-            ctx.beginPath();
-            // Calculate canvas coordinates for fallback (reusing logic as projector is local)
-            // We can just project the 4 corners directly
-            var getZ = function (p) {
-              if (planeType === "horizontal") return baseHeight;
+            // Inclined plane - calculate Z based on inclination angle and direction
+            var inclination = ((fp.inclination || 0) * Math.PI) / 180; // Convert to radians
+            var direction =
+              ((fp.inclinationDirection || 0) * Math.PI) / 180; // Convert to radians
+
+            // Calculate center of plane
+            var centerX = (fp.p1.x + fp.p2.x + fp.p3.x + fp.p4.x) / 4;
+            var centerY = (fp.p1.y + fp.p2.y + fp.p3.y + fp.p4.y) / 4;
+
+            // Calculate distance from center in the direction of inclination
+            var dx = x - centerX;
+            var dy = y - centerY;
+
+            // Project onto the inclination direction vector
+            var distance =
+              dx * Math.cos(direction) + dy * Math.sin(direction);
+
+            // Calculate Z based on distance and inclination angle
+            z = baseHeight + distance * Math.tan(inclination);
+          }
+          // Ensure floor planes are always rendered above the ground plane (z=0)
+          // Add a minimum offset to prevent z-fighting and ensure visibility above ground
+          return Math.max(z, 0.1);
+        };
+
+        var z1 = getZForPoint(fp.p1.x, fp.p1.y);
+        var z2 = getZForPoint(fp.p2.x, fp.p2.y);
+        var z3 = getZForPoint(fp.p3.x, fp.p3.y);
+        var z4 = getZForPoint(fp.p4.x, fp.p4.y);
+
+        var p1_2d = { x: mx(fp.p1.x), y: my(fp.p1.y) };
+        var p2_2d = { x: mx(fp.p2.x), y: my(fp.p2.y) };
+        var p3_2d = { x: mx(fp.p3.x), y: my(fp.p3.y) };
+        var p4_2d = { x: mx(fp.p4.x), y: my(fp.p4.y) };
+
+        var p1_3d = projectToCanvas3D(fp.p1.x, fp.p1.y, z1);
+        var p2_3d = projectToCanvas3D(fp.p2.x, fp.p2.y, z2);
+        var p3_3d = projectToCanvas3D(fp.p3.x, fp.p3.y, z3);
+        var p4_3d = projectToCanvas3D(fp.p4.x, fp.p4.y, z4);
+
+        // Interpolate between 2D and 3D positions
+        var canvasP1 = {
+          x: p1_2d.x + (p1_3d.x - p1_2d.x) * transition,
+          y: p1_2d.y + (p1_3d.y - p1_2d.y) * transition,
+        };
+        var canvasP2 = {
+          x: p2_2d.x + (p2_3d.x - p2_2d.x) * transition,
+          y: p2_2d.y + (p2_3d.y - p2_2d.y) * transition,
+        };
+        var canvasP3 = {
+          x: p3_2d.x + (p3_3d.x - p3_2d.x) * transition,
+          y: p3_2d.y + (p3_3d.y - p3_2d.y) * transition,
+        };
+        var canvasP4 = {
+          x: p4_2d.x + (p4_3d.x - p4_2d.x) * transition,
+          y: p4_2d.y + (p4_3d.y - p4_2d.y) * transition,
+        };
+
+        // Set opacity for 3D floor plane - fully opaque
+        ctx.globalAlpha = 1.0;
+        ctx.globalCompositeOperation = "source-over";
+
+        // Draw the image mapped to the four 3D-projected corners
+        if (srcWidth > 0 && srcHeight > 0) {
+          // Create projector function that maps World (x,y) -> Screen (x,y)
+          // This handles Z-elevation and Perspective projection internally
+          var projector = function (p) {
+            // Calculate Z based on floor plane settings
+            var z = baseHeight;
+            if (planeType !== "horizontal") {
               var inclination = ((fp.inclination || 0) * Math.PI) / 180;
               var direction =
                 ((fp.inclinationDirection || 0) * Math.PI) / 180;
@@ -1635,795 +1592,838 @@ state: state
               var dy = p.y - centerY;
               var distance =
                 dx * Math.cos(direction) + dy * Math.sin(direction);
-              return baseHeight + distance * Math.tan(inclination);
-            };
-            var project = function (p) {
-              var z = getZ(p);
-              var p2d = { x: mx(p.x), y: my(p.y) };
-              var p3d = projectToCanvas3D(p.x, p.y, z);
-              return {
-                x: p2d.x + (p3d.x - p2d.x) * transition,
-                y: p2d.y + (p3d.y - p2d.y) * transition,
-              };
-            };
-            var cP1 = project(fp.p1);
-            var cP2 = project(fp.p2);
-            var cP3 = project(fp.p3);
-            var cP4 = project(fp.p4);
+              z = baseHeight + distance * Math.tan(inclination);
+            }
 
-            ctx.moveTo(cP1.x, cP1.y);
-            ctx.lineTo(cP2.x, cP2.y);
-            ctx.lineTo(cP3.x, cP3.y);
-            ctx.lineTo(cP4.x, cP4.y);
-            ctx.closePath();
-            ctx.fill();
-          }
-        } else {
-          // 2D view - render floor plane with image texture
-          // Map image pixel coordinates to canvas coordinates
-          var imgToCanvas = function (imgX, imgY) {
-            // Image pixel (0,0) maps to canvas (mx(0), my(0))
-            // Image pixel (imgWidth, imgHeight) maps to canvas (mx(state.w), my(state.h))
-            var canvasX = mx(0) + (imgX / imgWidth) * (mx(state.w) - mx(0));
-            var canvasY =
-              my(0) + (imgY / imgHeight) * (my(state.h) - my(0));
-            return { x: canvasX, y: canvasY };
+            var p2d = { x: mx(p.x), y: my(p.y) };
+            var p3d = projectToCanvas3D(p.x, p.y, z);
+
+            return {
+              x: p2d.x + (p3d.x - p2d.x) * transition,
+              y: p2d.y + (p3d.y - p2d.y) * transition,
+            };
           };
 
-          // Convert image pixel coordinates to canvas coordinates
-          var canvasP1 = imgToCanvas(fp.imgP1.x, fp.imgP1.y);
-          var canvasP2 = imgToCanvas(fp.imgP2.x, fp.imgP2.y);
-          var canvasP3 = imgToCanvas(fp.imgP3.x, fp.imgP3.y);
-          var canvasP4 = imgToCanvas(fp.imgP4.x, fp.imgP4.y);
-
-          // Calculate destination rectangle in canvas coordinates
-          var dstMinX = Math.min(
-            canvasP1.x,
-            canvasP2.x,
-            canvasP3.x,
-            canvasP4.x
+          // Map image using world coordinates and projector
+          drawProjectedImage(
+            ctx,
+            state.backgroundImage,
+            srcX,
+            srcY,
+            srcWidth,
+            srcHeight,
+            fp.p1,
+            fp.p2,
+            fp.p3,
+            fp.p4,
+            projector
           );
-          var dstMaxX = Math.max(
-            canvasP1.x,
-            canvasP2.x,
-            canvasP3.x,
-            canvasP4.x
-          );
-          var dstMinY = Math.min(
-            canvasP1.y,
-            canvasP2.y,
-            canvasP3.y,
-            canvasP4.y
-          );
-          var dstMaxY = Math.max(
-            canvasP1.y,
-            canvasP2.y,
-            canvasP3.y,
-            canvasP4.y
-          );
-
-          var dstWidth = dstMaxX - dstMinX;
-          var dstHeight = dstMaxY - dstMinY;
-
-          // Set opacity for floor plane - fully opaque
-          ctx.globalAlpha = 1.0;
-          ctx.globalCompositeOperation = "source-over";
-
-          // Set up clipping path for the floor plane rectangle
+        } else {
+          // Fallback: draw solid color if image extraction fails
+          ctx.fillStyle = "#8b8b8b";
           ctx.beginPath();
-          ctx.moveTo(canvasP1.x, canvasP1.y);
-          ctx.lineTo(canvasP2.x, canvasP2.y);
-          ctx.lineTo(canvasP3.x, canvasP3.y);
-          ctx.lineTo(canvasP4.x, canvasP4.y);
+          // Calculate canvas coordinates for fallback (reusing logic as projector is local)
+          // We can just project the 4 corners directly
+          var getZ = function (p) {
+            if (planeType === "horizontal") return baseHeight;
+            var inclination = ((fp.inclination || 0) * Math.PI) / 180;
+            var direction =
+              ((fp.inclinationDirection || 0) * Math.PI) / 180;
+            var centerX = (fp.p1.x + fp.p2.x + fp.p3.x + fp.p4.x) / 4;
+            var centerY = (fp.p1.y + fp.p2.y + fp.p3.y + fp.p4.y) / 4;
+            var dx = p.x - centerX;
+            var dy = p.y - centerY;
+            var distance =
+              dx * Math.cos(direction) + dy * Math.sin(direction);
+            return baseHeight + distance * Math.tan(inclination);
+          };
+          var project = function (p) {
+            var z = getZ(p);
+            var p2d = { x: mx(p.x), y: my(p.y) };
+            var p3d = projectToCanvas3D(p.x, p.y, z);
+            return {
+              x: p2d.x + (p3d.x - p2d.x) * transition,
+              y: p2d.y + (p3d.y - p2d.y) * transition,
+            };
+          };
+          var cP1 = project(fp.p1);
+          var cP2 = project(fp.p2);
+          var cP3 = project(fp.p3);
+          var cP4 = project(fp.p4);
+
+          ctx.moveTo(cP1.x, cP1.y);
+          ctx.lineTo(cP2.x, cP2.y);
+          ctx.lineTo(cP3.x, cP3.y);
+          ctx.lineTo(cP4.x, cP4.y);
           ctx.closePath();
-          ctx.clip();
-
-          // Draw the image portion - this makes the floor plane "stick" to the image
-          if (
-            srcWidth > 0 &&
-            srcHeight > 0 &&
-            dstWidth > 0 &&
-            dstHeight > 0
-          ) {
-            ctx.drawImage(
-              state.backgroundImage,
-              srcX,
-              srcY,
-              srcWidth,
-              srcHeight, // Source rectangle in image (pixel coords)
-              dstMinX,
-              dstMinY,
-              dstWidth,
-              dstHeight // Destination rectangle in canvas
-            );
-          }
+          ctx.fill();
         }
+      } else {
+        // 2D view - render floor plane with image texture
+        // Map image pixel coordinates to canvas coordinates
+        var imgToCanvas = function (imgX, imgY) {
+          // Image pixel (0,0) maps to canvas (mx(0), my(0))
+          // Image pixel (imgWidth, imgHeight) maps to canvas (mx(state.w), my(state.h))
+          var canvasX = mx(0) + (imgX / imgWidth) * (mx(state.w) - mx(0));
+          var canvasY =
+            my(0) + (imgY / imgHeight) * (my(state.h) - my(0));
+          return { x: canvasX, y: canvasY };
+        };
 
-        ctx.restore();
+        // Convert image pixel coordinates to canvas coordinates
+        var canvasP1 = imgToCanvas(fp.imgP1.x, fp.imgP1.y);
+        var canvasP2 = imgToCanvas(fp.imgP2.x, fp.imgP2.y);
+        var canvasP3 = imgToCanvas(fp.imgP3.x, fp.imgP3.y);
+        var canvasP4 = imgToCanvas(fp.imgP4.x, fp.imgP4.y);
 
-        // Draw border to show the floor plane boundary
-        var borderP1, borderP2, borderP3, borderP4;
-        if (transition > 0) {
-          // 3D border - use same z calculation as floor plane surface
-          var baseHeight = fp.height || 0;
-          var planeType = fp.type || "horizontal";
+        // Calculate destination rectangle in canvas coordinates
+        var dstMinX = Math.min(
+          canvasP1.x,
+          canvasP2.x,
+          canvasP3.x,
+          canvasP4.x
+        );
+        var dstMaxX = Math.max(
+          canvasP1.x,
+          canvasP2.x,
+          canvasP3.x,
+          canvasP4.x
+        );
+        var dstMinY = Math.min(
+          canvasP1.y,
+          canvasP2.y,
+          canvasP3.y,
+          canvasP4.y
+        );
+        var dstMaxY = Math.max(
+          canvasP1.y,
+          canvasP2.y,
+          canvasP3.y,
+          canvasP4.y
+        );
 
-          var getZForPoint = function (x, y) {
-            if (planeType === "horizontal") {
-              return baseHeight;
-            } else {
-              var inclination = ((fp.inclination || 0) * Math.PI) / 180;
-              var direction =
-                ((fp.inclinationDirection || 0) * Math.PI) / 180;
-              var centerX = (fp.p1.x + fp.p2.x + fp.p3.x + fp.p4.x) / 4;
-              var centerY = (fp.p1.y + fp.p2.y + fp.p3.y + fp.p4.y) / 4;
-              var dx = x - centerX;
-              var dy = y - centerY;
-              var distance =
-                dx * Math.cos(direction) + dy * Math.sin(direction);
-              return baseHeight + distance * Math.tan(inclination);
-            }
-          };
+        var dstWidth = dstMaxX - dstMinX;
+        var dstHeight = dstMaxY - dstMinY;
 
-          var z1 = getZForPoint(fp.p1.x, fp.p1.y);
-          var z2 = getZForPoint(fp.p2.x, fp.p2.y);
-          var z3 = getZForPoint(fp.p3.x, fp.p3.y);
-          var z4 = getZForPoint(fp.p4.x, fp.p4.y);
-
-          var p1_2d = { x: mx(fp.p1.x), y: my(fp.p1.y) };
-          var p2_2d = { x: mx(fp.p2.x), y: my(fp.p2.y) };
-          var p3_2d = { x: mx(fp.p3.x), y: my(fp.p3.y) };
-          var p4_2d = { x: mx(fp.p4.x), y: my(fp.p4.y) };
-          var p1_3d = projectToCanvas3D(fp.p1.x, fp.p1.y, z1);
-          var p2_3d = projectToCanvas3D(fp.p2.x, fp.p2.y, z2);
-          var p3_3d = projectToCanvas3D(fp.p3.x, fp.p3.y, z3);
-          var p4_3d = projectToCanvas3D(fp.p4.x, fp.p4.y, z4);
-          borderP1 = {
-            x: p1_2d.x + (p1_3d.x - p1_2d.x) * transition,
-            y: p1_2d.y + (p1_3d.y - p1_2d.y) * transition,
-          };
-          borderP2 = {
-            x: p2_2d.x + (p2_3d.x - p2_2d.x) * transition,
-            y: p2_2d.y + (p2_3d.y - p2_2d.y) * transition,
-          };
-          borderP3 = {
-            x: p3_2d.x + (p3_3d.x - p3_2d.x) * transition,
-            y: p3_2d.y + (p3_3d.y - p3_2d.y) * transition,
-          };
-          borderP4 = {
-            x: p4_2d.x + (p4_3d.x - p4_2d.x) * transition,
-            y: p4_2d.y + (p4_3d.y - p4_2d.y) * transition,
-          };
-        } else {
-          // 2D border - use image coordinates
-          var imgToCanvas = function (imgX, imgY) {
-            var imgWidth = state.backgroundImage.width;
-            var imgHeight = state.backgroundImage.height;
-            var canvasX = mx(0) + (imgX / imgWidth) * (mx(state.w) - mx(0));
-            var canvasY =
-              my(0) + (imgY / imgHeight) * (my(state.h) - my(0));
-            return { x: canvasX, y: canvasY };
-          };
-          borderP1 = imgToCanvas(fp.imgP1.x, fp.imgP1.y);
-          borderP2 = imgToCanvas(fp.imgP2.x, fp.imgP2.y);
-          borderP3 = imgToCanvas(fp.imgP3.x, fp.imgP3.y);
-          borderP4 = imgToCanvas(fp.imgP4.x, fp.imgP4.y);
-        }
-
-        ctx.strokeStyle = "#6b6b6b";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(borderP1.x, borderP1.y);
-        ctx.lineTo(borderP2.x, borderP2.y);
-        ctx.lineTo(borderP3.x, borderP3.y);
-        ctx.lineTo(borderP4.x, borderP4.y);
-        ctx.closePath();
-        ctx.stroke();
-      }
-
-      // temp floor plane - render while drawing
-      if (state.tempFloorPlane) {
-        ctx.save();
-
-        // Calculate canvas coordinates for the temp floor plane
-        var canvasP1, canvasP2, canvasP3, canvasP4;
-
-        if (transition > 0) {
-          // 3D view - project to 3D using height and type settings
-          var baseHeight = state.floorPlaneHeight || 0;
-          var planeType = state.floorPlaneType || "horizontal";
-
-          var getZForPoint = function (x, y) {
-            if (planeType === "horizontal") {
-              return baseHeight;
-            } else {
-              var inclination =
-                ((state.floorPlaneInclination || 0) * Math.PI) / 180;
-              var direction =
-                ((state.floorPlaneInclinationDirection || 0) * Math.PI) /
-                180;
-              var centerX =
-                (state.tempFloorPlane.p1.x +
-                  state.tempFloorPlane.p2.x +
-                  state.tempFloorPlane.p3.x +
-                  state.tempFloorPlane.p4.x) /
-                4;
-              var centerY =
-                (state.tempFloorPlane.p1.y +
-                  state.tempFloorPlane.p2.y +
-                  state.tempFloorPlane.p3.y +
-                  state.tempFloorPlane.p4.y) /
-                4;
-              var dx = x - centerX;
-              var dy = y - centerY;
-              var distance =
-                dx * Math.cos(direction) + dy * Math.sin(direction);
-              return baseHeight + distance * Math.tan(inclination);
-            }
-          };
-
-          var z1 = getZForPoint(
-            state.tempFloorPlane.p1.x,
-            state.tempFloorPlane.p1.y
-          );
-          var z2 = getZForPoint(
-            state.tempFloorPlane.p2.x,
-            state.tempFloorPlane.p2.y
-          );
-          var z3 = getZForPoint(
-            state.tempFloorPlane.p3.x,
-            state.tempFloorPlane.p3.y
-          );
-          var z4 = getZForPoint(
-            state.tempFloorPlane.p4.x,
-            state.tempFloorPlane.p4.y
-          );
-
-          var p1_2d = {
-            x: mx(state.tempFloorPlane.p1.x),
-            y: my(state.tempFloorPlane.p1.y),
-          };
-          var p2_2d = {
-            x: mx(state.tempFloorPlane.p2.x),
-            y: my(state.tempFloorPlane.p2.y),
-          };
-          var p3_2d = {
-            x: mx(state.tempFloorPlane.p3.x),
-            y: my(state.tempFloorPlane.p3.y),
-          };
-          var p4_2d = {
-            x: mx(state.tempFloorPlane.p4.x),
-            y: my(state.tempFloorPlane.p4.y),
-          };
-
-          var p1_3d = projectToCanvas3D(
-            state.tempFloorPlane.p1.x,
-            state.tempFloorPlane.p1.y,
-            z1
-          );
-          var p2_3d = projectToCanvas3D(
-            state.tempFloorPlane.p2.x,
-            state.tempFloorPlane.p2.y,
-            z2
-          );
-          var p3_3d = projectToCanvas3D(
-            state.tempFloorPlane.p3.x,
-            state.tempFloorPlane.p3.y,
-            z3
-          );
-          var p4_3d = projectToCanvas3D(
-            state.tempFloorPlane.p4.x,
-            state.tempFloorPlane.p4.y,
-            z4
-          );
-
-          canvasP1 = {
-            x: p1_2d.x + (p1_3d.x - p1_2d.x) * transition,
-            y: p1_2d.y + (p1_3d.y - p1_2d.y) * transition,
-          };
-          canvasP2 = {
-            x: p2_2d.x + (p2_3d.x - p2_2d.x) * transition,
-            y: p2_2d.y + (p2_3d.y - p2_2d.y) * transition,
-          };
-          canvasP3 = {
-            x: p3_2d.x + (p3_3d.x - p3_2d.x) * transition,
-            y: p3_2d.y + (p3_3d.y - p3_2d.y) * transition,
-          };
-          canvasP4 = {
-            x: p4_2d.x + (p4_3d.x - p4_2d.x) * transition,
-            y: p4_2d.y + (p4_3d.y - p4_2d.y) * transition,
-          };
-        } else {
-          // 2D view
-          canvasP1 = {
-            x: mx(state.tempFloorPlane.p1.x),
-            y: my(state.tempFloorPlane.p1.y),
-          };
-          canvasP2 = {
-            x: mx(state.tempFloorPlane.p2.x),
-            y: my(state.tempFloorPlane.p2.y),
-          };
-          canvasP3 = {
-            x: mx(state.tempFloorPlane.p3.x),
-            y: my(state.tempFloorPlane.p3.y),
-          };
-          canvasP4 = {
-            x: mx(state.tempFloorPlane.p4.x),
-            y: my(state.tempFloorPlane.p4.y),
-          };
-        }
-
-        // Draw temp floor plane - fully opaque in 3D, semi-transparent in 2D for preview
-        ctx.globalAlpha = transition > 0 ? 1.0 : 0.5;
+        // Set opacity for floor plane - fully opaque
+        ctx.globalAlpha = 1.0;
         ctx.globalCompositeOperation = "source-over";
-        ctx.fillStyle = "#8b8b8b";
+
+        // Set up clipping path for the floor plane rectangle
         ctx.beginPath();
         ctx.moveTo(canvasP1.x, canvasP1.y);
         ctx.lineTo(canvasP2.x, canvasP2.y);
         ctx.lineTo(canvasP3.x, canvasP3.y);
         ctx.lineTo(canvasP4.x, canvasP4.y);
         ctx.closePath();
-        ctx.fill();
+        ctx.clip();
 
-        ctx.strokeStyle = "#6b6b6b";
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        ctx.restore();
-      }
-
-      // walls - with smooth 2D/3D transition
-      var transition = state.viewModeTransition;
-      var wallHeight = 2.5; // Default wall height in meters
-
-      // Function to render corner pieces for joined walls
-      function renderWallCorners(ctx, transition) {
-        var wallThickness = 0.15; // 15cm wall thickness
-        var cornerThreshold = 0.05; // 5cm threshold for detecting corners
-        var processedCorners = {}; // Track processed corners to avoid duplicates
-
-        for (var i = 0; i < state.walls.length; i++) {
-          var w1 = state.walls[i];
-          if (w1.elementType && w1.elementType !== "wall") continue; // Skip doors/windows
-
-          for (var j = i + 1; j < state.walls.length; j++) {
-            var w2 = state.walls[j];
-            if (w2.elementType && w2.elementType !== "wall") continue; // Skip doors/windows
-
-            // Check if walls share an endpoint (corner)
-            var cornerPoint = null;
-            var w1Endpoint = null; // Which endpoint of w1
-            var w2Endpoint = null; // Which endpoint of w2
-
-            // Check w1.p1 with w2 endpoints
-            var dist1 = hypot(w1.p1.x - w2.p1.x, w1.p1.y - w2.p1.y);
-            var dist2 = hypot(w1.p1.x - w2.p2.x, w1.p1.y - w2.p2.y);
-
-            if (dist1 < cornerThreshold) {
-              cornerPoint = { x: w1.p1.x, y: w1.p1.y };
-              w1Endpoint = "p1";
-              w2Endpoint = "p1";
-            } else if (dist2 < cornerThreshold) {
-              cornerPoint = { x: w1.p1.x, y: w1.p1.y };
-              w1Endpoint = "p1";
-              w2Endpoint = "p2";
-            }
-
-            // Check w1.p2 with w2 endpoints
-            if (!cornerPoint) {
-              dist1 = hypot(w1.p2.x - w2.p1.x, w1.p2.y - w2.p1.y);
-              dist2 = hypot(w1.p2.x - w2.p2.x, w1.p2.y - w2.p2.y);
-
-              if (dist1 < cornerThreshold) {
-                cornerPoint = { x: w1.p2.x, y: w1.p2.y };
-                w1Endpoint = "p2";
-                w2Endpoint = "p1";
-              } else if (dist2 < cornerThreshold) {
-                cornerPoint = { x: w1.p2.x, y: w1.p2.y };
-                w1Endpoint = "p2";
-                w2Endpoint = "p2";
-              }
-            }
-
-            if (cornerPoint) {
-              // Create unique key for this corner to avoid duplicates
-              var cornerKey =
-                cornerPoint.x.toFixed(3) + "," + cornerPoint.y.toFixed(3);
-              if (processedCorners[cornerKey]) continue;
-              processedCorners[cornerKey] = true;
-
-              // Calculate wall directions (pointing away from corner)
-              var w1dx = w1.p2.x - w1.p1.x;
-              var w1dy = w1.p2.y - w1.p1.y;
-              var w1len = Math.sqrt(w1dx * w1dx + w1dy * w1dy);
-              var w1dirX = w1len > 0 ? w1dx / w1len : 0;
-              var w1dirY = w1len > 0 ? w1dy / w1len : 0;
-              if (w1Endpoint === "p1") {
-                w1dirX = -w1dirX;
-                w1dirY = -w1dirY;
-              }
-
-              var w2dx = w2.p2.x - w2.p1.x;
-              var w2dy = w2.p2.y - w2.p1.y;
-              var w2len = Math.sqrt(w2dx * w2dx + w2dy * w2dy);
-              var w2dirX = w2len > 0 ? w2dx / w2len : 0;
-              var w2dirY = w2len > 0 ? w2dy / w2len : 0;
-              if (w2Endpoint === "p1") {
-                w2dirX = -w2dirX;
-                w2dirY = -w2dirY;
-              }
-
-              // Calculate perpendicular directions for thickness (pointing outward from wall)
-              var w1perpX = -w1dirY;
-              var w1perpY = w1dirX;
-              var w2perpX = -w2dirY;
-              var w2perpY = w2dirX;
-
-              // Calculate the corner block points
-              // For a proper corner, we need to create an L-shaped block that connects the two walls
-              var halfThick = wallThickness / 2;
-
-              // Calculate the 4 points that form the corner block
-              // Point 1: Outer corner along wall 1's perpendicular direction
-              var outerCorner1 = {
-                x: cornerPoint.x + w1perpX * halfThick,
-                y: cornerPoint.y + w1perpY * halfThick,
-              };
-              // Point 2: Outer corner along wall 2's perpendicular direction
-              var outerCorner2 = {
-                x: cornerPoint.x + w2perpX * halfThick,
-                y: cornerPoint.y + w2perpY * halfThick,
-              };
-              // Point 3: Inner corner (opposite to outerCorner1)
-              var innerCorner1 = {
-                x: cornerPoint.x - w1perpX * halfThick,
-                y: cornerPoint.y - w1perpY * halfThick,
-              };
-              // Point 4: Inner corner (opposite to outerCorner2)
-              var innerCorner2 = {
-                x: cornerPoint.x - w2perpX * halfThick,
-                y: cornerPoint.y - w2perpY * halfThick,
-              };
-
-              // For a proper corner block, we use:
-              // - The corner point itself
-              // - The two outer corners (extending outward from each wall)
-              // - The intersection point of the two inner edges
-
-              // Calculate the intersection of the two inner edges (where the walls' inner faces meet)
-              // This is the point where the two inner perpendicular lines intersect
-              var innerIntersection = {
-                x:
-                  cornerPoint.x - w1perpX * halfThick - w2perpX * halfThick,
-                y:
-                  cornerPoint.y - w1perpY * halfThick - w2perpY * halfThick,
-              };
-
-              // Use the corner point, two outer corners, and inner intersection to form the corner block
-              var cp1 = cornerPoint; // The actual corner point
-              var cp2 = outerCorner1; // Outer corner along wall 1
-              var cp3 = outerCorner2; // Outer corner along wall 2
-              var cp4 = innerIntersection; // Inner intersection point
-
-              // Render corner block
-              var elementHeight = w1.height || 2.5;
-              var elementBottomZ = 0.01;
-
-              // Project corner points to 3D
-              var cp1Bottom_3d = projectToCanvas3D(
-                cp1.x,
-                cp1.y,
-                elementBottomZ
-              );
-              var cp2Bottom_3d = projectToCanvas3D(
-                cp2.x,
-                cp2.y,
-                elementBottomZ
-              );
-              var cp3Bottom_3d = projectToCanvas3D(
-                cp3.x,
-                cp3.y,
-                elementBottomZ
-              );
-              var cp4Bottom_3d = projectToCanvas3D(
-                cp4.x,
-                cp4.y,
-                elementBottomZ
-              );
-
-              var cp1Top_3d = projectToCanvas3D(
-                cp1.x,
-                cp1.y,
-                elementBottomZ + elementHeight
-              );
-              var cp2Top_3d = projectToCanvas3D(
-                cp2.x,
-                cp2.y,
-                elementBottomZ + elementHeight
-              );
-              var cp3Top_3d = projectToCanvas3D(
-                cp3.x,
-                cp3.y,
-                elementBottomZ + elementHeight
-              );
-              var cp4Top_3d = projectToCanvas3D(
-                cp4.x,
-                cp4.y,
-                elementBottomZ + elementHeight
-              );
-
-              // Interpolate for transition
-              var cp1_2d = { x: mx(cp1.x), y: my(cp1.y) };
-              var cp2_2d = { x: mx(cp2.x), y: my(cp2.y) };
-              var cp3_2d = { x: mx(cp3.x), y: my(cp3.y) };
-              var cp4_2d = { x: mx(cp4.x), y: my(cp4.y) };
-
-              var cp1Bottom = {
-                x: cp1_2d.x + (cp1Bottom_3d.x - cp1_2d.x) * transition,
-                y: cp1_2d.y + (cp1Bottom_3d.y - cp1_2d.y) * transition,
-              };
-              var cp2Bottom = {
-                x: cp2_2d.x + (cp2Bottom_3d.x - cp2_2d.x) * transition,
-                y: cp2_2d.y + (cp2Bottom_3d.y - cp2_2d.y) * transition,
-              };
-              var cp3Bottom = {
-                x: cp3_2d.x + (cp3Bottom_3d.x - cp3_2d.x) * transition,
-                y: cp3_2d.y + (cp3Bottom_3d.y - cp3_2d.y) * transition,
-              };
-              var cp4Bottom = {
-                x: cp4_2d.x + (cp4Bottom_3d.x - cp4_2d.x) * transition,
-                y: cp4_2d.y + (cp4Bottom_3d.y - cp4_2d.y) * transition,
-              };
-
-              var cp1Top = {
-                x: cp1_2d.x + (cp1Top_3d.x - cp1_2d.x) * transition,
-                y: cp1_2d.y + (cp1Top_3d.y - cp1_2d.y) * transition,
-              };
-              var cp2Top = {
-                x: cp2_2d.x + (cp2Top_3d.x - cp2_2d.x) * transition,
-                y: cp2_2d.y + (cp2Top_3d.y - cp2_2d.y) * transition,
-              };
-              var cp3Top = {
-                x: cp3_2d.x + (cp3Top_3d.x - cp3_2d.x) * transition,
-                y: cp3_2d.y + (cp3Top_3d.y - cp3_2d.y) * transition,
-              };
-              var cp4Top = {
-                x: cp4_2d.x + (cp4Top_3d.x - cp4_2d.x) * transition,
-                y: cp4_2d.y + (cp4Top_3d.y - cp4_2d.y) * transition,
-              };
-
-              // Get wall color (use first wall's color)
-              var wallColor = w1.color || "#60a5fa";
-              var rgb = hexToRgb(wallColor);
-              if (!rgb) {
-                rgb = { r: 96, g: 165, b: 250 };
-              }
-              var avgDepth =
-                (cp1Bottom_3d.depth +
-                  cp2Bottom_3d.depth +
-                  cp3Bottom_3d.depth +
-                  cp4Bottom_3d.depth) /
-                4;
-              var lightFactor = Math.max(
-                0.4,
-                Math.min(1.0, 0.7 + avgDepth * 0.01)
-              );
-              var shadedColor =
-                "rgb(" +
-                Math.round(rgb.r * lightFactor) +
-                "," +
-                Math.round(rgb.g * lightFactor) +
-                "," +
-                Math.round(rgb.b * lightFactor) +
-                ")";
-              var darkerColor =
-                "rgb(" +
-                Math.round(rgb.r * lightFactor * 0.7) +
-                "," +
-                Math.round(rgb.g * lightFactor * 0.7) +
-                "," +
-                Math.round(rgb.b * lightFactor * 0.7) +
-                ")";
-
-              ctx.save();
-              ctx.globalAlpha = 1.0;
-              ctx.globalCompositeOperation = "source-over";
-
-              // Draw corner block faces
-              // Top face
-              ctx.beginPath();
-              ctx.moveTo(cp1Top.x, cp1Top.y);
-              ctx.lineTo(cp2Top.x, cp2Top.y);
-              ctx.lineTo(cp4Top.x, cp4Top.y);
-              ctx.lineTo(cp3Top.x, cp3Top.y);
-              ctx.closePath();
-              ctx.fillStyle = darkerColor;
-              ctx.fill();
-
-              // Bottom face
-              ctx.beginPath();
-              ctx.moveTo(cp1Bottom.x, cp1Bottom.y);
-              ctx.lineTo(cp3Bottom.x, cp3Bottom.y);
-              ctx.lineTo(cp4Bottom.x, cp4Bottom.y);
-              ctx.lineTo(cp2Bottom.x, cp2Bottom.y);
-              ctx.closePath();
-              ctx.fillStyle = darkerColor;
-              ctx.fill();
-
-              // Side faces
-              ctx.fillStyle = shadedColor;
-              // Face 1: cp1-cp2
-              ctx.beginPath();
-              ctx.moveTo(cp1Bottom.x, cp1Bottom.y);
-              ctx.lineTo(cp1Top.x, cp1Top.y);
-              ctx.lineTo(cp2Top.x, cp2Top.y);
-              ctx.lineTo(cp2Bottom.x, cp2Bottom.y);
-              ctx.closePath();
-              ctx.fill();
-
-              // Face 2: cp2-cp4
-              ctx.beginPath();
-              ctx.moveTo(cp2Bottom.x, cp2Bottom.y);
-              ctx.lineTo(cp2Top.x, cp2Top.y);
-              ctx.lineTo(cp4Top.x, cp4Top.y);
-              ctx.lineTo(cp4Bottom.x, cp4Bottom.y);
-              ctx.closePath();
-              ctx.fill();
-
-              // Face 3: cp4-cp3
-              ctx.beginPath();
-              ctx.moveTo(cp4Bottom.x, cp4Bottom.y);
-              ctx.lineTo(cp4Top.x, cp4Top.y);
-              ctx.lineTo(cp3Top.x, cp3Top.y);
-              ctx.lineTo(cp3Bottom.x, cp3Bottom.y);
-              ctx.closePath();
-              ctx.fill();
-
-              // Face 4: cp3-cp1
-              ctx.beginPath();
-              ctx.moveTo(cp3Bottom.x, cp3Bottom.y);
-              ctx.lineTo(cp3Top.x, cp3Top.y);
-              ctx.lineTo(cp1Top.x, cp1Top.y);
-              ctx.lineTo(cp1Bottom.x, cp1Bottom.y);
-              ctx.closePath();
-              ctx.fill();
-
-              ctx.restore();
-            }
-          }
+        // Draw the image portion - this makes the floor plane "stick" to the image
+        if (
+          srcWidth > 0 &&
+          srcHeight > 0 &&
+          dstWidth > 0 &&
+          dstHeight > 0
+        ) {
+          ctx.drawImage(
+            state.backgroundImage,
+            srcX,
+            srcY,
+            srcWidth,
+            srcHeight, // Source rectangle in image (pixel coords)
+            dstMinX,
+            dstMinY,
+            dstWidth,
+            dstHeight // Destination rectangle in canvas
+          );
         }
       }
 
-      // Reset canvas state before rendering walls to ensure no transparency is inherited
-      ctx.globalAlpha = 1.0;
-      ctx.globalCompositeOperation = "source-over";
-      ctx.setLineDash([]); // Clear any line dash patterns
+      ctx.restore();
 
-      // Render all elements together, sorted by depth for proper occlusion
-      // This ensures elements closer to camera render on top of elements farther away
-      var elementsToRender = [];
+      // Draw border to show the floor plane boundary
+      var borderP1, borderP2, borderP3, borderP4;
+      if (transition > 0) {
+        // 3D border - use same z calculation as floor plane surface
+        var baseHeight = fp.height || 0;
+        var planeType = fp.type || "horizontal";
+
+        var getZForPoint = function (x, y) {
+          if (planeType === "horizontal") {
+            return baseHeight;
+          } else {
+            var inclination = ((fp.inclination || 0) * Math.PI) / 180;
+            var direction =
+              ((fp.inclinationDirection || 0) * Math.PI) / 180;
+            var centerX = (fp.p1.x + fp.p2.x + fp.p3.x + fp.p4.x) / 4;
+            var centerY = (fp.p1.y + fp.p2.y + fp.p3.y + fp.p4.y) / 4;
+            var dx = x - centerX;
+            var dy = y - centerY;
+            var distance =
+              dx * Math.cos(direction) + dy * Math.sin(direction);
+            return baseHeight + distance * Math.tan(inclination);
+          }
+        };
+
+        var z1 = getZForPoint(fp.p1.x, fp.p1.y);
+        var z2 = getZForPoint(fp.p2.x, fp.p2.y);
+        var z3 = getZForPoint(fp.p3.x, fp.p3.y);
+        var z4 = getZForPoint(fp.p4.x, fp.p4.y);
+
+        var p1_2d = { x: mx(fp.p1.x), y: my(fp.p1.y) };
+        var p2_2d = { x: mx(fp.p2.x), y: my(fp.p2.y) };
+        var p3_2d = { x: mx(fp.p3.x), y: my(fp.p3.y) };
+        var p4_2d = { x: mx(fp.p4.x), y: my(fp.p4.y) };
+        var p1_3d = projectToCanvas3D(fp.p1.x, fp.p1.y, z1);
+        var p2_3d = projectToCanvas3D(fp.p2.x, fp.p2.y, z2);
+        var p3_3d = projectToCanvas3D(fp.p3.x, fp.p3.y, z3);
+        var p4_3d = projectToCanvas3D(fp.p4.x, fp.p4.y, z4);
+        borderP1 = {
+          x: p1_2d.x + (p1_3d.x - p1_2d.x) * transition,
+          y: p1_2d.y + (p1_3d.y - p1_2d.y) * transition,
+        };
+        borderP2 = {
+          x: p2_2d.x + (p2_3d.x - p2_2d.x) * transition,
+          y: p2_2d.y + (p2_3d.y - p2_2d.y) * transition,
+        };
+        borderP3 = {
+          x: p3_2d.x + (p3_3d.x - p3_2d.x) * transition,
+          y: p3_2d.y + (p3_3d.y - p3_2d.y) * transition,
+        };
+        borderP4 = {
+          x: p4_2d.x + (p4_3d.x - p4_2d.x) * transition,
+          y: p4_2d.y + (p4_3d.y - p4_2d.y) * transition,
+        };
+      } else {
+        // 2D border - use image coordinates
+        var imgToCanvas = function (imgX, imgY) {
+          var imgWidth = state.backgroundImage.width;
+          var imgHeight = state.backgroundImage.height;
+          var canvasX = mx(0) + (imgX / imgWidth) * (mx(state.w) - mx(0));
+          var canvasY =
+            my(0) + (imgY / imgHeight) * (my(state.h) - my(0));
+          return { x: canvasX, y: canvasY };
+        };
+        borderP1 = imgToCanvas(fp.imgP1.x, fp.imgP1.y);
+        borderP2 = imgToCanvas(fp.imgP2.x, fp.imgP2.y);
+        borderP3 = imgToCanvas(fp.imgP3.x, fp.imgP3.y);
+        borderP4 = imgToCanvas(fp.imgP4.x, fp.imgP4.y);
+      }
+
+      ctx.strokeStyle = "#6b6b6b";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(borderP1.x, borderP1.y);
+      ctx.lineTo(borderP2.x, borderP2.y);
+      ctx.lineTo(borderP3.x, borderP3.y);
+      ctx.lineTo(borderP4.x, borderP4.y);
+      ctx.closePath();
+      ctx.stroke();
+    }
+
+    // temp floor plane - render while drawing
+    if (state.tempFloorPlane) {
+      ctx.save();
+
+      // Calculate canvas coordinates for the temp floor plane
+      var canvasP1, canvasP2, canvasP3, canvasP4;
 
       if (transition > 0) {
-        for (i = 0; i < state.walls.length; i++) {
-          var w = state.walls[i];
-          var elementType = w.elementType || "wall";
-          var elementBottomZ = 0.01;
-          var elementHeight = 2.5; // Default wall height
+        // 3D view - project to 3D using height and type settings
+        var baseHeight = state.floorPlaneHeight || 0;
+        var planeType = state.floorPlaneType || "horizontal";
 
-          // Use correct height and bottom Z based on element type
-          if (elementType === "door" || elementType === "doubleDoor") {
-            elementHeight = 2.1; // Door height
-            elementBottomZ = 0.01; // Doors start at floor
-          } else if (elementType === "window") {
-            elementHeight = 1.2; // Window height
-            elementBottomZ = 0.9; // Window sill height
+        var getZForPoint = function (x, y) {
+          if (planeType === "horizontal") {
+            return baseHeight;
           } else {
-            elementHeight = w.height || 2.5;
-            elementBottomZ = 0.01;
+            var inclination =
+              ((state.floorPlaneInclination || 0) * Math.PI) / 180;
+            var direction =
+              ((state.floorPlaneInclinationDirection || 0) * Math.PI) /
+              180;
+            var centerX =
+              (state.tempFloorPlane.p1.x +
+               state.tempFloorPlane.p2.x +
+               state.tempFloorPlane.p3.x +
+               state.tempFloorPlane.p4.x) /
+              4;
+            var centerY =
+              (state.tempFloorPlane.p1.y +
+               state.tempFloorPlane.p2.y +
+               state.tempFloorPlane.p3.y +
+               state.tempFloorPlane.p4.y) /
+              4;
+            var dx = x - centerX;
+            var dy = y - centerY;
+            var distance =
+              dx * Math.cos(direction) + dy * Math.sin(direction);
+            return baseHeight + distance * Math.tan(inclination);
+          }
+        };
+
+        var z1 = getZForPoint(
+          state.tempFloorPlane.p1.x,
+          state.tempFloorPlane.p1.y
+        );
+        var z2 = getZForPoint(
+          state.tempFloorPlane.p2.x,
+          state.tempFloorPlane.p2.y
+        );
+        var z3 = getZForPoint(
+          state.tempFloorPlane.p3.x,
+          state.tempFloorPlane.p3.y
+        );
+        var z4 = getZForPoint(
+          state.tempFloorPlane.p4.x,
+          state.tempFloorPlane.p4.y
+        );
+
+        var p1_2d = {
+          x: mx(state.tempFloorPlane.p1.x),
+          y: my(state.tempFloorPlane.p1.y),
+        };
+        var p2_2d = {
+          x: mx(state.tempFloorPlane.p2.x),
+          y: my(state.tempFloorPlane.p2.y),
+        };
+        var p3_2d = {
+          x: mx(state.tempFloorPlane.p3.x),
+          y: my(state.tempFloorPlane.p3.y),
+        };
+        var p4_2d = {
+          x: mx(state.tempFloorPlane.p4.x),
+          y: my(state.tempFloorPlane.p4.y),
+        };
+
+        var p1_3d = projectToCanvas3D(
+          state.tempFloorPlane.p1.x,
+          state.tempFloorPlane.p1.y,
+          z1
+        );
+        var p2_3d = projectToCanvas3D(
+          state.tempFloorPlane.p2.x,
+          state.tempFloorPlane.p2.y,
+          z2
+        );
+        var p3_3d = projectToCanvas3D(
+          state.tempFloorPlane.p3.x,
+          state.tempFloorPlane.p3.y,
+          z3
+        );
+        var p4_3d = projectToCanvas3D(
+          state.tempFloorPlane.p4.x,
+          state.tempFloorPlane.p4.y,
+          z4
+        );
+
+        canvasP1 = {
+          x: p1_2d.x + (p1_3d.x - p1_2d.x) * transition,
+          y: p1_2d.y + (p1_3d.y - p1_2d.y) * transition,
+        };
+        canvasP2 = {
+          x: p2_2d.x + (p2_3d.x - p2_2d.x) * transition,
+          y: p2_2d.y + (p2_3d.y - p2_2d.y) * transition,
+        };
+        canvasP3 = {
+          x: p3_2d.x + (p3_3d.x - p3_2d.x) * transition,
+          y: p3_2d.y + (p3_3d.y - p3_2d.y) * transition,
+        };
+        canvasP4 = {
+          x: p4_2d.x + (p4_3d.x - p4_2d.x) * transition,
+          y: p4_2d.y + (p4_3d.y - p4_2d.y) * transition,
+        };
+      } else {
+        // 2D view
+        canvasP1 = {
+          x: mx(state.tempFloorPlane.p1.x),
+          y: my(state.tempFloorPlane.p1.y),
+        };
+        canvasP2 = {
+          x: mx(state.tempFloorPlane.p2.x),
+          y: my(state.tempFloorPlane.p2.y),
+        };
+        canvasP3 = {
+          x: mx(state.tempFloorPlane.p3.x),
+          y: my(state.tempFloorPlane.p3.y),
+        };
+        canvasP4 = {
+          x: mx(state.tempFloorPlane.p4.x),
+          y: my(state.tempFloorPlane.p4.y),
+        };
+      }
+
+      // Draw temp floor plane - fully opaque in 3D, semi-transparent in 2D for preview
+      ctx.globalAlpha = transition > 0 ? 1.0 : 0.5;
+      ctx.globalCompositeOperation = "source-over";
+      ctx.fillStyle = "#8b8b8b";
+      ctx.beginPath();
+      ctx.moveTo(canvasP1.x, canvasP1.y);
+      ctx.lineTo(canvasP2.x, canvasP2.y);
+      ctx.lineTo(canvasP3.x, canvasP3.y);
+      ctx.lineTo(canvasP4.x, canvasP4.y);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = "#6b6b6b";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // walls - with smooth 2D/3D transition
+    var transition = state.viewModeTransition;
+    var wallHeight = 2.5; // Default wall height in meters
+
+    // Function to render corner pieces for joined walls
+    function renderWallCorners(ctx, transition) {
+      var wallThickness = 0.15; // 15cm wall thickness
+      var cornerThreshold = 0.05; // 5cm threshold for detecting corners
+      var processedCorners = {}; // Track processed corners to avoid duplicates
+
+      for (var i = 0; i < state.walls.length; i++) {
+        var w1 = state.walls[i];
+        if (w1.elementType && w1.elementType !== "wall") continue; // Skip doors/windows
+
+        for (var j = i + 1; j < state.walls.length; j++) {
+          var w2 = state.walls[j];
+          if (w2.elementType && w2.elementType !== "wall") continue; // Skip doors/windows
+
+          // Check if walls share an endpoint (corner)
+          var cornerPoint = null;
+          var w1Endpoint = null; // Which endpoint of w1
+          var w2Endpoint = null; // Which endpoint of w2
+
+          // Check w1.p1 with w2 endpoints
+          var dist1 = hypot(w1.p1.x - w2.p1.x, w1.p1.y - w2.p1.y);
+          var dist2 = hypot(w1.p1.x - w2.p2.x, w1.p1.y - w2.p2.y);
+
+          if (dist1 < cornerThreshold) {
+            cornerPoint = { x: w1.p1.x, y: w1.p1.y };
+            w1Endpoint = "p1";
+            w2Endpoint = "p1";
+          } else if (dist2 < cornerThreshold) {
+            cornerPoint = { x: w1.p1.x, y: w1.p1.y };
+            w1Endpoint = "p1";
+            w2Endpoint = "p2";
           }
 
-          // Calculate depth for proper sorting - use front face depth (closest to camera)
-          // For elements with thickness, we need to find the front face
-          var p1Bottom_3d = projectToCanvas3D(
-            w.p1.x,
-            w.p1.y,
-            elementBottomZ
-          );
-          var p2Bottom_3d = projectToCanvas3D(
-            w.p2.x,
-            w.p2.y,
-            elementBottomZ
-          );
-          var p1Top_3d = projectToCanvas3D(
-            w.p1.x,
-            w.p1.y,
-            elementBottomZ + elementHeight
-          );
-          var p2Top_3d = projectToCanvas3D(
-            w.p2.x,
-            w.p2.y,
-            elementBottomZ + elementHeight
-          );
+          // Check w1.p2 with w2 endpoints
+          if (!cornerPoint) {
+            dist1 = hypot(w1.p2.x - w2.p1.x, w1.p2.y - w2.p1.y);
+            dist2 = hypot(w1.p2.x - w2.p2.x, w1.p2.y - w2.p2.y);
 
-          // For elements with thickness, calculate front and back face depths
-          var frontDepth, backDepth;
-          if (elementType === "wall") {
-            // Wall has thickness - calculate front and back face
-            var wallThickness = 0.15;
-            var dx = w.p2.x - w.p1.x;
-            var dy = w.p2.y - w.p1.y;
-            var len = Math.sqrt(dx * dx + dy * dy);
-            if (len > 0) {
-              var perpX = ((-dy / len) * wallThickness) / 2;
-              var perpY = ((dx / len) * wallThickness) / 2;
-              var p1Front_3d = projectToCanvas3D(
-                w.p1.x + perpX,
-                w.p1.y + perpY,
-                elementBottomZ
-              );
-              var p2Front_3d = projectToCanvas3D(
-                w.p2.x + perpX,
-                w.p2.y + perpY,
-                elementBottomZ
-              );
-              var p1Back_3d = projectToCanvas3D(
-                w.p1.x - perpX,
-                w.p1.y - perpY,
-                elementBottomZ
-              );
-              var p2Back_3d = projectToCanvas3D(
-                w.p2.x - perpX,
-                w.p2.y - perpY,
-                elementBottomZ
-              );
-              frontDepth = Math.min(p1Front_3d.depth, p2Front_3d.depth);
-              backDepth = Math.max(p1Back_3d.depth, p2Back_3d.depth);
-            } else {
-              frontDepth = (p1Bottom_3d.depth + p2Bottom_3d.depth) / 2;
-              backDepth = frontDepth;
+            if (dist1 < cornerThreshold) {
+              cornerPoint = { x: w1.p2.x, y: w1.p2.y };
+              w1Endpoint = "p2";
+              w2Endpoint = "p1";
+            } else if (dist2 < cornerThreshold) {
+              cornerPoint = { x: w1.p2.x, y: w1.p2.y };
+              w1Endpoint = "p2";
+              w2Endpoint = "p2";
             }
-          } else if (
-            elementType === "door" ||
-            elementType === "doubleDoor"
-          ) {
-            // Doors have thickness - calculate front face depth
-            var angle = Math.atan2(w.p2.y - w.p1.y, w.p2.x - w.p1.x);
-            var perpAngle = angle + Math.PI / 2;
-            var doorDepth = 0.05; // 5cm door frame thickness
-            var depthOffsetX = (Math.cos(perpAngle) * doorDepth) / 2;
-            var depthOffsetY = (Math.sin(perpAngle) * doorDepth) / 2;
-            var centerX = (w.p1.x + w.p2.x) / 2;
-            var centerY = (w.p1.y + w.p2.y) / 2;
-            // Use front face (offset in perpendicular direction)
-            var frontP1_3d = projectToCanvas3D(
-              w.p1.x + depthOffsetX,
-              w.p1.y + depthOffsetY,
+          }
+
+          if (cornerPoint) {
+            // Create unique key for this corner to avoid duplicates
+            var cornerKey =
+              cornerPoint.x.toFixed(3) + "," + cornerPoint.y.toFixed(3);
+            if (processedCorners[cornerKey]) continue;
+            processedCorners[cornerKey] = true;
+
+            // Calculate wall directions (pointing away from corner)
+            var w1dx = w1.p2.x - w1.p1.x;
+            var w1dy = w1.p2.y - w1.p1.y;
+            var w1len = Math.sqrt(w1dx * w1dx + w1dy * w1dy);
+            var w1dirX = w1len > 0 ? w1dx / w1len : 0;
+            var w1dirY = w1len > 0 ? w1dy / w1len : 0;
+            if (w1Endpoint === "p1") {
+              w1dirX = -w1dirX;
+              w1dirY = -w1dirY;
+            }
+
+            var w2dx = w2.p2.x - w2.p1.x;
+            var w2dy = w2.p2.y - w2.p1.y;
+            var w2len = Math.sqrt(w2dx * w2dx + w2dy * w2dy);
+            var w2dirX = w2len > 0 ? w2dx / w2len : 0;
+            var w2dirY = w2len > 0 ? w2dy / w2len : 0;
+            if (w2Endpoint === "p1") {
+              w2dirX = -w2dirX;
+              w2dirY = -w2dirY;
+            }
+
+            // Calculate perpendicular directions for thickness (pointing outward from wall)
+            var w1perpX = -w1dirY;
+            var w1perpY = w1dirX;
+            var w2perpX = -w2dirY;
+            var w2perpY = w2dirX;
+
+            // Calculate the corner block points
+            // For a proper corner, we need to create an L-shaped block that connects the two walls
+            var halfThick = wallThickness / 2;
+
+            // Calculate the 4 points that form the corner block
+            // Point 1: Outer corner along wall 1's perpendicular direction
+            var outerCorner1 = {
+              x: cornerPoint.x + w1perpX * halfThick,
+              y: cornerPoint.y + w1perpY * halfThick,
+            };
+            // Point 2: Outer corner along wall 2's perpendicular direction
+            var outerCorner2 = {
+              x: cornerPoint.x + w2perpX * halfThick,
+              y: cornerPoint.y + w2perpY * halfThick,
+            };
+            // Point 3: Inner corner (opposite to outerCorner1)
+            var innerCorner1 = {
+              x: cornerPoint.x - w1perpX * halfThick,
+              y: cornerPoint.y - w1perpY * halfThick,
+            };
+            // Point 4: Inner corner (opposite to outerCorner2)
+            var innerCorner2 = {
+              x: cornerPoint.x - w2perpX * halfThick,
+              y: cornerPoint.y - w2perpY * halfThick,
+            };
+
+            // For a proper corner block, we use:
+            // - The corner point itself
+            // - The two outer corners (extending outward from each wall)
+            // - The intersection point of the two inner edges
+
+            // Calculate the intersection of the two inner edges (where the walls' inner faces meet)
+            // This is the point where the two inner perpendicular lines intersect
+            var innerIntersection = {
+              x:
+                cornerPoint.x - w1perpX * halfThick - w2perpX * halfThick,
+              y:
+                cornerPoint.y - w1perpY * halfThick - w2perpY * halfThick,
+            };
+
+            // Use the corner point, two outer corners, and inner intersection to form the corner block
+            var cp1 = cornerPoint; // The actual corner point
+            var cp2 = outerCorner1; // Outer corner along wall 1
+            var cp3 = outerCorner2; // Outer corner along wall 2
+            var cp4 = innerIntersection; // Inner intersection point
+
+            // Render corner block
+            var elementHeight = w1.height || 2.5;
+            var elementBottomZ = 0.01;
+
+            // Project corner points to 3D
+            var cp1Bottom_3d = projectToCanvas3D(
+              cp1.x,
+              cp1.y,
               elementBottomZ
             );
-            var frontP2_3d = projectToCanvas3D(
-              w.p2.x + depthOffsetX,
-              w.p2.y + depthOffsetY,
+            var cp2Bottom_3d = projectToCanvas3D(
+              cp2.x,
+              cp2.y,
               elementBottomZ
             );
-            frontDepth = Math.min(frontP1_3d.depth, frontP2_3d.depth);
-            backDepth = Math.max(p1Bottom_3d.depth, p2Bottom_3d.depth);
-          } else if (elementType === "window") {
-            // Windows have thickness - calculate front face depth
-            var angle = Math.atan2(w.p2.y - w.p1.y, w.p2.x - w.p1.x);
-            var perpAngle = angle + Math.PI / 2;
-            var frameDepth = 0.025; // Half of 5cm frame thickness
-            var depthOffsetX = Math.cos(perpAngle) * frameDepth;
-            var depthOffsetY = Math.sin(perpAngle) * frameDepth;
-            var centerX = (w.p1.x + w.p2.x) / 2;
-            var centerY = (w.p1.y + w.p2.y) / 2;
-            // Use front face (offset in perpendicular direction)
-            var frontP1_3d = projectToCanvas3D(
-              w.p1.x + depthOffsetX,
-              w.p1.y + depthOffsetY,
+            var cp3Bottom_3d = projectToCanvas3D(
+              cp3.x,
+              cp3.y,
               elementBottomZ
             );
-            var frontP2_3d = projectToCanvas3D(
-              w.p2.x + depthOffsetX,
-              w.p2.y + depthOffsetY,
+            var cp4Bottom_3d = projectToCanvas3D(
+              cp4.x,
+              cp4.y,
+              elementBottomZ
+            );
+
+            var cp1Top_3d = projectToCanvas3D(
+              cp1.x,
+              cp1.y,
+              elementBottomZ + elementHeight
+            );
+            var cp2Top_3d = projectToCanvas3D(
+              cp2.x,
+              cp2.y,
+              elementBottomZ + elementHeight
+            );
+            var cp3Top_3d = projectToCanvas3D(
+              cp3.x,
+              cp3.y,
+              elementBottomZ + elementHeight
+            );
+            var cp4Top_3d = projectToCanvas3D(
+              cp4.x,
+              cp4.y,
+              elementBottomZ + elementHeight
+            );
+
+            // Interpolate for transition
+            var cp1_2d = { x: mx(cp1.x), y: my(cp1.y) };
+            var cp2_2d = { x: mx(cp2.x), y: my(cp2.y) };
+            var cp3_2d = { x: mx(cp3.x), y: my(cp3.y) };
+            var cp4_2d = { x: mx(cp4.x), y: my(cp4.y) };
+
+            var cp1Bottom = {
+              x: cp1_2d.x + (cp1Bottom_3d.x - cp1_2d.x) * transition,
+              y: cp1_2d.y + (cp1Bottom_3d.y - cp1_2d.y) * transition,
+            };
+            var cp2Bottom = {
+              x: cp2_2d.x + (cp2Bottom_3d.x - cp2_2d.x) * transition,
+              y: cp2_2d.y + (cp2Bottom_3d.y - cp2_2d.y) * transition,
+            };
+            var cp3Bottom = {
+              x: cp3_2d.x + (cp3Bottom_3d.x - cp3_2d.x) * transition,
+              y: cp3_2d.y + (cp3Bottom_3d.y - cp3_2d.y) * transition,
+            };
+            var cp4Bottom = {
+              x: cp4_2d.x + (cp4Bottom_3d.x - cp4_2d.x) * transition,
+              y: cp4_2d.y + (cp4Bottom_3d.y - cp4_2d.y) * transition,
+            };
+
+            var cp1Top = {
+              x: cp1_2d.x + (cp1Top_3d.x - cp1_2d.x) * transition,
+              y: cp1_2d.y + (cp1Top_3d.y - cp1_2d.y) * transition,
+            };
+            var cp2Top = {
+              x: cp2_2d.x + (cp2Top_3d.x - cp2_2d.x) * transition,
+              y: cp2_2d.y + (cp2Top_3d.y - cp2_2d.y) * transition,
+            };
+            var cp3Top = {
+              x: cp3_2d.x + (cp3Top_3d.x - cp3_2d.x) * transition,
+              y: cp3_2d.y + (cp3Top_3d.y - cp3_2d.y) * transition,
+            };
+            var cp4Top = {
+              x: cp4_2d.x + (cp4Top_3d.x - cp4_2d.x) * transition,
+              y: cp4_2d.y + (cp4Top_3d.y - cp4_2d.y) * transition,
+            };
+
+            // Get wall color (use first wall's color)
+            var wallColor = w1.color || "#60a5fa";
+            var rgb = hexToRgb(wallColor);
+            if (!rgb) {
+              rgb = { r: 96, g: 165, b: 250 };
+            }
+            var avgDepth =
+              (cp1Bottom_3d.depth +
+               cp2Bottom_3d.depth +
+               cp3Bottom_3d.depth +
+               cp4Bottom_3d.depth) /
+              4;
+            var lightFactor = Math.max(
+              0.4,
+              Math.min(1.0, 0.7 + avgDepth * 0.01)
+            );
+            var shadedColor =
+              "rgb(" +
+              Math.round(rgb.r * lightFactor) +
+              "," +
+              Math.round(rgb.g * lightFactor) +
+              "," +
+              Math.round(rgb.b * lightFactor) +
+              ")";
+            var darkerColor =
+              "rgb(" +
+              Math.round(rgb.r * lightFactor * 0.7) +
+              "," +
+              Math.round(rgb.g * lightFactor * 0.7) +
+              "," +
+              Math.round(rgb.b * lightFactor * 0.7) +
+              ")";
+
+            ctx.save();
+            ctx.globalAlpha = 1.0;
+            ctx.globalCompositeOperation = "source-over";
+
+            // Draw corner block faces
+            // Top face
+            ctx.beginPath();
+            ctx.moveTo(cp1Top.x, cp1Top.y);
+            ctx.lineTo(cp2Top.x, cp2Top.y);
+            ctx.lineTo(cp4Top.x, cp4Top.y);
+            ctx.lineTo(cp3Top.x, cp3Top.y);
+            ctx.closePath();
+            ctx.fillStyle = darkerColor;
+            ctx.fill();
+
+            // Bottom face
+            ctx.beginPath();
+            ctx.moveTo(cp1Bottom.x, cp1Bottom.y);
+            ctx.lineTo(cp3Bottom.x, cp3Bottom.y);
+            ctx.lineTo(cp4Bottom.x, cp4Bottom.y);
+            ctx.lineTo(cp2Bottom.x, cp2Bottom.y);
+            ctx.closePath();
+            ctx.fillStyle = darkerColor;
+            ctx.fill();
+
+            // Side faces
+            ctx.fillStyle = shadedColor;
+            // Face 1: cp1-cp2
+            ctx.beginPath();
+            ctx.moveTo(cp1Bottom.x, cp1Bottom.y);
+            ctx.lineTo(cp1Top.x, cp1Top.y);
+            ctx.lineTo(cp2Top.x, cp2Top.y);
+            ctx.lineTo(cp2Bottom.x, cp2Bottom.y);
+            ctx.closePath();
+            ctx.fill();
+
+            // Face 2: cp2-cp4
+            ctx.beginPath();
+            ctx.moveTo(cp2Bottom.x, cp2Bottom.y);
+            ctx.lineTo(cp2Top.x, cp2Top.y);
+            ctx.lineTo(cp4Top.x, cp4Top.y);
+            ctx.lineTo(cp4Bottom.x, cp4Bottom.y);
+            ctx.closePath();
+            ctx.fill();
+
+            // Face 3: cp4-cp3
+            ctx.beginPath();
+            ctx.moveTo(cp4Bottom.x, cp4Bottom.y);
+            ctx.lineTo(cp4Top.x, cp4Top.y);
+            ctx.lineTo(cp3Top.x, cp3Top.y);
+            ctx.lineTo(cp3Bottom.x, cp3Bottom.y);
+            ctx.closePath();
+            ctx.fill();
+
+            // Face 4: cp3-cp1
+            ctx.beginPath();
+            ctx.moveTo(cp3Bottom.x, cp3Bottom.y);
+            ctx.lineTo(cp3Top.x, cp3Top.y);
+            ctx.lineTo(cp1Top.x, cp1Top.y);
+            ctx.lineTo(cp1Bottom.x, cp1Bottom.y);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.restore();
+          }
+        }
+      }
+    }
+
+    // Reset canvas state before rendering walls to ensure no transparency is inherited
+    ctx.globalAlpha = 1.0;
+    ctx.globalCompositeOperation = "source-over";
+    ctx.setLineDash([]); // Clear any line dash patterns
+
+    // Render all elements together, sorted by depth for proper occlusion
+    // This ensures elements closer to camera render on top of elements farther away
+    var elementsToRender = [];
+
+    if (transition > 0) {
+      for (i = 0; i < state.walls.length; i++) {
+        var w = state.walls[i];
+        var elementType = w.elementType || "wall";
+        var elementBottomZ = 0.01;
+        var elementHeight = 2.5; // Default wall height
+
+        // Use correct height and bottom Z based on element type
+        if (elementType === "door" || elementType === "doubleDoor") {
+          elementHeight = 2.1; // Door height
+          elementBottomZ = 0.01; // Doors start at floor
+        } else if (elementType === "window") {
+          elementHeight = 1.2; // Window height
+          elementBottomZ = 0.9; // Window sill height
+        } else {
+          elementHeight = w.height || 2.5;
+          elementBottomZ = 0.01;
+        }
+
+        // Calculate depth for proper sorting - use front face depth (closest to camera)
+        // For elements with thickness, we need to find the front face
+        var p1Bottom_3d = projectToCanvas3D(
+          w.p1.x,
+          w.p1.y,
+          elementBottomZ
+        );
+        var p2Bottom_3d = projectToCanvas3D(
+          w.p2.x,
+          w.p2.y,
+          elementBottomZ
+        );
+        var p1Top_3d = projectToCanvas3D(
+          w.p1.x,
+          w.p1.y,
+          elementBottomZ + elementHeight
+        );
+        var p2Top_3d = projectToCanvas3D(
+          w.p2.x,
+          w.p2.y,
+          elementBottomZ + elementHeight
+        );
+
+        // For elements with thickness, calculate front and back face depths
+        var frontDepth, backDepth;
+        if (elementType === "wall") {
+          // Wall has thickness - calculate front and back face
+          var wallThickness = 0.15;
+          var dx = w.p2.x - w.p1.x;
+          var dy = w.p2.y - w.p1.y;
+          var len = Math.sqrt(dx * dx + dy * dy);
+          if (len > 0) {
+            var perpX = ((-dy / len) * wallThickness) / 2;
+            var perpY = ((dx / len) * wallThickness) / 2;
+            var p1Front_3d = projectToCanvas3D(
+              w.p1.x + perpX,
+              w.p1.y + perpY,
+              elementBottomZ
+            );
+            var p2Front_3d = projectToCanvas3D(
+              w.p2.x + perpX,
+              w.p2.y + perpY,
+              elementBottomZ
+            );
+            var p1Back_3d = projectToCanvas3D(
+              w.p1.x - perpX,
+              w.p1.y - perpY,
+              elementBottomZ
+            );
+            var p2Back_3d = projectToCanvas3D(
+              w.p2.x - perpX,
+              w.p2.y - perpY,
+              elementBottomZ
+            );
+            frontDepth = Math.min(p1Front_3d.depth, p2Front_3d.depth);
+            backDepth = Math.max(p1Back_3d.depth, p2Back_3d.depth);
+          } else {
+            frontDepth = (p1Bottom_3d.depth + p2Bottom_3d.depth) / 2;
+            backDepth = frontDepth;
+          }
+        } else if (
+          elementType === "door" ||
+          elementType === "doubleDoor"
+        ) {
+          // Doors have thickness - calculate front face depth
+          var angle = Math.atan2(w.p2.y - w.p1.y, w.p2.x - w.p1.x);
+          var perpAngle = angle + Math.PI / 2;
+          var doorDepth = 0.05; // 5cm door frame thickness
+          var depthOffsetX = (Math.cos(perpAngle) * doorDepth) / 2;
+          var depthOffsetY = (Math.sin(perpAngle) * doorDepth) / 2;
+          var centerX = (w.p1.x + w.p2.x) / 2;
+          var centerY = (w.p1.y + w.p2.y) / 2;
+          // Use front face (offset in perpendicular direction)
+          var frontP1_3d = projectToCanvas3D(
+            w.p1.x + depthOffsetX,
+            w.p1.y + depthOffsetY,
+            elementBottomZ
+          );
+          var frontP2_3d = projectToCanvas3D(
+            w.p2.x + depthOffsetX,
+            w.p2.y + depthOffsetY,
+            elementBottomZ
+          );
+          frontDepth = Math.min(frontP1_3d.depth, frontP2_3d.depth);
+          backDepth = Math.max(p1Bottom_3d.depth, p2Bottom_3d.depth);
+        } else if (elementType === "window") {
+          // Windows have thickness - calculate front face depth
+          var angle = Math.atan2(w.p2.y - w.p1.y, w.p2.x - w.p1.x);
+          var perpAngle = angle + Math.PI / 2;
+          var frameDepth = 0.025; // Half of 5cm frame thickness
+          var depthOffsetX = Math.cos(perpAngle) * frameDepth;
+          var depthOffsetY = Math.sin(perpAngle) * frameDepth;
+          var centerX = (w.p1.x + w.p2.x) / 2;
+          var centerY = (w.p1.y + w.p2.y) / 2;
+          // Use front face (offset in perpendicular direction)
+          var frontP1_3d = projectToCanvas3D(
+            w.p1.x + depthOffsetX,
+            w.p1.y + depthOffsetY,
+            elementBottomZ
+          );
+          var frontP2_3d = projectToCanvas3D(
+            w.p2.x + depthOffsetX,
+            w.p2.y + depthOffsetY,
               elementBottomZ
             );
             frontDepth = Math.min(frontP1_3d.depth, frontP2_3d.depth);
