@@ -74,6 +74,8 @@ class Combined(CombinedTemplate):
                             window.dispatchEvent(new CustomEvent('anvilParseDxf', {{detail: event.data}}));
                         if (event.data && event.data.type === 'compliance_settings')
                             window.dispatchEvent(new CustomEvent('anvilComplianceSettings', {{detail: event.data}}));
+                        if (event.data && event.data.type === 'restart_backend_session')
+                            window.dispatchEvent(new CustomEvent('anvilRestartSession', {{detail: event.data}}));
                     }});
 
                     function triggerMessageCheck() {{
@@ -106,6 +108,7 @@ class Combined(CombinedTemplate):
     js.window.addEventListener("anvilGenerateDxf",              self.generate_dxf)
     js.window.addEventListener("anvilParseDxf",                 self.parse_dxf)
     js.window.addEventListener("anvilComplianceSettings",       self.update_compliance_settings)
+    js.window.addEventListener("anvilRestartSession",           self.handle_restart_session)
 
   # ========== Core Iframe Communication ==========
   def _send_to_iframe(self, msg_type, success=None, **kwargs):
@@ -352,9 +355,9 @@ class Combined(CombinedTemplate):
 
     self._send_to_iframe("optimization_update",
                          new_action_configs=new_actions,
-                         bsrv_rsrp=new_bsrv_rsrp,
-                         compliance=new_compliance,
-                         state=status,
+                         new_bsrv_rsrp=new_bsrv_rsrp,
+                         new_compliance=new_compliance,
+                         status=status,
                          message=message)
     self.last_index += len(new_actions)
 
@@ -451,8 +454,11 @@ class Combined(CombinedTemplate):
                          percentage=result.get("percentage"))
 
   # ========== Session ==========
+  def handle_restart_session(self, event):
+    self._reset_session()
+
   def _reset_session(self):
-    print("Starting backend session...")
+    print("Resetting backend session...")
     while True:
       try:
         with anvil.server.no_loading_indicator:

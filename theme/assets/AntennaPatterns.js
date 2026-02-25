@@ -1,23 +1,3 @@
-//
-// AntennaPatterns.js
-// Manages antenna radiation pattern files: parsing uploaded pattern files,
-// looking up the default pattern, deleting patterns, and updating the
-// pattern list UI (global select + per-antenna selects).
-//
-// All functions are exposed on window for global access.
-//
-// Depends on: global state, document.getElementById() helper, NotificationSystem
-//
-// Called by:
-//   File upload handlers      — parseAntennaPattern
-//   AP creation (manual/auto) — getDefaultAntennaPattern
-//   loadProject               — updateAntennaPatternsList
-//   Delete pattern button     — deleteAntennaPattern
-//
-// Note: getAngleDependentGain, getGainFromPattern, interpolateGain stay
-// in the monolith because they depend on _propModel (created there).
-//
-
 (function () {
   "use strict";
 

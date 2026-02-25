@@ -978,8 +978,10 @@
     });
 
     var countInput = document.getElementById("autoPlaceCount");
-    if (countInput) if (countInput) countInput.addEventListener("keydown", function (e) {
+    if (countInput) countInput.addEventListener("keydown", function (e) {
       if (e.key === "Enter") {
+        e.preventDefault();
+        e.stopPropagation();
         performAutoPlacement();
       } else if (e.key === "Escape") {
         document.getElementById("autoPlaceInputContainer").style.display = "none";
@@ -988,7 +990,7 @@
     });
 
     var confirmAutoPlaceBtn = document.getElementById("confirmAutoPlaceBtn");
-    if (confirmAutoPlaceBtn) if (confirmAutoPlaceBtn) confirmAutoPlaceBtn.addEventListener("click", performAutoPlacement);
+    if (confirmAutoPlaceBtn) confirmAutoPlaceBtn.addEventListener("click", performAutoPlacement);
 
   });
 

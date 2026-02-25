@@ -28,7 +28,7 @@
     state.cachedHeatmapAntennaCount = 0;
     state.heatmapUpdatePending = true;
     state.heatmapWorkerCallback = null;
-    state.backendRsrpGrid = null;
+    state.optimizationRsrpGrid = null;
     state.compliancePercentFromBackend = null;
     if (state.showVisualization) {
       generateHeatmapAsync(null, true); // low-res first for fast feedback
@@ -256,11 +256,33 @@
               var idx = 4 * (r * cols + c);
 
               // Use backend-computed RSRP when available (from optimization)
-              if (state.backendRsrpGrid && state.view === "rssi") {
-                var bgrid = state.backendRsrpGrid;
-                var gc = Math.max(0, Math.min(bgrid.cols - 1, Math.floor(x / bgrid.dx)));
-                var gr = Math.max(0, Math.min(bgrid.rows - 1, Math.floor(y / bgrid.dy)));
-                var bval = bgrid.data[gr * bgrid.cols + gc];
+              if (state.optimizationRsrpGrid && state.view === "rssi") {
+                var bgrid = state.optimizationRsrpGrid;
+
+                // Convert (x,y) to backend grid coordinates (floating point)
+                var bx = x / bgrid.dx;
+                var by = y / bgrid.dy;
+
+                // Get integer indices for 4 nearest neighbors
+                var gx0 = Math.max(0, Math.min(bgrid.cols - 1, Math.floor(bx - 0.5)));
+                var gx1 = Math.max(0, Math.min(bgrid.cols - 1, gx0 + 1));
+                var gy0 = Math.max(0, Math.min(bgrid.rows - 1, Math.floor(by - 0.5)));
+                var gy1 = Math.max(0, Math.min(bgrid.rows - 1, gy0 + 1));
+
+                // Fractional distances
+                var tx = (bx - 0.5) - gx0;
+                var ty = (by - 0.5) - gy0;
+
+                // Interpolate
+                var v00 = bgrid.data[gy0 * bgrid.cols + gx0];
+                var v10 = bgrid.data[gy0 * bgrid.cols + gx1];
+                var v01 = bgrid.data[gy1 * bgrid.cols + gx0];
+                var v11 = bgrid.data[gy1 * bgrid.cols + gx1];
+
+                var v0 = v00 * (1 - tx) + v10 * tx;
+                var v1 = v01 * (1 - tx) + v11 * tx;
+                var bval = v0 * (1 - ty) + v1 * ty;
+
                 if (!isNaN(bval)) {
                   var bcolor = colorNumeric(state.view === "snr" ? bval - state.noise : bval);
                   img.data[idx] = bcolor[0];
@@ -269,6 +291,7 @@
                   img.data[idx + 3] = bcolor[3];
                   continue;
                 }
+                console.log("state.optimizationRsrpGrid: ", state.optimizationRsrpGrid);
               }
 
               // Check if CSV coverage data is available and view is RSSI

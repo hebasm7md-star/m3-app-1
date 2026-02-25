@@ -340,7 +340,7 @@ var NotificationSystem = (function() {
       button.onclick = function() {
         if (btn.callback) btn.callback();
         if (document.body.contains(overlay)) document.body.removeChild(overlay);
-        document.removeEventListener('keydown', keyHandler);
+        document.removeEventListener('keydown', keyHandler, true);
       };
       btnContainer.appendChild(button);
     });
@@ -351,22 +351,35 @@ var NotificationSystem = (function() {
     var keyHandler = function(e) {
       if (!document.body.contains(overlay)) return;
       if (e.key === 'Escape') {
-        document.body.removeChild(overlay);
-        document.removeEventListener('keydown', keyHandler);
+        e.preventDefault();
+        e.stopPropagation();
+        var cancelBtn = modal.querySelector('.notif-btn-secondary');
+        if (cancelBtn) {
+          cancelBtn.click();
+        } else {
+          document.body.removeChild(overlay);
+          document.removeEventListener('keydown', keyHandler);
+        }
       } else if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
         var primaryBtn = modal.querySelector('.notif-btn-primary') || modal.querySelector('.notif-btn-danger');
         if (primaryBtn) {
-          e.preventDefault();
           primaryBtn.click();
         }
       }
     };
-    document.addEventListener('keydown', keyHandler);
+    document.addEventListener('keydown', keyHandler, true); // use capture phase to prevent other Enter listeners
 
     overlay.addEventListener('click', function(e) {
       if (e.target === overlay) {
-        document.body.removeChild(overlay);
-        document.removeEventListener('keydown', keyHandler);
+        var cancelBtn = modal.querySelector('.notif-btn-secondary');
+        if (cancelBtn) {
+          cancelBtn.click();
+        } else {
+          document.body.removeChild(overlay);
+          document.removeEventListener('keydown', keyHandler, true);
+        }
       }
     });
   }
