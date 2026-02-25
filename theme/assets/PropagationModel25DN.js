@@ -1,494 +1,499 @@
-// 04-OPTIMIZATION-SYSTEM.js - Handles AI antenna optimization polling and updates
-// Depends on: global state, draw(), renderAPs(), renderApDetails(), NotificationSystem, logAntennaPositionChange
+/**
+ * PropagationModel25D.js
+ * 2.5D Propagation Model - Standalone Module
+ * 
+ * This module contains all RSSI calculation logic extracted from the HTML.
+ * Can be used in Node.js or browser.
+ * 
+ * Usage:
+ *   import { PropagationModel25D } from './PropagationModel25D.js';
+ *   // or
+ *   const { PropagationModel25D } = require('./PropagationModel25D.js');
+ */
 
-var OptimizationSystem = (function () {
-
-  var optimizationPollingInterval = null;
-
-  // Helper to generate a professional message for optimization actions
-  function getFriendlyActionMessage(action) {
-    if (!action) return "Analyzing network state...";
-
-    const type = action.action_type;
-    const id = action.antenna_id || "System";
-
-    switch (type) {
-      case 'Sectorization': return `${id}: Optimizing sector configuration...`;
-      case 'CIO': return `${id}: Adjusting CIO handover parameters...`;
-      case 'Turnning_ON_OFF': return `${id}: Toggle antenna status (ON/OFF)...`;
-      case 'PCI': return `${id}: Reassigining PCI collision...`;
-      case 'pattern_change': return `${id}: Changing antenna pattern...`;
-      case 'power': return `${id}: Tuning transmission power levels ...`;
-      case 'tilt': return `${id}: Adjusting Remote Electrical Tilt (RET)...`;
-      case 'azimuth': return `${id}: Rotating horizontal orientation (Azimuth)...`;
-      case 'location': return `${id}: Optimizing physical location coordinates...`;
-      default:
-        // Fallback for technical action descriptions
-        if (action.action_desc) return `${id}: ${action.action_desc}`;
-        return `${id}: Optimization parameter updated successfully.`;
-    }
+class PropagationModel25D {
+  /**
+     * Initialize the propagation model
+     * @param {Object} config - Configuration object
+     * @param {number} config.frequency - Frequency in MHz (default: 2400)
+     * @param {number} config.N - Path loss exponent (default: 10)
+     * @param {number} config.verticalFactor - 2.5D adjustment in dB (default: 2.0)
+     * @param {number} config.shapeFactor - Antenna pattern sharpening (default: 3.0)
+     */
+  constructor(config = {}) {
+    this.freq = config.frequency || 2400;
+    this.N = config.N || 10;  // Path loss exponent (state.N in HTML)
+    this.verticalFactor = config.verticalFactor || 2.0;
+    this.shapeFactor = config.shapeFactor || 3.0;
+    this.referenceOffset = config.referenceOffset || 0.0;
+    this.minDistance = 0.5;  // Minimum distance in meters
   }
 
-  // Start polling for optimization updates
-  function startOptimizationPolling() {
-    if (optimizationPollingInterval) {
-      clearInterval(optimizationPollingInterval);
-    }
-
-    // Poll every 500ms for new antennas
-    optimizationPollingInterval = setInterval(function () {
-      window.parent.postMessage(
-        {
-          type: "poll_optimization_update",
-          lastIndex: window.optimizationLastIndex || 0,
-        },
-        "*"
-      );
-    }, 500);
-
-    console.log("[startOptimizationPolling] Started optimization polling");
+  /**
+     * Logarithm base 10
+     */
+  log10(x) {
+    return Math.log10(Math.max(x, 1e-10));
   }
 
-  // Stop polling for optimization updates
-  function stopOptimizationPolling() {
-    if (optimizationPollingInterval) {
-      clearInterval(optimizationPollingInterval);
-      optimizationPollingInterval = null;
-    }
-    console.log("Stopped optimization polling");
+  /**
+     * Euclidean distance
+     */
+  hypot(dx, dy) {
+    return Math.hypot(dx, dy);
   }
 
-  function buildBackendRsrpGrid(rsrpValues) {
-    var totalBins = rsrpValues.length;
-    if (totalBins === 0) return;
+  /**
+     * Free-Space Path Loss
+     * @param {number} freqMHz - Frequency in MHz
+     * @param {number} d - Distance in meters
+     * @returns {number} Path loss in dB
+     */
+  fspl(freqMHz, d) {
+    d = Math.max(d, this.minDistance);
+    return 20 * this.log10(freqMHz) + 20 * this.log10(d) - 27.55;
+  }
 
-    var cols = Math.round(state.w);
-    var rows = Math.round(state.h);
+  /**
+     * Ground plane loss with distance factor
+     * @param {Object} txPos - Transmitter position {x, y}
+     * @param {Object} rxPos - Receiver position {x, y}
+     * @param {Object} config - Ground plane config {enabled, attenuation}
+     * @returns {number} Ground plane loss in dB
+     */
+  groundPlaneLoss(txPos, rxPos, config) {
+    if (!config || !config.enabled) return 0;
 
-    if (cols * rows !== totalBins) {
-      var aspectRatio = state.w / state.h;
-      cols = Math.round(Math.sqrt(totalBins * aspectRatio));
-      rows = Math.round(totalBins / cols);
+    const baseAttenuation = config.attenuation || 3.0;
+    const distance = this.hypot(rxPos.x - txPos.x, rxPos.y - txPos.y);
+    const distanceFactor = Math.min(1.0, distance / 10.0);
+
+    return baseAttenuation * (0.7 + 0.3 * distanceFactor);
+  }
+
+  /**
+     * Floor planes loss (vertical obstructions)
+     * @param {Object} txPos - Transmitter position {x, y}
+     * @param {Object} rxPos - Receiver position {x, y}
+     * @param {Array} floorPlanes - Array of floor plane objects
+     * @returns {number} Floor planes loss in dB
+     */
+  floorPlanesLoss(txPos, rxPos, floorPlanes) {
+    let totalLoss = 0;
+    for (const fp of floorPlanes) {
+      if (this.lineIntersectsRect(txPos, rxPos, fp)) {
+        totalLoss += fp.attenuation || 0;
+      }
     }
-    if (cols * rows !== totalBins) {
-      console.warn("[BackendRSRP] Grid dimensions mismatch:", cols, "x", rows, "!=", totalBins);
-      return;
+    return totalLoss;
+  }
+
+  /**
+     * Check if line intersects rectangle
+     */
+  lineIntersectsRect(p1, p2, rect) {
+    // Check if either endpoint is inside
+    if (this.pointInRect(p1, rect) || this.pointInRect(p2, rect)) {
+      return true;
     }
 
-    var gridData = new Float32Array(totalBins);
-    for (var i = 0; i < totalBins; i++) {
-      gridData[i] = Number(rsrpValues[i]);
+    // Check edges
+    const edges = [
+      [rect.p1, rect.p2],
+      [rect.p2, rect.p3],
+      [rect.p3, rect.p4],
+      [rect.p4, rect.p1]
+    ];
+
+    for (const [e1, e2] of edges) {
+      if (this.segmentsIntersect(p1, p2, e1, e2)) {
+        return true;
+      }
     }
 
-    state.optimizationRsrpGrid = {
-      data: gridData,
-      cols: cols,
-      rows: rows,
-      dx: state.w / cols,
-      dy: state.h / rows
+    return false;
+  }
+
+  /**
+     * Check if point is inside rectangle
+     */
+  pointInRect(p, rect) {
+    const xs = [rect.p1.x, rect.p2.x, rect.p3.x, rect.p4.x];
+    const ys = [rect.p1.y, rect.p2.y, rect.p3.y, rect.p4.y];
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+    return p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY;
+  }
+
+  /**
+     * Check if two line segments intersect
+     */
+  segmentsIntersect(p1, q1, p2, q2) {
+    const orient = (p, q, r) => {
+      const val = (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y);
+      if (val === 0) return 0;
+      return val > 0 ? 1 : 2;
     };
-    console.log("[BackendRSRP] Grid built:", cols, "x", rows, "from", totalBins, "bins");
+
+    const onSegment = (p, q, r) => {
+      return q.x <= Math.max(p.x, r.x) && q.x >= Math.min(p.x, r.x) &&
+        q.y <= Math.max(p.y, r.y) && q.y >= Math.min(p.y, r.y);
+    };
+
+    const o1 = orient(p1, q1, p2);
+    const o2 = orient(p1, q1, q2);
+    const o3 = orient(p2, q2, p1);
+    const o4 = orient(p2, q2, q1);
+
+    if (o1 !== o2 && o3 !== o4) return true;
+    if (o1 === 0 && onSegment(p1, p2, q1)) return true;
+    if (o2 === 0 && onSegment(p1, q2, q1)) return true;
+    if (o3 === 0 && onSegment(p2, p1, q2)) return true;
+    if (o4 === 0 && onSegment(p2, q1, q2)) return true;
+
+    return false;
   }
 
-  // Handle a single optimization update (one or more antennas)
-  function handleOptimizationUpdate(data) {
-    try {
-      var newActions = data.new_action_configs || [];
-      var newRsrp = data.new_bsrv_rsrp || [];
-      var newCompliancePercent = data.new_compliance || [];
-      var status = data.status;
-      var message = data.message;
+  /**
+     * Calculate wall loss
+     * @param {Object} txPos - Transmitter position {x, y}
+     * @param {Object} rxPos - Receiver position {x, y}
+     * @param {Array} walls - Array of wall objects
+     * @param {Object} elementTypes - Element type definitions
+     * @returns {number} Total wall loss in dB
+     */
+  wallsLoss(txPos, rxPos, walls, elementTypes = null) {
+    let totalLoss = 0;
 
-      // Store backend RSRP grid (use latest step)
-      if (Array.isArray(newRsrp) && newRsrp.length > 0) {
-        var latestRsrp = newRsrp[newRsrp.length - 1];
-        if (latestRsrp && latestRsrp.length > 0) {
-          buildBackendRsrpGrid(latestRsrp);
+    for (const wall of walls) {
+      // Get wall segments
+      const segments = [];
+      if (wall.points && wall.points.length >= 2) {
+        for (let i = 0; i < wall.points.length - 1; i++) {
+          segments.push([wall.points[i], wall.points[i + 1]]);
         }
-      }
-
-      // Store backend compliance (use latest step), skip frontend recalculation
-      if (Array.isArray(newCompliancePercent) && newCompliancePercent.length > 0) {
-        var latestCompliance = newCompliancePercent[newCompliancePercent.length - 1];
-        if (latestCompliance !== undefined && latestCompliance !== null) {
-          state.optimizationCompliancePercent = Math.round(Number(latestCompliance));
-          var compliancePercentEl = document.getElementById("compliancePercent");
-          if (compliancePercentEl) {
-            compliancePercentEl.textContent = state.optimizationCompliancePercent;
-          }
-        }
-      }
-
-      // Update loading message if visible
-      var overlay = document.getElementById('loadingOverlay');
-      var loadingText = document.getElementById('loadingText');
-      var loadingSubtext = document.getElementById('loadingSubtext');
-
-      if (overlay && overlay.style.display !== 'none') {
-        if (message) {
-          if (loadingSubtext) loadingSubtext.textContent = message;
-          if (loadingText) loadingText.textContent = status === 'error' ? 'Optimization Failed' : 'Finalizing Baseline Data...';
-        }
-
-        // Hide overlay when baseline is done and optimization is actually running or completed
-        if (status !== 'starting' && status !== 'idle' || status === 'error') {
-          overlay.style.opacity = '0';
-          setTimeout(function () {
-            overlay.style.display = 'none';
-            overlay.style.opacity = '1';
-          }, 400);
-        }
-      }
-
-      // Standardize button management based on status
-      var optimizeBtn = document.getElementById("optimizeBtn");
-      var addAPBtn = document.getElementById("addAP");
-      if (status === 'starting' || status === 'running') {
-        if (optimizeBtn && !optimizeBtn.disabled) {
-          optimizeBtn.disabled = true;
-          optimizeBtn.style.opacity = '0.5';
-          optimizeBtn.style.cursor = 'not-allowed';
-          optimizeBtn.textContent = 'Running...';
-        }
-        if (addAPBtn && !addAPBtn.disabled) {
-          addAPBtn.disabled = true;
-          addAPBtn.style.opacity = '0.5';
-          addAPBtn.style.pointerEvents = 'none';
-        }
-        state.isOptimizing = true;
-      } else if (status === 'completed'|| status === 'finished' || status === 'error' || status === 'idle') {
-        if (optimizeBtn && optimizeBtn.disabled) {
-          optimizeBtn.disabled = false;
-          optimizeBtn.style.opacity = '1';
-          optimizeBtn.style.cursor = 'pointer';
-          optimizeBtn.textContent = 'Optimize';
-        }
-        if (addAPBtn && addAPBtn.disabled) {
-          addAPBtn.disabled = false;
-          addAPBtn.style.opacity = '1';
-          addAPBtn.style.pointerEvents = 'auto';
-        }
-        state.isOptimizing = false;
-      }
-
-      // Update footer status
-      var footerBadge = document.getElementById('footerBadge');
-      var footerMessage = document.getElementById('footerMessage');
-
-      if (status === 'starting') {
-        if (footerBadge) {
-          footerBadge.textContent = 'STARTING';
-          footerBadge.classList.add('active');
-        }
-        if (footerMessage && message) {
-          footerMessage.textContent = message;
-        }
-      } else if (status === 'running') {
-        if (footerBadge) {
-          footerBadge.textContent = 'RUNNING';
-          footerBadge.classList.add('active');
-        }
-        if (footerMessage) {
-          footerMessage.textContent = message || 'Running...';
-        }
-      } else if (status === 'completed' || status === 'finished') {
-        if (footerBadge) {
-          footerBadge.textContent = 'COMPLETED';
-          footerBadge.classList.remove('active');
-        }
-        if (footerMessage) {
-          footerMessage.textContent = message || 'Completed';
-        }
-      } else if (status === 'error') {
-        if (footerBadge) {
-          footerBadge.textContent = 'ERROR';
-          footerBadge.classList.remove('active');
-        }
-        if (footerMessage) {
-          footerMessage.textContent = message || 'Error occurred';
-        }
+      } else if (wall.p1 && wall.p2) {
+        segments.push([wall.p1, wall.p2]);
       } else {
-        if (footerBadge) {
-          footerBadge.textContent = 'READY';
-          footerBadge.classList.remove('active');
-        }
-        if (footerMessage) {
-          footerMessage.textContent = message || 'Ready';
-        }
+        continue;
       }
 
-      if (!Array.isArray(newActions) || newActions.length === 0) {
-        // No new antennas yet
-        if (status === "completed" || status === "error" || status === 'finished') {
-          stopOptimizationPolling();
-          if (footerBadge) {
-            footerBadge.textContent = status === "completed" ? 'COMPLETED' : 'ERROR';
-            footerBadge.classList.remove('active');
-          }
-          if (status === "completed" || status === 'finished') {
-            if (footerMessage) footerMessage.textContent = "Optimization process successfully completed.";
-            window.parent.postMessage(
-              { type: "optimization_finished" },
-              "*"
-            );
-          } else {
-            if (footerMessage) footerMessage.textContent = "Error: " + (data.error || "Optimization failed.");
-            window.parent.postMessage(
-              {
-                type: "optimization_error",
-                error: data.error || "Unknown error",
-              },
-              "*"
-            );
-          }
-        }
-        return;
-      }
-
-      // Update footer with the latest action
-      if (newActions.length > 0 && footerMessage) {
-        const latestAction = newActions[newActions.length - 1];
-        footerMessage.textContent = getFriendlyActionMessage(latestAction);
-      }
-
-      // Update last index - server always returns last_index (single source of truth)
-      if (data.last_index !== undefined) {
-        window.optimizationLastIndex = data.last_index;
-      }
-
-      var changesMade = false;
-
-      // Update bounding box if provided
-      if (data.optimization_bounds) {
-        window.optimizationBounds = data.optimization_bounds;
-        var p1 = window.optimizationBounds.p1;
-        var p2 = window.optimizationBounds.p2;
-        var centerX = (p1.x + p2.x) / 2;
-        var centerY = (p1.y + p2.y) / 2;
-
-        console.log("Optimization bounds updated:", window.optimizationBounds);
-
-        // Map backend coordinate center to canvas coordinates
-        // Assuming bounds are already in valid format, but need scaling
-        // We'll trust the coordinates from backend and use our standard projection if needed
-        // For now, we just rely on updateSingleAntennaFromAction mapping
-
-        // Optionally zoom or pan to area (not implemented to avoid jarring UI)
-      }
-
-      // Process new actions sequentially
-      for (var i = 0; i < newActions.length; i++) {
-        var actionConfig = newActions[i];
-        if (actionConfig) {
-          updateSingleAntennaFromAction(actionConfig);
-          changesMade = true;
-        }
-      }
-
-      // If changes were made, refresh the view
-      if (changesMade) {
-        if (window.saveState) window.saveState();
-        if (window.renderAPs) window.renderAPs();
-
-        var canvas = document.getElementById("plot");
-        if (canvas && typeof window.draw === 'function') {
-          // Re-generate heatmap and redraw
-          if (state.showVisualization) {
-            state.cachedHeatmap = null;
-            state.heatmapUpdatePending = false;
-            if (typeof window.generateHeatmapAsync === 'function') window.generateHeatmapAsync(null, true);
-          }
-          window.draw();
-        }
-      }
-
-      // If optimization is marked as completed by backend, stop polling
-      if (status === "completed" || status === "error" || status === 'finished') {
-        stopOptimizationPolling();
-
-        if (status === "completed" || status === 'finished') {
-          if (footerBadge) {
-            footerBadge.textContent = 'COMPLETED';
-            footerBadge.classList.remove('active');
-          }
-          if (footerMessage) {
-            footerMessage.textContent = "Optimization process successfully completed.";
-          }
-          window.parent.postMessage(
-            { type: "optimization_finished" },
-            "*"
-          );
-        } else {
-          if (footerBadge) {
-            footerBadge.textContent = 'ERROR';
-            footerBadge.classList.remove('active');
-          }
-          if (footerMessage) {
-            footerMessage.textContent = "Error: " + (data.error || "Optimization failed.");
-          }
-          window.parent.postMessage(
-            {
-              type: "optimization_error",
-              error: data.error || "Unknown error",
-            },
-            "*"
-          );
-        }
-      }
-    } catch (error) {
-      console.error("Error handling optimization update:", error);
-      stopOptimizationPolling();
-    }
-  }
-
-  // Update a single antenna from an action config
-  function updateSingleAntennaFromAction(action) {
-    try {
-      var antennaId = action.antenna_id || action.id;
-      // Use backend field names robustly (supports 0 values)
-      var rawX = (action.X_antenna !== undefined && action.X_antenna !== null) ? action.X_antenna :
-        ((action.X !== undefined && action.X !== null) ? action.X : action.x);
-      var rawY = (action.Y_antenna !== undefined && action.Y_antenna !== null) ? action.Y_antenna :
-        ((action.Y !== undefined && action.Y !== null) ? action.Y : action.y);
-      var backendX = Number(rawX);
-      var backendY = Number(rawY);
-      // Use backend field name: is_turnning_on (supports both string and boolean)
-      var enabledRaw = (action.is_turnning_on !== undefined && action.is_turnning_on !== null) ? action.is_turnning_on :
-        ((action.on !== undefined && action.on !== null) ? action.on : action.enabled);
-      var enabled =
-        enabledRaw === "True" ||
-        enabledRaw === true ||
-        enabledRaw === "true" ||
-        enabledRaw === 1 ||
-        enabledRaw === "1";
-
-      if (!antennaId || !Number.isFinite(backendX) || !Number.isFinite(backendY)) {
-        console.warn("Invalid action config:", action);
-        return;
-      }
-
-      // Direct mapping (optimization coordinates are already in canvas/world coordinates)
-      var canvasX = Math.max(0, Math.min(state.w, backendX));
-      var canvasY = Math.max(0, Math.min(state.h, backendY));
-      console.log("[HTML] ACTION->", antennaId, "raw:", rawX, rawY, "mapped:", canvasX, canvasY, "enabled:", enabled);
-
-      // Find existing antenna by ID
-      var existingAntenna = null;
-      for (var j = 0; j < state.aps.length; j++) {
-        if (state.aps[j].id === antennaId) {
-          existingAntenna = state.aps[j];
+      // Check intersection
+      let intersects = false;
+      for (const [s1, s2] of segments) {
+        if (this.segmentsIntersect(txPos, rxPos, s1, s2)) {
+          intersects = true;
           break;
         }
       }
 
-      if (existingAntenna) {
-        // Update existing antenna position and status
-        var oldX = existingAntenna.x;
-        var oldY = existingAntenna.y;
+      if (intersects) {
+        // Get loss value
+        let loss = wall.loss || 0;
 
-        existingAntenna.x = canvasX;
-        existingAntenna.y = canvasY;
-        // Z coordinate is preserved - do not update it
-        existingAntenna.enabled = enabled;
-
-        // Log position change
-        // Skip logging for backend updates - only log user-initiated changes
-        var threshold = 0.01;
-        if (
-          Math.abs(oldX - existingAntenna.x) > threshold ||
-          Math.abs(oldY - existingAntenna.y) > threshold
-        ) {
-          // Pass false to indicate this is a backend update, not a user change
-          if (typeof window.logAntennaPositionChange === 'function') {
-            window.logAntennaPositionChange(
-              antennaId,
-              antennaId,
-              oldX,
-              oldY,
-              existingAntenna.x,
-              existingAntenna.y,
-              false
-            );
+        // If no loss specified, try to get from elementTypes
+        if (loss === 0 && elementTypes) {
+          const elemType = wall.elementType || wall.type;
+          if (elemType && elementTypes[elemType]) {
+            loss = elementTypes[elemType].loss || 0;
+          } else if (wall.type && elementTypes.wall && elementTypes.wall[wall.type]) {
+            loss = elementTypes.wall[wall.type].loss || 0;
           }
         }
 
-        console.log(
-          "Updated antenna:",
-          antennaId,
-          "Backend:",
-          backendX,
-          backendY,
-          "Canvas:",
-          canvasX.toFixed(2),
-          canvasY.toFixed(2),
-          "Enabled:",
-          enabled
-        );
-      } else {
-        // Create new antenna if it doesn't exist
-        var defaultPattern = typeof window.getDefaultAntennaPattern === 'function' ? window.getDefaultAntennaPattern() : null;
-        var newAntenna = {
-          id: antennaId,
-          x: canvasX,
-          y: canvasY,
-          z: 0, // Z is set to 0 for new antennas
-          tx: action.power !== undefined ? action.power : 15,
-          gt: 5,
-          ch: 1,
-          azimuth: action.azimuth !== undefined ? action.azimuth : 0,
-          tilt: action.tilt !== undefined ? action.tilt : 0,
-          enabled: enabled,
-          antennaPatternFile: null,
-          antennaPatternFileName: null,
-        };
-
-        if (defaultPattern) {
-          newAntenna.antennaPattern = defaultPattern;
-        }
-
-        state.aps.push(newAntenna);
-        // Pass false to indicate this is a backend update, not a user change
-        if (typeof window.logAntennaPositionChange === 'function') {
-          window.logAntennaPositionChange(
-            antennaId,
-            antennaId,
-            0,
-            0,
-            newAntenna.x,
-            newAntenna.y,
-            false
-          );
-        }
-        console.log(
-          "Created new antenna:",
-          antennaId,
-          "Backend:",
-          backendX,
-          backendY,
-          "Canvas:",
-          canvasX.toFixed(2),
-          canvasY.toFixed(2),
-          "Enabled:",
-          enabled
-        );
+        totalLoss += loss;
       }
-    } catch (error) {
-      console.error("Error updating single antenna:", error);
     }
+
+    return totalLoss;
   }
 
-  // Expose public API
-  window.getFriendlyActionMessage = getFriendlyActionMessage;
-  window.startOptimizationPolling = startOptimizationPolling;
-  window.stopOptimizationPolling = stopOptimizationPolling;
-  window.handleOptimizationUpdate = handleOptimizationUpdate;
-  window.updateSingleAntennaFromAction = updateSingleAntennaFromAction;
+  /**
+     * Interpolate gain from antenna pattern
+     * @param {Array} data - Pattern data [{angle, gain}, ...]
+     * @param {number} angle - Angle in degrees
+     * @returns {number} Interpolated gain value
+     */
+  interpolateGain(data, angle) {
+    if (!data || data.length === 0) return 0;
+    if (data.length === 1) return data[0].gain;
 
-  return {
-    startOptimizationPolling: startOptimizationPolling,
-    stopOptimizationPolling: stopOptimizationPolling,
-    handleOptimizationUpdate: handleOptimizationUpdate,
-    updateSingleAntennaFromAction: updateSingleAntennaFromAction,
-    getFriendlyActionMessage: getFriendlyActionMessage
-  };
-})();
+    // Normalize angle to 0-360
+    angle = ((angle % 360) + 360) % 360;
+
+    // Find surrounding points
+    const upperIdx = data.findIndex(p => p.angle > angle);
+
+    let p1, p2;
+
+    if (upperIdx === 0) {
+      // Wraparound: angle between last and first
+      p1 = data[data.length - 1];
+      p2 = { angle: data[0].angle + 360, gain: data[0].gain };
+    } else if (upperIdx === -1) {
+      // Wraparound: angle larger than all points
+      p1 = data[data.length - 1];
+      p2 = { angle: data[0].angle + 360, gain: data[0].gain };
+    } else {
+      // Standard case
+      p1 = data[upperIdx - 1];
+      p2 = data[upperIdx];
+    }
+
+    const angleRange = p2.angle - p1.angle;
+    if (Math.abs(angleRange) < 1e-9) {
+      return p1.gain;
+    }
+
+    const t = (angle - p1.angle) / angleRange;
+    return p1.gain + t * (p2.gain - p1.gain);
+  }
+
+  /**
+     * Get gain from antenna pattern at specific angles
+     * @param {Object} pattern - Pattern object {horizontalData, verticalData, _maxValue}
+     * @param {number} horizontalAngleDeg - Horizontal angle in degrees
+     * @param {number} verticalAngleDeg - Vertical angle in degrees
+     * @returns {number} Gain in dBi (absolute gain value from pattern)
+     */
+  getGainFromPattern(pattern, horizontalAngleDeg, verticalAngleDeg) {
+    if (!pattern || !pattern.horizontalData || pattern.horizontalData.length === 0) {
+      return 0;
+    }
+
+    // Normalize horizontal angle
+    const hAngle = ((horizontalAngleDeg % 360) + 360) % 360;
+
+    // Interpolate horizontal gain
+    const hGain = this.interpolateGain(pattern.horizontalData, hAngle);
+
+    // If vertical data exists and elevation is significant
+    if (pattern.verticalData && pattern.verticalData.length > 0 && Math.abs(verticalAngleDeg) > 0.1) {
+      // Map elevation-relative-to-boresight to MSI vertical pattern angle
+      // MSI convention: 0° = boresight, 90° = up, 180° = back, 270° = down
+      // verticalAngleDeg: positive = RX below boresight, negative = RX above boresight
+      // Below boresight (positive) → toward 270°/down → pattern angle = 360 - deg
+      // Above boresight (negative) → toward 90°/up   → pattern angle = |deg|
+      let vAngle = ((-verticalAngleDeg % 360) + 360) % 360;
+
+      // Interpolate vertical gain
+      const vGain = this.interpolateGain(pattern.verticalData, vAngle);
+
+      // Combine horizontal and vertical patterns using geometric mean
+      // This properly models 3D antenna patterns where both planes contribute
+      const hGainLinear = Math.pow(10, hGain / 10);
+      const vGainLinear = Math.pow(10, vGain / 10);
+      const combinedGainLinear = Math.sqrt(
+        Math.max(1e-10, hGainLinear) * Math.max(1e-10, vGainLinear)
+      );
+
+      // Convert back to dB
+      return 10 * this.log10(combinedGainLinear);
+    }
+
+    return hGain;
+  }
+
+  /**
+     * Get angle-dependent gain for access point
+     * CRITICAL: Includes shape factor for pattern sharpening
+     * @param {Object} ap - Access point object
+     * @param {Object} rxPos - Receiver position {x, y}
+     * @param {Object} patterns - Patterns registry
+     * @returns {number} Effective antenna gain in dB
+     */
+  getAngleDependentGain(ap, rxPos, patterns = null) {
+
+
+    const txX = ap.x;
+    const txY = ap.y;
+    const rxX = rxPos.x;
+    const rxY = rxPos.y;
+
+    if (txX === rxX && txY === rxY) {
+      return ap.gt || ap.gain || 0;
+    }
+
+    const angleToPoint = Math.atan2(rxY - txY, rxX - txX);
+    const apAzimuth = ap.azimuth || ap.heading || 0;
+    // Convert azimuth (0°=North/Up, CW) to math angle (0°=East/Right, CCW)
+    // Same conversion as the canvas drawing code: (azimuth - 90)
+    const apAngle = ((apAzimuth - 90) * Math.PI) / 180;
+    let angleDiff = angleToPoint - apAngle;
+    const angleDiffDeg = ((angleDiff * 180 / Math.PI) + 360) % 360;
+
+
+    let pattern = null;
+    const patternAttr = ap.antennaPattern;
+
+    if (typeof patternAttr === 'string') {
+      if (patterns && patterns[patternAttr]) {
+        pattern = patterns[patternAttr];
+      }
+    } else {
+      pattern = patternAttr;
+    }
+
+    if (pattern && pattern.horizontalData && pattern.horizontalData.length > 0) {
+
+      let elevationAngleDeg = 0;
+      const antennaHeight = ap.z || 2.5;
+      const targetHeight = 1.5;
+      const horizontalDist = this.hypot(rxX - txX, rxY - txY);
+
+
+      if (horizontalDist > 0.1 && pattern.verticalData && pattern.verticalData.length > 0) {
+        const verticalDist = antennaHeight - targetHeight;
+        const elevationFromHorizontalRad = Math.atan2(verticalDist, horizontalDist);
+        const tiltRad = ((ap.tilt || 0) * Math.PI) / 180;
+        const elevationRelativeToBoresightRad = elevationFromHorizontalRad - tiltRad;
+
+        elevationAngleDeg = (elevationRelativeToBoresightRad * 180) / Math.PI;
+        elevationAngleDeg = Math.max(-90, Math.min(90, elevationAngleDeg));
+        // } else {
+        //     console.log("✗ Vertical pattern NOT applied. Reasons:");
+        //     console.log("  horizontalDist > 0.1?", horizontalDist > 0.1);
+        //     console.log("  pattern.verticalData exists?", pattern.verticalData !== undefined);
+        //     console.log("  verticalData.length > 0?", pattern.verticalData ? pattern.verticalData.length > 0 : false);
+      }
+
+      const gainDbi = this.getGainFromPattern(pattern, angleDiffDeg, elevationAngleDeg);
+
+      const peakGainDbi = pattern._maxValue !== undefined ? pattern._maxValue : 
+        (ap.gt || ap.gain || 8.0);
+
+      const exaggeratedDbDown = gainDbi * this.shapeFactor;
+
+      const finalGain = peakGainDbi + exaggeratedDbDown;
+
+      return finalGain;
+    }
+
+    // Fallback to simple parabolic approximation
+    // Rotate by 180 degrees when no pattern is assigned (dummy pattern)
+    if (!pattern) {
+      angleDiff += Math.PI; // Rotate by 180 degrees
+    }
+    // Normalize angleDiff to [-π, π]
+    while (angleDiff <= -Math.PI) angleDiff += 2 * Math.PI;
+    while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+
+    // Simple parabolic approximation of a main lobe for a directional antenna.
+    // This assumes a 60-degree 3dB beamwidth.
+    const beamwidth_rad = (60 * Math.PI) / 180;
+    let attenuation = 12 * Math.pow(angleDiff / beamwidth_rad, 2);
+    // Cap attenuation at a 25dB front-to-back ratio
+    attenuation = -Math.min(attenuation, 25);
+
+    return (ap.gt || ap.gain || 0) + attenuation;
+  }
+
+  /**
+     * Calculate 2.5D path loss
+     * @param {Object} txPos - Transmitter position {x, y}
+     * @param {Object} rxPos - Receiver position {x, y}
+     * @param {Array} walls - Array of walls
+     * @param {Array} floorPlanes - Array of floor planes
+     * @param {Object} groundPlaneConfig - Ground plane configuration
+     * @param {Object} elementTypes - Element type definitions
+     * @returns {number} Total path loss in dB
+     */
+  p25dLoss(txPos, rxPos, walls = [], floorPlanes = [], groundPlaneConfig = null, elementTypes = null) {
+    let d = this.hypot(rxPos.x - txPos.x, rxPos.y - txPos.y);
+    d = Math.max(d, this.minDistance);
+
+    // Reference loss at 1m
+    const refLoss1m = this.fspl(this.freq, 1.0);
+
+    // Distance loss with path loss exponent
+    // CRITICAL: HTML uses state.N * log10(d), not 10 * n * log10(d)
+    // console.log(`Calculating distance loss: N = ${this.N}, distance = ${d.toFixed(2)} m`);
+    const distanceLoss = this.N * this.log10(d);
+    // console.log("ref loss:", refLoss1m);
+    // console.log("dist loss:", distanceLoss);
+
+    // Base loss
+    const baseLoss = refLoss1m + distanceLoss;
+    // console.log(`Base FSPL loss from AP to RX at (${rxPos.x}, ${rxPos.y}): ${baseLoss.toFixed(2)} dB`);
+
+    // Environmental losses
+    const wallAttenuation = this.wallsLoss(txPos, rxPos, walls, elementTypes);
+    const groundAttenuation = this.groundPlaneLoss(txPos, rxPos, groundPlaneConfig);
+    const floorPlaneAttenuation = this.floorPlanesLoss(txPos, rxPos, floorPlanes);
+    return baseLoss + wallAttenuation + groundAttenuation + floorPlaneAttenuation + this.verticalFactor;
+  }
+
+  /**
+     * Calculate RSSI
+     * @param {number} tx - Transmit power in dBm
+     * @param {number} gt - Antenna gain in dB
+     * @param {number} L - Path loss in dB
+     * @returns {number} RSSI in dBm
+     */
+  rssi(tx, gt, L) {
+    return tx + gt - L - this.referenceOffset;
+  }
+
+  /**
+     * Calculate RSSI from access point to receiver location
+     * @param {Object} ap - Access point object
+     * @param {Object} rxPos - Receiver position {x, y}
+     * @param {Array} walls - Array of walls
+     * @param {Array} floorPlanes - Array of floor planes
+     * @param {Object} groundPlaneConfig - Ground plane configuration
+     * @param {Object} elementTypes - Element type definitions
+     * @param {Object} patterns - Patterns registry
+     * @returns {number} RSSI in dBm
+     */
+  calculateRSSI(ap, rxPos, walls = [], floorPlanes = [], groundPlaneConfig = null, elementTypes = null, patterns = null) {
+    const txPos = { x: ap.x, y: ap.y };
+    const loss = this.p25dLoss(txPos, rxPos, walls, floorPlanes, groundPlaneConfig, elementTypes);
+    // console.log(`Calculated path loss from AP at (${ap.x}, ${ap.y}) to RX at (${rxPos.x}, ${rxPos.y}): ${loss.toFixed(2)} dB`);
+    const gain = this.getAngleDependentGain(ap, rxPos, patterns);
+    // console.log(`Calculated angle-dependent gain from AP at (${ap.x}, ${ap.y}) to RX at (${rxPos.x}, ${rxPos.y}): ${gain.toFixed(2)} dB`);
+    return this.rssi(ap.tx, gain, loss);
+  }
+
+  /**
+     * Find best access point at location
+     * @param {Array} aps - Array of access points
+     * @param {Object} rxPos - Receiver position {x, y}
+     * @param {Array} walls - Array of walls
+     * @param {Array} floorPlanes - Array of floor planes
+     * @param {Object} groundPlaneConfig - Ground plane configuration
+     * @param {Object} elementTypes - Element type definitions
+     * @param {Object} patterns - Patterns registry
+     * @returns {Object} {ap, rssi} - Best AP and its RSSI
+     */
+  bestApAt(aps, rxPos, walls = [], floorPlanes = [], groundPlaneConfig = null, elementTypes = null, patterns = null) {
+    let bestRssi = -1e9;
+    let bestAp = null;
+
+    for (const ap of aps) {
+      if (ap.enabled === false) continue;
+
+      const rssi = this.calculateRSSI(ap, rxPos, walls, floorPlanes, groundPlaneConfig, elementTypes, patterns);
+
+      if (rssi > bestRssi) {
+        bestRssi = rssi;
+        bestAp = ap;
+      }
+    }
+
+    return { ap: bestAp, rssi: bestRssi };
+  }
+}
+// In Node.js, module is a built-in object used to share code between files.
+// In a Browser, module usually does not exist (unless you are using specific tools like Webpack), 
+// so this check fails.
+// Export for use in Node.js or browser
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { PropagationModel25D };
+}
+
+// Export for ES6 modules
+if (typeof window !== 'undefined') {
+  window.PropagationModel25D = PropagationModel25D;
+}
