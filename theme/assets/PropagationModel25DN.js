@@ -352,11 +352,11 @@ class PropagationModel25D {
 
         elevationAngleDeg = (elevationRelativeToBoresightRad * 180) / Math.PI;
         elevationAngleDeg = Math.max(-90, Math.min(90, elevationAngleDeg));
-        // } else {
-        //     console.log("✗ Vertical pattern NOT applied. Reasons:");
-        //     console.log("  horizontalDist > 0.1?", horizontalDist > 0.1);
-        //     console.log("  pattern.verticalData exists?", pattern.verticalData !== undefined);
-        //     console.log("  verticalData.length > 0?", pattern.verticalData ? pattern.verticalData.length > 0 : false);
+      } else {
+        console.log("✗ Vertical pattern NOT applied. Reasons:");
+        console.log("  horizontalDist > 0.1?", horizontalDist > 0.1);
+        console.log("  pattern.verticalData exists?", pattern.verticalData !== undefined);
+        console.log("  verticalData.length > 0?", pattern.verticalData ? pattern.verticalData.length > 0 : false);
       }
 
       const gainDbi = this.getGainFromPattern(pattern, angleDiffDeg, elevationAngleDeg);
@@ -409,19 +409,20 @@ class PropagationModel25D {
 
     // Distance loss with path loss exponent
     // CRITICAL: HTML uses state.N * log10(d), not 10 * n * log10(d)
-    // console.log(`Calculating distance loss: N = ${this.N}, distance = ${d.toFixed(2)} m`);
+    console.log(`Calculating distance loss: N = ${this.N}, distance = ${d.toFixed(2)} m`);
     const distanceLoss = this.N * this.log10(d);
-    // console.log("ref loss:", refLoss1m);
-    // console.log("dist loss:", distanceLoss);
+    console.log("ref loss:", refLoss1m);
+    console.log("dist loss:", distanceLoss);
 
     // Base loss
     const baseLoss = refLoss1m + distanceLoss;
-    // console.log(`Base FSPL loss from AP to RX at (${rxPos.x}, ${rxPos.y}): ${baseLoss.toFixed(2)} dB`);
+    console.log(`Base FSPL loss from AP to RX at (${rxPos.x}, ${rxPos.y}): ${baseLoss.toFixed(2)} dB`);
 
     // Environmental losses
     const wallAttenuation = this.wallsLoss(txPos, rxPos, walls, elementTypes);
     const groundAttenuation = this.groundPlaneLoss(txPos, rxPos, groundPlaneConfig);
     const floorPlaneAttenuation = this.floorPlanesLoss(txPos, rxPos, floorPlanes);
+
     return baseLoss + wallAttenuation + groundAttenuation + floorPlaneAttenuation + this.verticalFactor;
   }
 
@@ -450,9 +451,9 @@ class PropagationModel25D {
   calculateRSSI(ap, rxPos, walls = [], floorPlanes = [], groundPlaneConfig = null, elementTypes = null, patterns = null) {
     const txPos = { x: ap.x, y: ap.y };
     const loss = this.p25dLoss(txPos, rxPos, walls, floorPlanes, groundPlaneConfig, elementTypes);
-    // console.log(`Calculated path loss from AP at (${ap.x}, ${ap.y}) to RX at (${rxPos.x}, ${rxPos.y}): ${loss.toFixed(2)} dB`);
+    console.log(`Calculated path loss from AP at (${ap.x}, ${ap.y}) to RX at (${rxPos.x}, ${rxPos.y}): ${loss.toFixed(2)} dB`);
     const gain = this.getAngleDependentGain(ap, rxPos, patterns);
-    // console.log(`Calculated angle-dependent gain from AP at (${ap.x}, ${ap.y}) to RX at (${rxPos.x}, ${rxPos.y}): ${gain.toFixed(2)} dB`);
+    console.log(`Calculated angle-dependent gain from AP at (${ap.x}, ${ap.y}) to RX at (${rxPos.x}, ${rxPos.y}): ${gain.toFixed(2)} dB`);
     return this.rssi(ap.tx, gain, loss);
   }
 
@@ -485,9 +486,7 @@ class PropagationModel25D {
     return { ap: bestAp, rssi: bestRssi };
   }
 }
-// In Node.js, module is a built-in object used to share code between files.
-// In a Browser, module usually does not exist (unless you are using specific tools like Webpack), 
-// so this check fails.
+
 // Export for use in Node.js or browser
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { PropagationModel25D };
