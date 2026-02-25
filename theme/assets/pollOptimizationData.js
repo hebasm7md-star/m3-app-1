@@ -58,37 +58,65 @@ var OptimizationSystem = (function () {
     console.log("Stopped optimization polling");
   }
 
+  function buildBackendRsrpGrid(rsrpValues) {
+    var totalBins = rsrpValues.length;
+    if (totalBins === 0) return;
+
+    var cols = Math.round(state.w);
+    var rows = Math.round(state.h);
+
+    if (cols * rows !== totalBins) {
+      var aspectRatio = state.w / state.h;
+      cols = Math.round(Math.sqrt(totalBins * aspectRatio));
+      rows = Math.round(totalBins / cols);
+    }
+    if (cols * rows !== totalBins) {
+      console.warn("[BackendRSRP] Grid dimensions mismatch:", cols, "x", rows, "!=", totalBins);
+      return;
+    }
+
+    var gridData = new Float32Array(totalBins);
+    for (var i = 0; i < totalBins; i++) {
+      gridData[i] = Number(rsrpValues[i]);
+    }
+
+    state.optimizationRsrpGrid = {
+      data: gridData,
+      cols: cols,
+      rows: rows,
+      dx: state.w / cols,
+      dy: state.h / rows
+    };
+    console.log("[BackendRSRP] Grid built:", cols, "x", rows, "from", totalBins, "bins");
+  }
+
   // Handle a single optimization update (one or more antennas)
   function handleOptimizationUpdate(data) {
     try {
       var newActions = data.new_action_configs || [];
       var newRsrp = data.new_bsrv_rsrp || [];
-      var compliancePercent = data.new_compliance || [];
-      var status = data.state;// || data.status;
+      var newCompliancePercent = data.new_compliance || [];
+      var status = data.status;
       var message = data.message;
-      // var compliancePercent = data.compliance_percent;
 
-      // Update compliance % if provided by backend (force override HTML calculation)
-      // If backend sends null/undefined, let HTML's own calculation show (don't update here)
-      if (compliancePercent !== undefined && compliancePercent !== null) { // && !isNaN(compliancePercent)
-        // Convert to number and round to match display format
-        //var formattedPercent = Math.round(Number(compliancePercent));
-        var compliancePercentEl = document.getElementById("compliancePercent");
-        if (compliancePercentEl) {
-          // Force update: override any HTML-calculated value with backend value
-          compliancePercentEl.textContent = compliancePercent;
-          console.log("[HTML] Forced compliance percent from backend:", compliancePercent);
-        } else {
-          console.warn("[HTML] compliancePercent element not found in DOM");
+      // Store backend RSRP grid (use latest step)
+      if (Array.isArray(newRsrp) && newRsrp.length > 0) {
+        var latestRsrp = newRsrp[newRsrp.length - 1];
+        if (latestRsrp && latestRsrp.length > 0) {
+          buildBackendRsrpGrid(latestRsrp);
         }
-        // Store in state so it's preserved
-        // state.compliancePercentage = formattedPercent;
-        // state.compliancePercentFromBackend = formattedPercent; // Flag that we're using backend value
-      } 
-      else {
-        // Backend sent null/undefined - let HTML's own calculation show
-        console.log("[HTML] compliance_percent is null/undefined, using HTML's own calculation");
-        // state.compliancePercentFromBackend = null; // Clear backend flag
+      }
+
+      // Store backend compliance (use latest step), skip frontend recalculation
+      if (Array.isArray(newCompliancePercent) && newCompliancePercent.length > 0) {
+        var latestCompliance = newCompliancePercent[newCompliancePercent.length - 1];
+        if (latestCompliance !== undefined && latestCompliance !== null) {
+          state.optimizationCompliancePercent = Math.round(Number(latestCompliance));
+          var compliancePercentEl = document.getElementById("compliancePercent");
+          if (compliancePercentEl) {
+            compliancePercentEl.textContent = state.optimizationCompliancePercent;
+          }
+        }
       }
 
       // Update loading message if visible

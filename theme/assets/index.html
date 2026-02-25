@@ -7,14 +7,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>AION ROM</title>
     <!-- SheetJS library for Excel export -->
-    <script src="xlsx.full.min.js"></script>
+    <script src="../assets/xlsx.full.min.js"></script>
     <!-- Three.js library for GPU-accelerated 3D rendering -->
-    <script src="three.min.js"></script>
+    <script src="../assets/three.min.js"></script>
 
     <link rel="stylesheet" href="style.css">
   </head>
 
   <body>
+    <svg xmlns="http://www.w3.org/2000/svg" style="display:none;">
+      <symbol id="icon-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+        <path d="M10 11v6"></path>
+        <path d="M14 11v6"></path>
+        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+      </symbol>
+    </svg>
     <div class="container">
       <!-- Icon Sidebar -->
       <div class="icon-sidebar">
@@ -56,10 +65,10 @@
           <p class="subtitle">Advanced RF Coverage Analysis</p> -->
           <h1 id="sidebarHeaderTitle">Floor Plan</h1>
           <div class="project-buttons-container">
-            <button id="saveProjectBtn" class="small project-btn">
+            <button id="saveProjectBtn" class="project-btn">
               💾 Save Project
             </button>
-            <button id="loadProjectBtn" class="small project-btn">
+            <button id="loadProjectBtn" class="project-btn">
               📂 Load Project
             </button>
           </div>
@@ -84,10 +93,12 @@
               <div id="imageUploadSection" class="upload-section">
                 <div class="form-group">
                   <label>Upload Image</label>
-                  <input type="file" id="imageLoader" accept="image/*" class="full-width" />
-                  <button id="deleteImageBtn" class="small danger delete-btn-spacing">
-                    Delete Image
-                  </button>
+                  <div class="upload-row">
+                    <input type="file" id="imageLoader" accept="image/*" class="full-width" />
+                    <button id="deleteImageBtn" class="delete-icon-btn" title="Delete image">
+                      <svg width="16" height="16"><use href="#icon-trash"></use></svg>
+                    </button>
+                  </div>
                 </div>
                 <div class="form-group">
                   <label id="alphaLabel">Image Opacity: 70%</label>
@@ -99,7 +110,7 @@
                   of known length.
                 </p>
 
-                <button id="calibrateBtn" class="small btn-top-margin">
+                <button id="calibrateBtn" class="action-btn" style="margin-top:10px;">
                   Calibrate Scale
                 </button>
                 <div id="calibrationControls" class="calibration-controls">
@@ -107,7 +118,7 @@
                     <label>Real Length (meters)</label>
                     <input type="number" id="realLengthInput" value="10" step="0.1" />
                   </div>
-                  <button id="applyScaleBtn" class="small full-width">
+                  <button id="applyScaleBtn" class="action-btn">
                     Apply Scale
                   </button>
                 </div>
@@ -116,10 +127,12 @@
               <div id="dxfUploadSection" class="upload-section hidden">
                 <div class="form-group">
                   <label>Upload DXF File</label>
-                  <input type="file" id="dxfLoader" accept=".dxf" class="full-width" />
-                  <button id="deleteDxfBtn" class="small danger delete-btn-spacing">
-                    Delete DXF
-                  </button>
+                  <div class="upload-row">
+                    <input type="file" id="dxfLoader" accept=".dxf" class="full-width" />
+                    <button id="deleteDxfBtn" class="delete-icon-btn" title="Delete DXF">
+                      <svg width="16" height="16"><use href="#icon-trash"></use></svg>
+                    </button>
+                  </div>
                 </div>
                 <p class="helper-text">
                   💡 Upload a DXF file to automatically generate walls and structures.
@@ -218,7 +231,7 @@
             <div class="card">
               <h3 class="card-title">AI Optimization</h3>
               <p class="helper-text">
-                Set coverage targets, then run optimization to automatically tune antenna placement.
+                💡 Set coverage targets, then run optimization to automatically tune antenna placement.
               </p>
               <div class="form-row">
                 <div class="form-group">
@@ -232,12 +245,12 @@
               </div>
               <div class="form-group form-group-spacing-top">
                 <input type="file" id="coverageCsvFile" accept=".csv" class="hidden-file-input" />
-                <button id="optimizeBtn" class="small full-width">
+                <button id="optimizeBtn" class="action-btn">
                   Optimize
                 </button>
               </div>
               <p class="helper-text helper-text-small">
-                Optimization will adjust antenna positions to meet the coverage targets above.
+                💡 Optimization will adjust antenna positions to meet the coverage targets above.
               </p>
             </div>
           </div>
@@ -259,24 +272,24 @@
                   <select id="defaultAntennaPatternSelect" class="pattern-select">
                     <option value="-1">No default pattern</option>
                   </select>
-                  <button id="deleteSelectedPattern" title="Delete selected pattern" class="delete-pattern-btn">
-                    Delete
+                  <button id="deleteSelectedPattern" title="Delete selected pattern" class="delete-icon-btn pattern-delete-icon">
+                    <svg width="16" height="16"><use href="#icon-trash"></use></svg>
                   </button>
                 </div>
               </div>
-              <button id="addAP" class="small full-width">
+              <button id="addAP" class="action-btn">
                 Add Antenna
               </button>
-              <button id="autoPlaceAntennas" class="small auto-place-btn">
+              <button id="autoPlaceAntennas" class="action-btn">
                 Automatic Place Antennas
               </button>
-              <button id="exportCoverageBtn" class="small export-coverage-btn">
+              <button id="exportCoverageBtn" class="action-btn">
                 Export Coverage Map
               </button>
               <div id="autoPlaceInputContainer" class="antenna-data-status" style="display:none;">
                 <div style="display: flex; gap: 8px; align-items: stretch;">
                   <input type="number" id="autoPlaceCount" placeholder="Number of antennas" min="1" max="100" class="auto-place-input" style="flex: 1; margin: 0;" />
-                  <button id="confirmAutoPlaceBtn" class="small" style="margin: 0; white-space: nowrap;">OK</button>
+                  <button id="confirmAutoPlaceBtn" style="margin: 0; padding: 4px 16px; white-space: nowrap;">OK</button>
                 </div>
               </div>
               <!-- <button id="saveAntennaPositions" class="small" style="
@@ -289,7 +302,7 @@
             </button> -->
               <div id="antennaDataStatus" class="status antenna-data-status"></div>
               <p class="helper-text helper-text-small">
-                Data is sent automatically in real-time when antenna positions
+                💡 Data is sent automatically in real-time when antenna positions
                 change.
               </p>
               <div id="apList" class="list"></div>
@@ -309,7 +322,7 @@
               <div class="form-group form-group-spacing">
                 <label>Select an Element</label>
                 <select id="elementType">
-                  <option value="" class="element-select">-- Select --</option>
+                  <option value="">-- Select --</option>
                   <option value="wall">Wall</option>
                   <option value="door">Door</option>
                   <option value="doubleDoor">Double Door</option>
@@ -333,7 +346,7 @@
                 <label>Custom Loss (dB)</label>
                 <input type="number" id="customWallLoss" value="15" step="1" min="0" />
               </div>
-              <button id="addWall" class="small add-wall-btn">
+              <button id="addWall" class="action-btn" style="display:none;">
                 Add Wall
               </button>
               <label class="checkbox-label">
@@ -381,10 +394,12 @@
               <h3 class="card-title">XD Floorplan Processing</h3>
               <div class="form-group">
                 <label>Upload Image</label>
-                <input type="file" id="xdImageLoader" accept="image/*" class="full-width" />
-                <button id="deleteXdImageBtn" class="small danger delete-btn-spacing">
-                  Delete Image
-                </button>
+                <div class="upload-row">
+                  <input type="file" id="xdImageLoader" accept="image/*" class="full-width" />
+                  <button id="deleteXdImageBtn" class="delete-icon-btn" title="Delete image">
+                    <svg width="16" height="16"><use href="#icon-trash"></use></svg>
+                  </button>
+                </div>
               </div>
 
 
@@ -438,8 +453,8 @@
                 </div>
               </div>
 
-              <button id="generateDxfBtn" class="small generate-dxf-btn">
-                GENERATE DXF
+              <button id="generateDxfBtn" class="action-btn generate-dxf-btn">
+                Generate Floorplan
               </button>
             </div>
           </div>

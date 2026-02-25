@@ -28,6 +28,8 @@
     state.cachedHeatmapAntennaCount = 0;
     state.heatmapUpdatePending = true;
     state.heatmapWorkerCallback = null;
+    state.backendRsrpGrid = null;
+    state.compliancePercentFromBackend = null;
     if (state.showVisualization) {
       generateHeatmapAsync(null, true); // low-res first for fast feedback
     }
@@ -225,10 +227,7 @@
           20,
           Math.floor(baseCols * resolutionMultiplier)
         );
-        var rows = Math.max(
-          14,
-          Math.floor(baseRows * resolutionMultiplier)
-        );
+        var rows = Math.max(14, Math.floor(baseRows * resolutionMultiplier));
         var dx = state.w / cols,
           dy = state.h / rows;
         var img = ctx.createImageData(cols, rows);
@@ -256,28 +255,44 @@
               var x = (c + 0.5) * dx;
               var idx = 4 * (r * cols + c);
 
-              // Check if CSV coverage data is available and view is RSSI
-              if (
-                state.csvCoverageData &&
-                state.csvCoverageGrid &&
-                state.view === "rssi"
-              ) {
-                var csvValue = interpolateRsrpFromCsv(x, y);
-                if (csvValue !== null && !isNaN(csvValue)) {
-                  var col = colorNumeric(csvValue);
-                  img.data[idx] = col[0];
-                  img.data[idx + 1] = col[1];
-                  img.data[idx + 2] = col[2];
-                  img.data[idx + 3] = col[3];
-                  continue;
-                } else {
-                  img.data[idx] = 0;
-                  img.data[idx + 1] = 0;
-                  img.data[idx + 2] = 0;
-                  img.data[idx + 3] = 0;
+              // Use backend-computed RSRP when available (from optimization)
+              if (state.backendRsrpGrid && state.view === "rssi") {
+                var bgrid = state.backendRsrpGrid;
+                var gc = Math.max(0, Math.min(bgrid.cols - 1, Math.floor(x / bgrid.dx)));
+                var gr = Math.max(0, Math.min(bgrid.rows - 1, Math.floor(y / bgrid.dy)));
+                var bval = bgrid.data[gr * bgrid.cols + gc];
+                if (!isNaN(bval)) {
+                  var bcolor = colorNumeric(state.view === "snr" ? bval - state.noise : bval);
+                  img.data[idx] = bcolor[0];
+                  img.data[idx + 1] = bcolor[1];
+                  img.data[idx + 2] = bcolor[2];
+                  img.data[idx + 3] = bcolor[3];
                   continue;
                 }
               }
+
+              // Check if CSV coverage data is available and view is RSSI
+              // if (
+              //   state.csvCoverageData &&
+              //   state.csvCoverageGrid &&
+              //   state.view === "rssi"
+              // ) {
+              //   var csvValue = interpolateRsrpFromCsv(x, y);
+              //   if (csvValue !== null && !isNaN(csvValue)) {
+              //     var col = colorNumeric(csvValue);
+              //     img.data[idx] = col[0];
+              //     img.data[idx + 1] = col[1];
+              //     img.data[idx + 2] = col[2];
+              //     img.data[idx + 3] = col[3];
+              //     continue;
+              //   } else {
+              //     img.data[idx] = 0;
+              //     img.data[idx + 1] = 0;
+              //     img.data[idx + 2] = 0;
+              //     img.data[idx + 3] = 0;
+              //     continue;
+              //   }
+              // }
 
               if (state.view === "best") {
                 var best = bestApAt(x, y);

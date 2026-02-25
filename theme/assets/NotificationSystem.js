@@ -18,7 +18,7 @@ var NotificationSystem = (function() {
 
   function isDarkMode() {
     return document.documentElement.classList.contains('dark-mode') ||
-           document.body.classList.contains('dark-mode');
+      document.body.classList.contains('dark-mode');
   }
 
   function escapeHtml(str) {
@@ -50,84 +50,84 @@ var NotificationSystem = (function() {
 
       /* Toast base - light bg, colored left border */
       '.notif-toast{',
-        'animation:notif-slideDown 0.35s cubic-bezier(0.21,1.02,0.73,1);',
-        'padding:14px 20px 14px 16px;',
-        'border-radius:8px;',
-        'border-left:5px solid transparent;',
-        'display:flex;',
-        'align-items:center;',
-        'gap:12px;',
-        'font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;',
-        'font-size:14px;',
-        'line-height:1.5;',
-        'box-shadow:0 4px 14px rgba(0,0,0,0.12);',
-        'pointer-events:auto;',
-        'min-width:280px;',
-        'max-width:480px;',
-        'word-break:break-word;',
-        'position:relative;',
+      'animation:notif-slideDown 0.35s cubic-bezier(0.21,1.02,0.73,1);',
+      'padding:14px 20px 14px 16px;',
+      'border-radius:8px;',
+      'border-left:5px solid transparent;',
+      'display:flex;',
+      'align-items:center;',
+      'gap:12px;',
+      'font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;',
+      'font-size:14px;',
+      'line-height:1.5;',
+      'box-shadow:0 4px 14px rgba(0,0,0,0.12);',
+      'pointer-events:auto;',
+      'min-width:280px;',
+      'max-width:480px;',
+      'word-break:break-word;',
+      'position:relative;',
       '}',
 
       /* Toast icon circle */
       '.notif-toast-icon{',
-        'width:28px;height:28px;',
-        'border-radius:50%;',
-        'display:flex;align-items:center;justify-content:center;',
-        'font-size:14px;font-weight:700;',
-        'flex-shrink:0;',
+      'width:28px;height:28px;',
+      'border-radius:50%;',
+      'display:flex;align-items:center;justify-content:center;',
+      'font-size:14px;font-weight:700;',
+      'flex-shrink:0;',
       '}',
 
       /* Toast text */
       '.notif-toast-text{',
-        'flex:1;',
-        'font-weight:500;',
+      'flex:1;',
+      'font-weight:500;',
       '}',
 
       /* Toast close btn */
       '.notif-toast-close{',
-        'background:none;border:none;',
-        'cursor:pointer;',
-        'font-size:16px;',
-        'opacity:0.45;',
-        'transition:opacity 0.2s;',
-        'padding:0 0 0 8px;',
-        'flex-shrink:0;',
-        'line-height:1;',
+      'background:none;border:none;',
+      'cursor:pointer;',
+      'font-size:16px;',
+      'opacity:0.45;',
+      'transition:opacity 0.2s;',
+      'padding:0 0 0 8px;',
+      'flex-shrink:0;',
+      'line-height:1;',
       '}',
       '.notif-toast-close:hover{opacity:0.8}',
 
       /* ---- Success toast ---- */
       '.notif-toast-success{',
-        'background-color:#f0fdf4;',
-        'border-left-color:#10b981;',
-        'color:#065f46;',
+      'background-color:#f0fdf4;',
+      'border-left-color:#10b981;',
+      'color:#065f46;',
       '}',
       '.notif-toast-success .notif-toast-icon{background:#dcfce7;color:#059669}',
       '.notif-toast-success .notif-toast-close{color:#065f46}',
 
       /* ---- Error toast ---- */
       '.notif-toast-error{',
-        'background-color:#fef2f2;',
-        'border-left-color:#ef4444;',
-        'color:#991b1b;',
+      'background-color:#fef2f2;',
+      'border-left-color:#ef4444;',
+      'color:#991b1b;',
       '}',
       '.notif-toast-error .notif-toast-icon{background:#fee2e2;color:#dc2626}',
       '.notif-toast-error .notif-toast-close{color:#991b1b}',
 
       /* ---- Warning toast ---- */
       '.notif-toast-warning{',
-        'background-color:#fffbeb;',
-        'border-left-color:#f59e0b;',
-        'color:#92400e;',
+      'background-color:#fffbeb;',
+      'border-left-color:#f59e0b;',
+      'color:#92400e;',
       '}',
       '.notif-toast-warning .notif-toast-icon{background:#fef3c7;color:#d97706}',
       '.notif-toast-warning .notif-toast-close{color:#92400e}',
 
       /* ---- Info toast (purple themed) ---- */
       '.notif-toast-info{',
-        'background-color:#eef2ff;',
-        'border-left-color:#667eea;',
-        'color:#3730a3;',
+      'background-color:#eef2ff;',
+      'border-left-color:#667eea;',
+      'color:#3730a3;',
       '}',
       '.notif-toast-info .notif-toast-icon{background:#e0e7ff;color:#5a67d8}',
       '.notif-toast-info .notif-toast-close{color:#3730a3}',
@@ -155,55 +155,55 @@ var NotificationSystem = (function() {
 
       /* Modal overlay */
       '.notif-modal-overlay{',
-        'position:fixed;top:0;left:0;right:0;bottom:0;',
-        'background:rgba(0,0,0,0.5);',
-        'display:flex;align-items:center;justify-content:center;',
-        'z-index:10001;',
-        'animation:notif-fadeIn 0.2s ease-out;',
-        'backdrop-filter:blur(4px);',
+      'position:fixed;top:0;left:0;right:0;bottom:0;',
+      'background:rgba(0,0,0,0.5);',
+      'display:flex;align-items:center;justify-content:center;',
+      'z-index:10001;',
+      'animation:notif-fadeIn 0.2s ease-out;',
+      'backdrop-filter:blur(4px);',
       '}',
 
       /* Modal box */
       '.notif-modal{',
-        'background:#fff;',
-        'border-radius:14px;',
-        'padding:28px;',
-        'max-width:480px;',
-        'width:90%;',
-        'box-shadow:0 25px 50px rgba(0,0,0,0.2);',
-        'animation:notif-slideUp 0.3s ease-out;',
-        'font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;',
+      'background:#fff;',
+      'border-radius:14px;',
+      'padding:28px;',
+      'max-width:480px;',
+      'width:90%;',
+      'box-shadow:0 25px 50px rgba(0,0,0,0.2);',
+      'animation:notif-slideUp 0.3s ease-out;',
+      'font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;',
       '}',
 
       /* Modal title */
       '.notif-modal h3{',
-        'margin:0 0 14px 0;',
-        'font-size:17px;',
-        'font-weight:700;',
-        'color:#1e293b;',
-        'display:flex;align-items:center;gap:8px;',
+      'margin:0 0 14px 0;',
+      'font-size:17px;',
+      'font-weight:700;',
+      'color:#1e293b;',
+      'display:flex;align-items:center;gap:8px;',
       '}',
 
       /* Modal body text */
       '.notif-modal .notif-modal-body{',
-        'margin:0 0 22px 0;',
-        'font-size:15px;',
-        'color:#475569;',
-        'line-height:1.6;',
-        'word-break:break-word;',
+      'margin:0 0 22px 0;',
+      'font-size:15px;',
+      'color:#475569;',
+      'line-height:1.6;',
+      'word-break:break-word;',
       '}',
       '.notif-modal .notif-modal-body p {',
-        'margin: 0 0 10px 0;',
+      'margin: 0 0 10px 0;',
       '}',
       '.notif-modal .notif-modal-body p:last-child {',
-        'margin-bottom: 0;',
+      'margin-bottom: 0;',
       '}',
       '.notif-modal .notif-modal-body ul {',
-        'margin: 8px 0 12px 0;',
-        'padding-left: 24px;',
+      'margin: 8px 0 12px 0;',
+      'padding-left: 24px;',
       '}',
       '.notif-modal .notif-modal-body li {',
-        'margin-bottom: 6px;',
+      'margin-bottom: 6px;',
       '}',
 
       /* Modal buttons container */
@@ -211,47 +211,47 @@ var NotificationSystem = (function() {
 
       /* Modal buttons */
       '.notif-modal button{',
-        'padding:9px 20px;',
-        'border-radius:8px;',
-        'border:none;',
-        'font-size:13px;',
-        'font-weight:600;',
-        'cursor:pointer;',
-        'transition:all 0.2s ease;',
-        'font-family:inherit;',
+      'padding:9px 20px;',
+      'border-radius:8px;',
+      'border:none;',
+      'font-size:13px;',
+      'font-weight:600;',
+      'cursor:pointer;',
+      'transition:all 0.2s ease;',
+      'font-family:inherit;',
       '}',
       '.notif-modal button:hover{transform:translateY(-1px)}',
       '.notif-modal button:active{transform:translateY(0)}',
 
       /* Primary button - purple gradient matching app theme */
       '.notif-btn-primary{',
-        'background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);',
-        'color:#fff;',
-        'box-shadow:0 4px 12px rgba(102,126,234,0.35);',
+      'background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);',
+      'color:#fff;',
+      'box-shadow:0 4px 12px rgba(102,126,234,0.35);',
       '}',
       '.notif-btn-primary:hover{box-shadow:0 6px 16px rgba(102,126,234,0.5)}',
 
       /* Secondary button */
       '.notif-btn-secondary{',
-        'background:#f1f5f9;',
-        'color:#475569;',
-        'border:1px solid #e2e8f0;',
+      'background:#f1f5f9;',
+      'color:#475569;',
+      'border:1px solid #e2e8f0;',
       '}',
       '.notif-btn-secondary:hover{background:#e2e8f0;border-color:#cbd5e1}',
 
       /* Danger button (for destructive confirms) */
       '.notif-btn-danger{',
-        'background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);',
-        'color:#fff;',
-        'box-shadow:0 4px 12px rgba(239,68,68,0.35);',
+      'background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);',
+      'color:#fff;',
+      'box-shadow:0 4px 12px rgba(239,68,68,0.35);',
       '}',
       '.notif-btn-danger:hover{box-shadow:0 6px 16px rgba(239,68,68,0.5)}',
 
       /* ---- Dark mode modal overrides ---- */
       '.dark-mode .notif-modal{',
-        'background:rgba(30,41,59,0.97);',
-        'border:1px solid #334155;',
-        'box-shadow:0 25px 50px rgba(0,0,0,0.5);',
+      'background:rgba(30,41,59,0.97);',
+      'border:1px solid #334155;',
+      'box-shadow:0 25px 50px rgba(0,0,0,0.5);',
       '}',
       '.dark-mode .notif-modal h3{color:#e2e8f0}',
       '.dark-mode .notif-modal .notif-modal-body{color:#cbd5e1}',
@@ -340,6 +340,7 @@ var NotificationSystem = (function() {
       button.onclick = function() {
         if (btn.callback) btn.callback();
         if (document.body.contains(overlay)) document.body.removeChild(overlay);
+        document.removeEventListener('keydown', keyHandler);
       };
       btnContainer.appendChild(button);
     });
@@ -347,20 +348,25 @@ var NotificationSystem = (function() {
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
 
-    // Close on Escape
-    var escHandler = function(e) {
-      if (e.key === 'Escape' && document.body.contains(overlay)) {
+    var keyHandler = function(e) {
+      if (!document.body.contains(overlay)) return;
+      if (e.key === 'Escape') {
         document.body.removeChild(overlay);
-        document.removeEventListener('keydown', escHandler);
+        document.removeEventListener('keydown', keyHandler);
+      } else if (e.key === 'Enter') {
+        var primaryBtn = modal.querySelector('.notif-btn-primary') || modal.querySelector('.notif-btn-danger');
+        if (primaryBtn) {
+          e.preventDefault();
+          primaryBtn.click();
+        }
       }
     };
-    document.addEventListener('keydown', escHandler);
+    document.addEventListener('keydown', keyHandler);
 
-    // Close on overlay click (outside modal)
     overlay.addEventListener('click', function(e) {
       if (e.target === overlay) {
         document.body.removeChild(overlay);
-        document.removeEventListener('keydown', escHandler);
+        document.removeEventListener('keydown', keyHandler);
       }
     });
   }

@@ -88,35 +88,20 @@
 
         // Create title (antenna name) - displayed first
         var title = document.createElement("div");
-        title.className = "list-item-title";
-        title.style.fontSize = "14px";
-        title.style.fontWeight = "600";
-        title.style.marginBottom = "8px";
-        title.style.paddingBottom = "8px";
-        title.style.borderBottom = "1px solid #e2e8f0";
+        title.className = "ap-item-title";
         title.textContent = a.id;
 
-        // Create button container - displayed below title
         var actions = document.createElement("div");
-        actions.className = "list-item-actions";
-        actions.style.display = "flex";
-        actions.style.gap = "4px";
-        actions.style.flexWrap = "wrap";
-        actions.style.marginBottom = "8px";
+        actions.className = "ap-item-actions";
 
         var selBtn = document.createElement("button");
-        // Show green if antenna is selected
         if (a.id === state.selectedApId) {
-          selBtn.className = "small toggled";
+          selBtn.className = "ap-action-btn toggled";
           selBtn.textContent = "Selected";
         } else {
-          selBtn.className = "small secondary";
+          selBtn.className = "ap-action-btn secondary";
           selBtn.textContent = "Select";
         }
-        selBtn.style.flex = "1";
-        selBtn.style.minWidth = "0";
-        selBtn.style.fontSize = "13px";
-        selBtn.style.padding = "4px 6px";
         selBtn.onclick = function (e) {
           e.stopPropagation();
           e.preventDefault();
@@ -184,12 +169,8 @@
         };
 
         var patternBtn = document.createElement("button");
-        patternBtn.className = "small secondary";
+        patternBtn.className = "ap-action-btn secondary";
         patternBtn.textContent = "Change Pattern";
-        patternBtn.style.flex = "1";
-        patternBtn.style.minWidth = "0";
-        patternBtn.style.fontSize = "13px";
-        patternBtn.style.padding = "4px 6px";
         patternBtn.onclick = function (e) {
           if (e) e.stopPropagation();
           // Toggle pattern upload field for this AP
@@ -242,11 +223,7 @@
             // Create container with upload field and file name display
             var container = document.createElement("div");
             container.id = patternContainerId;
-            container.style.marginTop = "8px";
-            container.style.padding = "8px";
-            container.style.background = "#f8fafc";
-            container.style.borderRadius = "6px";
-            container.style.border = "1px solid #e2e8f0";
+            container.className = "pattern-container";
 
             // Stop event propagation on container to prevent antenna selection
             container.onclick = function (e) {
@@ -257,11 +234,7 @@
             };
 
             var label = document.createElement("label");
-            label.style.fontSize = "12px";
-            label.style.fontWeight = "500";
-            label.style.color = "#64748b";
-            label.style.display = "block";
-            label.style.marginBottom = "4px";
+            label.className = "pattern-label";
             label.textContent = "Antenna Pattern File:";
 
             // Stop event propagation on labels
@@ -274,13 +247,11 @@
 
             var fileNameDisplay = document.createElement("div");
             fileNameDisplay.id = "patternFileName_" + idx;
-            fileNameDisplay.style.fontSize = "11px";
-            fileNameDisplay.style.color = "#94a3b8";
-            fileNameDisplay.style.marginBottom = "6px";
+            fileNameDisplay.className = "pattern-filename";
             if (a.antennaPatternFileName) {
               fileNameDisplay.textContent =
                 "Current: " + a.antennaPatternFileName;
-              fileNameDisplay.style.color = "#10b981";
+              fileNameDisplay.classList.add("has-file");
             } else {
               fileNameDisplay.textContent = "No file uploaded";
             }
@@ -295,11 +266,7 @@
 
             // Create dropdown for selecting from uploaded patterns
             var selectLabel = document.createElement("label");
-            selectLabel.style.fontSize = "12px";
-            selectLabel.style.fontWeight = "500";
-            selectLabel.style.color = "#64748b";
-            selectLabel.style.display = "block";
-            selectLabel.style.marginBottom = "4px";
+            selectLabel.className = "pattern-label";
             selectLabel.textContent = "Select Pattern:";
 
             // Stop event propagation on select label
@@ -312,14 +279,7 @@
 
             var patternSelect = document.createElement("select");
             patternSelect.id = patternSelectId;
-            patternSelect.style.width = "100%";
-            patternSelect.style.padding = "6px";
-            patternSelect.style.marginBottom = "8px";
-            patternSelect.style.fontSize = "12px";
-            patternSelect.style.border = "1px solid #e2e8f0";
-            patternSelect.style.borderRadius = "4px";
-            patternSelect.style.background = "#ffffff";
-            patternSelect.style.color = "#1e293b";
+            patternSelect.className = "pattern-select";
 
             // Stop event propagation to prevent antenna selection
             patternSelect.onclick = function (e) {
@@ -344,7 +304,7 @@
 
                 // Update file name display
                 fileNameDisplay.textContent = "Current: " + a.antennaPatternFileName;
-                fileNameDisplay.style.color = "#10b981";
+                fileNameDisplay.classList.add("has-file");
 
                 // Cancel any pending heatmap updates
                 // NOTE: Don't clear cache - antenna count hasn't changed, so cache is still valid
@@ -480,7 +440,7 @@
                         a.antennaPatternFileName = file.name;
                         fileNameDisplay.textContent =
                           "Current: " + a.antennaPatternFileName;
-                        fileNameDisplay.style.color = "#10b981";
+                        fileNameDisplay.classList.add("has-file");
 
                         // Cancel any pending heatmap updates
                         // NOTE: Don't clear cache - antenna count hasn't changed, so cache is still valid
@@ -544,12 +504,8 @@
 
             // Add hint about supported file formats
             var hintText = document.createElement("div");
-            hintText.style.fontSize = "11px";
-            hintText.style.color = "#64748b";
-            hintText.style.marginTop = "4px";
-            hintText.style.fontStyle = "italic";
-            hintText.textContent =
-              "Supported file formats: .txt, .msi";
+            hintText.className = "pattern-hint";
+            hintText.textContent = "Supported file formats: .txt, .msi";
 
             // Stop event propagation on hint text
             hintText.onclick = function (e) {
@@ -573,13 +529,9 @@
         // Initialize enabled property if not set (default to true)
         if (a.enabled === undefined) a.enabled = true;
         toggleBtn.className = a.enabled
-          ? "small secondary"
-          : "small danger";
+          ? "ap-action-btn secondary"
+          : "ap-action-btn danger";
         toggleBtn.textContent = a.enabled ? "Turn Off" : "Turn On";
-        toggleBtn.style.flex = "1";
-        toggleBtn.style.minWidth = "0";
-        toggleBtn.style.fontSize = "13px";
-        toggleBtn.style.padding = "4px 6px";
         //toggleBtn.disabled = state.isOptimizing;
         toggleBtn.onclick = function (e) {
           if (e) e.stopPropagation();
@@ -635,12 +587,8 @@
         };
 
         var delBtn = document.createElement("button");
-        delBtn.className = "small danger";
+        delBtn.className = "ap-action-btn danger";
         delBtn.textContent = "Delete";
-        delBtn.style.flex = "1";
-        delBtn.style.minWidth = "0";
-        delBtn.style.fontSize = "13px";
-        delBtn.style.padding = "4px 6px";
         delBtn.onclick = function (e) {
           if (e) e.stopPropagation();
           state.aps.splice(idx, 1);
@@ -678,10 +626,8 @@
         actions.appendChild(toggleBtn);
         actions.appendChild(delBtn);
 
-        // Style disabled antennas differently
         if (!a.enabled) {
-          item.style.opacity = "0.5";
-          item.style.backgroundColor = "#f3f4f6";
+          item.classList.add("ap-item-disabled");
         }
 
         // Add title first, then buttons, then content
@@ -1016,7 +962,7 @@
         };
 
         var delBtn = document.createElement("button");
-        delBtn.className = "small danger";
+        delBtn.className = "ap-action-btn danger";
         delBtn.textContent = "\u{1F5D1} Delete";
         delBtn.onclick = function (e) {
           if (e) e.stopPropagation();
@@ -1242,7 +1188,7 @@
         };
 
         var delBtn = document.createElement("button");
-        delBtn.className = "small danger";
+        delBtn.className = "ap-action-btn danger";
         delBtn.textContent = "\u{1F5D1} Delete";
         delBtn.onclick = function (e) {
           if (e) e.stopPropagation();
