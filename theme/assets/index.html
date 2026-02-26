@@ -670,7 +670,28 @@
 <script src="ThreeJSRenderer.js"></script>
 <script src="HeatmapEngine.js"></script>
 <script src="ContourRenderer.js"></script>
+  <script>
 
+  (function () {
+  var zones = document.querySelectorAll(".upload-zone");
+  zones.forEach(function (zone) {
+  zone.addEventListener("dragenter", function (e) {
+  e.preventDefault();
+  zone.classList.add("drag-over");
+  });
+  zone.addEventListener("dragover", function (e) {
+  e.preventDefault();
+  zone.classList.add("drag-over");
+  });
+  zone.addEventListener("dragleave", function () {
+  zone.classList.remove("drag-over");
+  });
+  zone.addEventListener("drop", function () {
+  zone.classList.remove("drag-over");
+  });
+  });
+  })();
+</script>
 </body>
 
 </html>
