@@ -15,7 +15,7 @@ class Combined(CombinedTemplate):
     self.last_compliance_idx = 0
     self._reset_session()
 
-    filepath = "_/theme/index.html"
+    filepath = "_/theme/src/index.html"
     html_panel = HtmlPanel(
       html=f"""
                 <style>
