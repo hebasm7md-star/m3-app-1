@@ -28,8 +28,11 @@
     state.cachedHeatmapAntennaCount = 0;
     state.heatmapUpdatePending = true;
     state.heatmapWorkerCallback = null;
-    state.optimizationRsrpGrid = null;
-    state.compliancePercentFromBackend = null;
+    /* TRIAL: keep backend RSRP grid alive during optimization */
+    if (!state.isOptimizing) {
+      state.optimizationRsrpGrid = null;
+      state.compliancePercentFromBackend = null;
+    }
     if (state.showVisualization) {
       generateHeatmapAsync(null, true); // low-res first for fast feedback
     }
@@ -76,9 +79,8 @@
       state.heatmapWorker.onerror = function (error) {
         console.error("Heatmap worker error:", error);
         state.heatmapUpdatePending = false;
-        state.heatmapWorker = null; // Disable worker for future calls
-        // Fallback to synchronous generation
-        generateHeatmapSync();
+        state.heatmapWorker = null;
+        generateHeatmapAsync(null, true);
       };
     } catch (error) {
       console.warn(
@@ -99,7 +101,8 @@
     }
 
     // Try to use Web Worker first (if available and not dragging)
-    if (state.heatmapWorker && !state.isDraggingAntenna) {
+    // Skip worker when backend RSRP grid is active — worker has no access to it
+    if (state.heatmapWorker && !state.isDraggingAntenna && !state.optimizationRsrpGrid) {
       state.heatmapUpdatePending = true;
 
       var resolutionMultiplier = useLowRes === true ? 1 : 1.5;
@@ -256,24 +259,21 @@
               var idx = 4 * (r * cols + c);
 
               // Use backend-computed RSRP when available (from optimization)
+              // Backend data is row-major (y outer, x inner): data[y_idx * cols + x_idx]
               if (state.optimizationRsrpGrid && state.view === "rssi") {
                 var bgrid = state.optimizationRsrpGrid;
                 
-                // Convert (x,y) to backend grid coordinates (floating point)
                 var bx = x / bgrid.dx;
                 var by = y / bgrid.dy;
                 
-                // Get integer indices for 4 nearest neighbors
                 var gx0 = Math.max(0, Math.min(bgrid.cols - 1, Math.floor(bx - 0.5)));
                 var gx1 = Math.max(0, Math.min(bgrid.cols - 1, gx0 + 1));
                 var gy0 = Math.max(0, Math.min(bgrid.rows - 1, Math.floor(by - 0.5)));
                 var gy1 = Math.max(0, Math.min(bgrid.rows - 1, gy0 + 1));
                 
-                // Fractional distances
                 var tx = (bx - 0.5) - gx0;
                 var ty = (by - 0.5) - gy0;
                 
-                // Interpolate
                 var v00 = bgrid.data[gy0 * bgrid.cols + gx0];
                 var v10 = bgrid.data[gy0 * bgrid.cols + gx1];
                 var v01 = bgrid.data[gy1 * bgrid.cols + gx0];
@@ -284,41 +284,27 @@
                 var bval = v0 * (1 - ty) + v1 * ty;
                 
                 if (!isNaN(bval)) {
-                  var bcolor = colorNumeric(state.view === "snr" ? bval - state.noise : bval);
+                  var bcolor = colorNumeric(bval);
                   img.data[idx] = bcolor[0];
                   img.data[idx + 1] = bcolor[1];
                   img.data[idx + 2] = bcolor[2];
                   img.data[idx + 3] = bcolor[3];
                   continue;
                 }
-                console.log("state.optimizationRsrpGrid: ", state.optimizationRsrpGrid);
               }
 
-              // Check if CSV coverage data is available and view is RSSI
-              // if (
-              //   state.csvCoverageData &&
-              //   state.csvCoverageGrid &&
-              //   state.view === "rssi"
-              // ) {
-              //   var csvValue = interpolateRsrpFromCsv(x, y);
-              //   if (csvValue !== null && !isNaN(csvValue)) {
-              //     var col = colorNumeric(csvValue);
-              //     img.data[idx] = col[0];
-              //     img.data[idx + 1] = col[1];
-              //     img.data[idx + 2] = col[2];
-              //     img.data[idx + 3] = col[3];
-              //     continue;
-              //   } else {
-              //     img.data[idx] = 0;
-              //     img.data[idx + 1] = 0;
-              //     img.data[idx + 2] = 0;
-              //     img.data[idx + 3] = 0;
-              //     continue;
-              //   }
-              // }
+              /* TRIAL: during optimization, all RSRP comes from backend only —
+                 skip frontend propagation calc entirely */
+              if (state.isOptimizing) {
+                img.data[idx] = 0;
+                img.data[idx + 1] = 0;
+                img.data[idx + 2] = 0;
+                img.data[idx + 3] = 0;
+                continue;
+              }
 
               if (state.view === "best") {
-                var best = bestApAt(x, y);
+                var best = (typeof bestApAt === 'function' ? bestApAt : RadioCalculations.bestApAt)(x, y);
                 if (useOnlySelected) {
                   best.ap = selectedAP;
                   best.rssiDbm = rssi(
@@ -337,7 +323,7 @@
                 continue;
               }
               if (state.view === "servch") {
-                var best2 = bestApAt(x, y);
+                var best2 = (typeof bestApAt === 'function' ? bestApAt : RadioCalculations.bestApAt)(x, y);
                 if (useOnlySelected) {
                   best2.ap = selectedAP;
                   best2.rssiDbm = rssi(
@@ -355,7 +341,7 @@
                 continue;
               }
 
-              var bestN = bestApAt(x, y);
+              var bestN = (typeof bestApAt === 'function' ? bestApAt : RadioCalculations.bestApAt)(x, y);
               if (useOnlySelected) {
                 bestN.ap = selectedAP;
                 bestN.rssiDbm = rssi(

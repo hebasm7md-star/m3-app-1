@@ -499,24 +499,21 @@ var BackendSync = (function () {
 
     // Handle optimization status updates (for streaming mode)
     if (event.data && event.data.type === "optimization_update") {
-      console.log("[HTML] Received optimization_update:", {
-        actionCount: (event.data.new_action_configs || []).length,
-        state: event.data.state,
-        lastIndex: event.data.last_index
-      });
+      // console.log("[HTML] Received optimization_update:", {
+      //   actionCount: (event.data.new_action_configs || []).length,
+      //   state: event.data.state,
+      //   lastIndex: event.data.last_index
+      // });
       if (typeof window.handleOptimizationUpdate === 'function') {
         window.handleOptimizationUpdate(event.data);
       }
     }
 
-    // Handle optimization started
+    // Handle optimization started (polling is driven by Anvil timer, not JS interval)
     if (event.data && event.data.type === "optimization_started") {
-      console.log("Optimization started, beginning polling...");
+      console.log("Optimization started");
       window.optimizationLastIndex = 0;
       window.optimizationBounds = null;
-      if (typeof window.startOptimizationPolling === 'function') {
-        window.startOptimizationPolling();
-      }
     }
 
     // Handle optimization completed
@@ -546,7 +543,8 @@ var BackendSync = (function () {
       var footerMessage = document.getElementById('footerMessage');
       if (footerBadge) {
         footerBadge.textContent = 'COMPLETED';
-        footerBadge.classList.remove('active');
+        footerBadge.classList.remove('active', 'manual', 'optimizing', 'completed');
+        footerBadge.classList.add('completed');
       }
       if (footerMessage) {
         footerMessage.textContent = 'Optimization completed successfully';
@@ -580,7 +578,7 @@ var BackendSync = (function () {
       var footerMessage = document.getElementById('footerMessage');
       if (footerBadge) {
         footerBadge.textContent = 'ERROR';
-        footerBadge.classList.remove('active');
+        footerBadge.classList.remove('active', 'manual', 'optimizing', 'completed');
       }
       if (footerMessage) {
         footerMessage.textContent = 'Optimization error occurred';

@@ -167,8 +167,9 @@
           defaultFileName.replace(/\.[^/.]+$/, "") + ".json";
       }
 
-      // Try to use File System Access API if available (allows choosing location)
-      if ("showSaveFilePicker" in window) {
+      // File System Access API only works in top-level frames, not cross-origin iframes (e.g. Anvil)
+      var canUsePicker = "showSaveFilePicker" in window && window.self === window.top;
+      if (canUsePicker) {
         var fileHandle = null;
         window
           .showSaveFilePicker({
@@ -206,16 +207,19 @@
             }
           });
       } else {
-        var fileName = prompt(
-          "Enter filename:",
-          defaultFileName.replace(".json", "")
+        NotificationSystem.prompt(
+          "Enter a filename for your project:",
+          "Save Project",
+          function(fileName) {
+            if (fileName !== null && fileName.trim() !== "") {
+              if (!fileName.endsWith(".json")) {
+                fileName = fileName + ".json";
+              }
+              downloadProject(blob, fileName);
+            }
+          },
+          { inputPlaceholder: defaultFileName.replace(".json", ""), confirmLabel: 'Save' }
         );
-        if (fileName !== null) {
-          if (!fileName.endsWith(".json")) {
-            fileName = fileName + ".json";
-          }
-          downloadProject(blob, fileName);
-        }
       }
     } catch (error) {
       console.error("Error saving project:", error);
@@ -346,7 +350,7 @@
             })
             .catch(function (error) {
               console.error("Error loading image:", error);
-              alert("Warning: Could not load background image.");
+              NotificationSystem.warning("Could not load background image.");
             });
         } else {
           state.backgroundImage = null;

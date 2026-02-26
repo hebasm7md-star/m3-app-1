@@ -1,4 +1,4 @@
-﻿// 
+// 
 // DataExportSystem.js
 // Refactored CSV export system.
 //
@@ -9,6 +9,7 @@
 //   DataExportSystem.exportAntennaRsrp(antenna, fileName, spacing)
 //   DataExportSystem.exportCoverageMap(fileName, spacing)
 //   DataExportSystem.exportDetailedCoverageData(fileName, spacing)
+//   DataExportSystem.exportBackendRsrpGrid(fileName)
 //   DataExportSystem.exportAntennaConfiguration(fileName)
 // 
 
@@ -165,11 +166,13 @@ var DataExportSystem = (function () {
       }
 
       spacing = spacing || 1.0;
-      var rows = ['x,y,best_ap_id,rssi_dbm,snr_db,cci_dbm,sinr_db,throughput_mbps'];
+      var rows = ['X,Y,best_ap_id,rssi_dbm,snr_db,cci_dbm,sinr_db,throughput_mbps'];
       var count = 0;
 
-      for (var x = 0; x <= _state.w + 1e-9; x += spacing) {
-        for (var y = 0; y <= _state.h + 1e-9; y += spacing) {
+      for (var y = 0; y <= _state.h + 1e-9; y += spacing) {
+        for (var x = 0; x <= _state.w + 1e-9; x += spacing) {
+          // var xx = (x + 0.5) * grid.dx;
+          // var yy = (y + 0.5) * grid.dy;
           var xx = Math.round(x * 1000) / 1000;
           var yy = Math.round(y * 1000) / 1000;
 
@@ -197,12 +200,41 @@ var DataExportSystem = (function () {
       }
 
       var csvData = rows.join('\n');
-      var finalFileName = fileName || ('coverage_detailed_' + getCurrentTimestamp() + '.csv');
+      var finalFileName = fileName || ('coverage_details.csv'); // + getCurrentTimestamp()
 
       downloadCSV(csvData, finalFileName);
 
       NotificationSystem.toast(' Detailed coverage data exported (' + count + ' points)', 'success');
       console.log('Detailed coverage exported:', { points: count, filename: finalFileName });
+    },
+// HEBA : this function used only for dubugging the rsrp grid from the backend
+    exportBackendRsrpGrid: function (fileName) {
+      if (!_state) {
+        console.error('DataExportSystem not initialized.');
+        return;
+      }
+      var grid = _state.optimizationRsrpGrid;
+      if (!grid || !grid.data) {
+        console.warn('No backend RSRP grid data available to export.');
+        return;
+      }
+
+      var csvRows = ['X,Y,rsrp'];
+      for (var y = 0; y < grid.rows; y++) {
+        for (var x = 0; x < grid.cols; x++) {
+          // var x = (c + 0.5) * grid.dx;
+          // var y = (r + 0.5) * grid.dy;
+          var rsrp = grid.data[y * grid.cols + x];
+          csvRows.push(x.toFixed(3) + ',' + y.toFixed(3) + ',' + rsrp.toFixed(2));
+        }
+      }
+
+      var csvData = csvRows.join('\n');
+      var finalFileName = fileName || ('backend_rsrp.csv');
+      downloadCSV(csvData, finalFileName);
+
+      NotificationSystem.toast('Backend RSRP grid exported (' + grid.data.length + ' points)', 'success');
+      console.log('Backend RSRP exported:', { cols: grid.cols, rows: grid.rows, points: grid.data.length, filename: finalFileName });
     },
 
     // 

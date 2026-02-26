@@ -186,30 +186,22 @@
     if (redoBtn) redoBtn.addEventListener("click", redoState, false);
 
     var restartBtn = document.getElementById("restartBtn");
-    if (restartBtn) {
+    if (restartBtn && !restartBtn._listenerAttached) {
+      restartBtn._listenerAttached = true;
       restartBtn.addEventListener("click", function () {
-        if (typeof NotificationSystem !== "undefined" && NotificationSystem.confirm) {
-          NotificationSystem.confirm(
-            "All unsaved progress will be lost. Are you sure you want to restart?",
-            "Restart Application",
-            function (confirmed) {
-              if (confirmed) {
-                if (window.parent && window.parent !== window) {
-                  window.parent.postMessage({ type: "restart_backend_session" }, "*");
-                }
-                location.reload();
+        NotificationSystem.confirm(
+          "All unsaved progress will be lost. Are you sure you want to restart?",
+          "Restart Application",
+          function (confirmed) {
+            if (confirmed) {
+              if (window.parent && window.parent !== window) {
+                window.parent.postMessage({ type: "restart_backend_session" }, "*");
               }
-            },
-            { danger: true, confirmLabel: "Restart", icon: "⟳" }
-          );
-        } else {
-          if (confirm("All unsaved progress will be lost. Are you sure you want to restart?")) {
-            if (window.parent && window.parent !== window) {
-              window.parent.postMessage({ type: "restart_backend_session" }, "*");
+              location.reload();
             }
-             location.reload();
-          }
-        }
+          },
+          { danger: true, confirmLabel: "Restart", icon: "refresh" }
+        );
       }, false);
     }
 

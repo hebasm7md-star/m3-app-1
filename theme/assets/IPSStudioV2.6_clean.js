@@ -504,6 +504,9 @@
     return _propModel.rssi(tx, gt, L);
   }
 
+  // ── Init RadioCalculations & expose its API on window ──
+
+  window._propModel            = _propModel;
   window.modelLoss             = modelLoss;
   window.getAngleDependentGain = getAngleDependentGain;
   window.rssi                  = rssi;
@@ -515,13 +518,16 @@
     propModel:              _propModel
   });
 
-  DataExportSystem.init({
-state: state
-  });
+  window.rssiFrom                = RadioCalculations.rssiFrom;
+  window.bestApAt                = RadioCalculations.bestApAt;
+  window.cciAt                   = RadioCalculations.cciAt;
+  window.countInterferingAntennas = RadioCalculations.countInterferingAntennas;
+  window.snrAt                   = RadioCalculations.snrAt;
+  window.sinrAt                  = RadioCalculations.sinrAt;
+  window.throughputFromSinr      = RadioCalculations.throughputFromSinr;
+  console.log('[Monolith] window.bestApAt set:', typeof window.bestApAt);
 
-
-  
-  void 0; // placeholder - original block commented out above
+  DataExportSystem.init({ state: state });
   
   // Render ground plane with uploaded image as texture
   function renderGroundPlane(ctx, transition) {
@@ -732,12 +738,10 @@ state: state
     // Update Three.js camera if in 3D mode
     var transition = state.viewModeTransition;
     if (transition > 0 && state.useThreeJS && state.threeRenderer) {
-      updateThreeJSCamera();
-      // Update pointer-events based on view mode
-      updateThreeCanvasPointerEvents();
+      if (typeof updateThreeJSCamera === 'function') updateThreeJSCamera();
+      if (typeof updateThreeCanvasPointerEvents === 'function') updateThreeCanvasPointerEvents();
     } else {
-      // Ensure pointer-events is 'none' in 2D mode
-      updateThreeCanvasPointerEvents();
+      if (typeof updateThreeCanvasPointerEvents === 'function') updateThreeCanvasPointerEvents();
     }
 
     // Continue animation if transitioning (will be called again at end of function)
@@ -4201,6 +4205,7 @@ state: state
   bindNum("noise", "noise");
 
   // Debounced update for minVal and maxVal: redraw after 3 seconds of inactivity or on Enter key
+  var minMaxValDebounceTimer = null;
   function scheduleMinMaxValUpdate() {
     // Clear existing timer
     if (minMaxValDebounceTimer) {
@@ -4390,181 +4395,7 @@ state: state
     }
   });
 
-  // Handle antenna pattern upload
-  if (document.getElementById("antennaPatternUpload")) document.getElementById("antennaPatternUpload").addEventListener("change", function (e) {
-    if (e.target.files && e.target.files[0]) {
-      var file = e.target.files[0];
-      var reader = new FileReader();
-
-      reader.onload = function (event) {
-        try {
-          var pattern = parseAntennaPattern(event.target.result);
-
-          // Store file info in pattern
-          pattern.fileName = file.name;
-          pattern.uploadTime = new Date().toISOString();
-
-          // Check if pattern already exists (by name, frequency, and filename)
-          var patternExists = false;
-          var existingPatternIndex = -1;
-          for (var i = 0; i < state.antennaPatterns.length; i++) {
-            var existingPattern = state.antennaPatterns[i];
-            // Check by name and frequency (primary check)
-            if (existingPattern.name === pattern.name &&
-              existingPattern.frequency === pattern.frequency) {
-              patternExists = true;
-              existingPatternIndex = i;
-              break;
-            }
-          }
-
-          // If pattern already exists, show notification and return
-          if (patternExists) {
-            var existingPattern = state.antennaPatterns[existingPatternIndex];
-            NotificationSystem.warning("Pattern \"" + existingPattern.name + "\" already exists in this project.");
-
-            // Reset file input
-            e.target.value = '';
-            return;
-          }
-
-        var message =
-          "Antenna pattern loaded successfully\n\n" +
-          "    • Name:      " + pattern.name + "\n" +
-          "    • Frequency: " + pattern.frequency + " MHz\n" +
-          "    • Gain:      " + pattern.gain + " dBi\n";
-
-          if (state.antennaPatterns.length === 0) {
-            message += "\nThis pattern will be set as default and used for all new Antennas.";
-          } else {
-            message += "\nDo you want to add this pattern to your project?";
-          }
-
-          // Request confirmation from Anvil parent
-          NotificationSystem.confirm(message, "Confirm Pattern", function (confirmed) {
-            if (confirmed) {
-              // Trigger upload to Anvil backend
-              if (window.parent !== window) {
-                window.parent.postMessage({
-                  type: 'upload_antenna_pattern',
-                  filename: file.name,
-                  content: event.target.result
-                }, '*');
-              }
-
-              // Store file info in pattern
-              pattern.fileName = file.name;
-              pattern.uploadTime = new Date().toISOString();
-
-              // Add to patterns array
-              state.antennaPatterns.push(pattern);
-
-              // If this is the first pattern, set it as default
-              if (state.antennaPatterns.length === 1) {
-                state.defaultAntennaPatternIndex = 0;
-              }
-
-              // Apply default pattern to all existing APs that don't have their own pattern
-              var defaultPattern = getDefaultAntennaPattern();
-              if (defaultPattern) {
-                for (var i = 0; i < state.aps.length; i++) {
-                  if (!state.aps[i].antennaPattern) {
-                    state.aps[i].antennaPattern = defaultPattern;
-                    // Also set the filename from the pattern
-                    state.aps[i].antennaPatternFileName = defaultPattern.fileName || (defaultPattern.name ? defaultPattern.name : null);
-                  }
-                }
-              }
-
-              console.log(
-                "Antenna pattern added:",
-                pattern.name,
-                "Frequency:",
-                pattern.frequency,
-                "MHz",
-                "Gain:",
-                pattern.gain,
-                "dBi"
-              );
-              console.log("Total patterns:", state.antennaPatterns.length);
-
-              // Update UI
-              updateAntennaPatternsList();
-
-              // Redraw to apply new pattern
-              draw();
-
-              // Final success notification
-              //showAnvilNotification("Pattern added successfully!", "Success", "success");
-            } else {
-              console.log("User cancelled antenna pattern upload.");
-            }
-          });
-        } catch (err) {
-          console.error("Error parsing antenna pattern:", err);
-          NotificationSystem.error("Failed to parse pattern file.\n" + err.message);
-        }
-      };
-
-      reader.onerror = function () {
-        NotificationSystem.error("Could not read the antenna pattern file.");
-      };
-
-      reader.readAsText(file);
-
-      // Reset file input to allow uploading the same file again
-      e.target.value = "";
-    }
-  });
-
-  // Handle delete button for selected pattern
-  if (document.getElementById("deleteSelectedPattern")) document.getElementById("deleteSelectedPattern").addEventListener("click", function (e) {
-    e.preventDefault();
-    e.stopPropagation();
-    var select = document.getElementById("defaultAntennaPatternSelect");
-    if (select && select.value !== "-1" && select.value !== null && select.value !== "") {
-      var patternIndex = parseInt(select.value);
-      if (!isNaN(patternIndex) && patternIndex >= 0 && patternIndex < state.antennaPatterns.length) {
-        deleteAntennaPattern(patternIndex);
-      }
-    }
-  });
-
-  // Handle default pattern selection change
-  if (document.getElementById("defaultAntennaPatternSelect")) document.getElementById("defaultAntennaPatternSelect").addEventListener("change", function (e) {
-    var selectedIndex = parseInt(e.target.value);
-    state.defaultAntennaPatternIndex = selectedIndex;
-
-    // Update delete button visibility when selection changes
-    var deleteButton = document.getElementById("deleteSelectedPattern");
-    if (deleteButton) {
-      if (selectedIndex !== -1 && !isNaN(selectedIndex)) {
-        deleteButton.style.display = "flex";
-      } else {
-        deleteButton.style.display = "none";
-      }
-    }
-
-    // Apply default pattern to all existing APs that don't have their own pattern
-    // Only if patterns exist and a valid default is selected
-    var defaultPattern = getDefaultAntennaPattern();
-    if (defaultPattern && state.antennaPatterns.length > 0) {
-      for (var i = 0; i < state.aps.length; i++) {
-        if (!state.aps[i].antennaPattern) {
-          state.aps[i].antennaPattern = defaultPattern;
-          // Also set the filename from the pattern
-          state.aps[i].antennaPatternFileName = defaultPattern.fileName || (defaultPattern.name ? defaultPattern.name : null);
-        }
-      }
-      draw();
-      console.log("Default pattern changed to:", defaultPattern.name);
-    } else {
-      // No default pattern available - ensure antennas without patterns stay without patterns
-      // Don't remove existing patterns from antennas that have them, but don't assign new ones
-      draw();
-      console.log("No default pattern selected");
-    }
-  });
+  /* AI COMMENT — antenna pattern event listeners (upload, delete, default select) moved to AntennaPatterns.js */
 
   /* AI COMMENT — initIconSidebar + outside-click handler extracted to app.js */
 

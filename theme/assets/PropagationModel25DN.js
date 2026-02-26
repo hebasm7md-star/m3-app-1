@@ -27,6 +27,7 @@ class PropagationModel25D {
         this.shapeFactor = config.shapeFactor || 3.0;
         this.referenceOffset = config.referenceOffset || 0.0;
         this.minDistance = 0.5;  // Minimum distance in meters
+        this._p25dLogged = false;
     }
 
     /**
@@ -320,7 +321,7 @@ class PropagationModel25D {
     const apAzimuth = ap.azimuth || ap.heading || 0;
     // Convert azimuth (0°=North/Up, CW) to math angle (0°=East/Right, CCW)
     // Same conversion as the canvas drawing code: (azimuth - 90)
-    const apAngle = ((apAzimuth - 90) * Math.PI) / 180;
+    const apAngle = ((-apAzimuth - 90) * Math.PI) / 180;
     let angleDiff = angleToPoint - apAngle;
     const angleDiffDeg = ((angleDiff * 180 / Math.PI) + 360) % 360;
     
@@ -353,20 +354,25 @@ class PropagationModel25D {
             elevationAngleDeg = (elevationRelativeToBoresightRad * 180) / Math.PI;
             elevationAngleDeg = Math.max(-90, Math.min(90, elevationAngleDeg));
         } else {
-            console.log("✗ Vertical pattern NOT applied. Reasons:");
-            console.log("  horizontalDist > 0.1?", horizontalDist > 0.1);
-            console.log("  pattern.verticalData exists?", pattern.verticalData !== undefined);
-            console.log("  verticalData.length > 0?", pattern.verticalData ? pattern.verticalData.length > 0 : false);
+            // console.log("✗ Vertical pattern NOT applied. Reasons:");
+            // console.log("  horizontalDist > 0.1?", horizontalDist > 0.1);
+            // console.log("  pattern.verticalData exists?", pattern.verticalData !== undefined);
+            // console.log("  verticalData.length > 0?", pattern.verticalData ? pattern.verticalData.length > 0 : false);
         }
 
         const gainDbi = this.getGainFromPattern(pattern, angleDiffDeg, elevationAngleDeg);
 
         const peakGainDbi = pattern._maxValue !== undefined ? pattern._maxValue : 
-                           (ap.gt || ap.gain || 8.0);
+                           (pattern.gain !== undefined ? pattern.gain : (ap.gt || ap.gain || 8.0));
         
-        const exaggeratedDbDown = gainDbi * this.shapeFactor;
+        // In JS, getGainFromPattern actually returns the relative negative gain (dbDown)
+        // because the parser forces all MSI values to negative.
+        const dbDown = gainDbi;
+        const exaggeratedDbDown = dbDown * this.shapeFactor;
         
         const finalGain = peakGainDbi + exaggeratedDbDown;
+        
+        // console.log(`[Frontend] getAngleDependentGain -> peakGainDbi: ${peakGainDbi}, dbDown: ${dbDown}, exaggeratedDbDown: ${exaggeratedDbDown}, finalGain: ${finalGain}`);
 
         return finalGain;
     }
@@ -409,21 +415,27 @@ class PropagationModel25D {
 
         // Distance loss with path loss exponent
         // CRITICAL: HTML uses state.N * log10(d), not 10 * n * log10(d)
-        console.log(`Calculating distance loss: N = ${this.N}, distance = ${d.toFixed(2)} m`);
+        // console.log(`Calculating distance loss: N = ${this.N}, distance = ${d.toFixed(2)} m`);
         const distanceLoss = this.N * this.log10(d);
-        console.log("ref loss:", refLoss1m);
-        console.log("dist loss:", distanceLoss);
+        // console.log("ref loss:", refLoss1m);
+        // console.log("dist loss:", distanceLoss);
 
         // Base loss
         const baseLoss = refLoss1m + distanceLoss;
-        console.log(`Base FSPL loss from AP to RX at (${rxPos.x}, ${rxPos.y}): ${baseLoss.toFixed(2)} dB`);
 
         // Environmental losses
         const wallAttenuation = this.wallsLoss(txPos, rxPos, walls, elementTypes);
         const groundAttenuation = this.groundPlaneLoss(txPos, rxPos, groundPlaneConfig);
         const floorPlaneAttenuation = this.floorPlanesLoss(txPos, rxPos, floorPlanes);
+        
+        const totalLoss = baseLoss + wallAttenuation + groundAttenuation + floorPlaneAttenuation + this.verticalFactor;
+        
+        if (!this._p25dLogged) {
+            console.log(`[Frontend] p25dLoss -> d=${d.toFixed(2)}m, baseLoss=${baseLoss.toFixed(2)}, walls=${wallAttenuation.toFixed(2)}, ground=${groundAttenuation.toFixed(2)}, floor=${floorPlaneAttenuation.toFixed(2)}, verticalFactor=${this.verticalFactor.toFixed(2)}, totalLoss=${totalLoss.toFixed(2)}`);
+            this._p25dLogged = true;
+        }
 
-        return baseLoss + wallAttenuation + groundAttenuation + floorPlaneAttenuation + this.verticalFactor;
+        return totalLoss;
     }
 
     /**
@@ -451,10 +463,15 @@ class PropagationModel25D {
     calculateRSSI(ap, rxPos, walls = [], floorPlanes = [], groundPlaneConfig = null, elementTypes = null, patterns = null) {
         const txPos = { x: ap.x, y: ap.y };
         const loss = this.p25dLoss(txPos, rxPos, walls, floorPlanes, groundPlaneConfig, elementTypes);
-        console.log(`Calculated path loss from AP at (${ap.x}, ${ap.y}) to RX at (${rxPos.x}, ${rxPos.y}): ${loss.toFixed(2)} dB`);
         const gain = this.getAngleDependentGain(ap, rxPos, patterns);
-        console.log(`Calculated angle-dependent gain from AP at (${ap.x}, ${ap.y}) to RX at (${rxPos.x}, ${rxPos.y}): ${gain.toFixed(2)} dB`);
-        return this.rssi(ap.tx, gain, loss);
+        
+        const tx = ap.tx;
+        const offset = this.referenceOffset;
+        const finalRssi = this.rssi(tx, gain, loss);
+        
+        // console.log(`[Frontend] calculateRSSI -> rx=({x: ${rxPos.x.toFixed(2)}, y: ${rxPos.y.toFixed(2)}}), tx=${tx}, gain=${gain.toFixed(2)}, loss=${loss.toFixed(2)}, offset=${offset}, finalRssi=${finalRssi.toFixed(2)}`);
+        
+        return finalRssi;
     }
 
     /**

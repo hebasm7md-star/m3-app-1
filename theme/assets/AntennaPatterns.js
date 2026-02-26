@@ -26,14 +26,18 @@
       }
     }
 
-    var message = "Pattern: " + patternName;
+    var message = "<div style='font-size: 14px; margin-bottom: 16px;'><span style='font-weight: 600;' class='theme-text-strong'>Pattern:</span> <span class='theme-text'>" + patternName + "</span></div>";
     if (usedByAntennas.length > 0) {
-      message += "\nUsed by " + usedByAntennas.length + " antenna(s): " + usedByAntennas.join(", ");
-      message += "\nThese antennas will lose their pattern assignment.";
+      message += "<div style='font-size: 13.5px; margin-bottom: 8px;' class='theme-text-strong'>Used by " + usedByAntennas.length + " antenna(s):</div>";
+      message += "<div style='font-size: 13px; margin-bottom: 16px; padding: 8px; background: rgba(0,0,0,0.03); border-radius: 6px;' class='theme-text'>" + usedByAntennas.join(", ") + "</div>";
+      message += "<div style='font-size: 13.5px; color: #ef4444; font-weight: 500;'>These antennas will lose their pattern assignment.</div>";
     }
 
-    NotificationSystem.confirm(message, "Delete Pattern", function (confirmed) {
-      if (confirmed) {
+    NotificationSystem.confirm(
+      message, 
+      "Delete Pattern", 
+      function (confirmed) {
+        if (confirmed) {
         for (var i = 0; i < state.aps.length; i++) {
           if (state.aps[i].antennaPattern === pattern) {
             state.aps[i].antennaPattern = null;
@@ -81,7 +85,7 @@
 
         NotificationSystem.success("Pattern deleted successfully!");
       }
-    }, {danger: true, confirmLabel: 'Delete', icon: '\u{1F5D1}\u{FE0F}'});
+    }, {danger: true, confirmLabel: 'Delete', icon: 'delete', isHtml: true});
   }
 
   function updateAntennaPatternsList() {
@@ -183,13 +187,11 @@
         pattern.hWidth = parseFloat(line.substring(8));
       } else if (line.startsWith("GAIN ")) {
         var gainStr = line.substring(5).trim();
-        pattern.gain = parseFloat(
-          gainStr
-          .replace(" dBi.", "")
-          .replace(" dBi", "")
-          .replace(" dBd.", "")
-          .replace(" dBd", "")
-        );
+        var parsedGain = parseFloat(gainStr);
+        if (!isNaN(parsedGain)) {
+          // If the unit is dB or dBd (not dBi), convert to dBi by adding 2.15
+          pattern.gain = /db(?!i)/i.test(gainStr) ? parsedGain + 2.15 : parsedGain;
+        }
       } else if (line.startsWith("HORIZONTAL")) {
         currentSection = "horizontal";
         hData = [];
@@ -228,27 +230,208 @@
       pattern._maxValue = pattern.gain;
       pattern._minValue = hData.length > 0 ? Math.min.apply(null, hData.map(function(d) { return d.gain; })) : 0;
       pattern._peakAngle = hData.length > 0 ? hData.reduce(function(a, b) { return b.gain > a.gain ? b : a; }).angle : 0;
-      console.log(
-        "Pattern parsed:",
-        pattern.name,
-        "H points:",
-        hData.length,
-        "Range:",
-        pattern._minValue.toFixed(2),
-        "to",
-        pattern._maxValue.toFixed(2),
-        "Peak at angle:",
-        pattern._peakAngle,
-        "Peak gain:",
-        pattern.gain
-      );
+      // console.log(
+      //   "Pattern parsed:",
+      //   pattern.name,
+      //   "H points:",
+      //   hData.length,
+      //   "Range:",
+      //   pattern._minValue.toFixed(2),
+      //   "to",
+      //   pattern._maxValue.toFixed(2),
+      //   "Peak at angle:",
+      //   pattern._peakAngle,
+      //   "Peak gain:",
+      //   pattern.gain
+      // );
     }
 
     return pattern;
+  }
+
+  function initAntennaPatternEvents() {
+    var uploadEl = document.getElementById("antennaPatternUpload");
+    if (uploadEl) uploadEl.addEventListener("change", function (e) {
+      if (e.target.files && e.target.files[0]) {
+        var file = e.target.files[0];
+        var reader = new FileReader();
+
+        reader.onload = function (event) {
+          try {
+            var originalContent = event.target.result;
+            var pattern = parseAntennaPattern(originalContent);
+            var contentToSend = originalContent;
+
+            if (!pattern.gain || pattern.gain === 0) {
+              NotificationSystem.prompt(
+                "The uploaded pattern has 0 gain or no gain specified.\nPlease enter the antenna gain in dBi to continue:",
+                "Missing Antenna Gain",
+                function(gainInput) {
+                  if (gainInput === null || gainInput.trim() === "" || isNaN(parseFloat(gainInput))) {
+                    NotificationSystem.error("Valid gain in dBi is required. Upload cancelled.");
+                    e.target.value = '';
+                    return;
+                  }
+                  pattern.gain = parseFloat(gainInput);
+                  pattern._maxValue = pattern.gain;
+
+                  if (/^GAIN/im.test(contentToSend)) {
+                    contentToSend = contentToSend.replace(/^GAIN.*/im, "GAIN " + pattern.gain + " dBi");
+                  } else {
+                    contentToSend = "GAIN " + pattern.gain + " dBi\n" + contentToSend;
+                  }
+
+                  continueUpload(pattern, file, contentToSend);
+                },
+                { inputType: 'number', inputPlaceholder: 'e.g. 8.5', confirmLabel: 'Continue' }
+              );
+              return;
+            } else {
+              continueUpload(pattern, file, contentToSend);
+            }
+
+            function continueUpload(pattern, file, contentToSend) {
+              pattern.fileName = file.name;
+              pattern.uploadTime = new Date().toISOString();
+
+              var patternExists = false;
+              var existingPatternIndex = -1;
+              for (var i = 0; i < state.antennaPatterns.length; i++) {
+                var existingPattern = state.antennaPatterns[i];
+                if (existingPattern.name === pattern.name &&
+                  existingPattern.frequency === pattern.frequency) {
+                  patternExists = true;
+                  existingPatternIndex = i;
+                  break;
+                }
+              }
+
+              if (patternExists) {
+                var existingPattern = state.antennaPatterns[existingPatternIndex];
+                NotificationSystem.warning("Pattern \"" + existingPattern.name + "\" already exists in this project.");
+                e.target.value = '';
+                return;
+              }
+
+              var message =
+                "Antenna pattern loaded successfully\n\n" +
+                "    • Name:      " + pattern.name + "\n" +
+                "    • Frequency: " + pattern.frequency + " MHz\n" +
+                "    • Gain:      " + pattern.gain + " dBi\n";
+
+              if (state.antennaPatterns.length === 0) {
+                message += "\nThis pattern will be set as default and used for all new Antennas.";
+              } else {
+                message += "\nDo you want to add this pattern to your project?";
+              }
+
+              NotificationSystem.confirm(message, "Confirm Pattern", function (confirmed) {
+                if (confirmed) {
+                  if (window.parent !== window) {
+                    window.parent.postMessage({
+                      type: 'upload_antenna_pattern',
+                      filename: file.name,
+                      content: contentToSend
+                    }, '*');
+                  }
+
+                  pattern.fileName = file.name;
+                  pattern.uploadTime = new Date().toISOString();
+
+                  state.antennaPatterns.push(pattern);
+
+                  if (state.antennaPatterns.length === 1) {
+                    state.defaultAntennaPatternIndex = 0;
+                  }
+
+                  var defaultPattern = getDefaultAntennaPattern();
+                  if (defaultPattern) {
+                    for (var i = 0; i < state.aps.length; i++) {
+                      if (!state.aps[i].antennaPattern) {
+                        state.aps[i].antennaPattern = defaultPattern;
+                        state.aps[i].antennaPatternFileName = defaultPattern.fileName || (defaultPattern.name ? defaultPattern.name : null);
+                      }
+                    }
+                  }
+
+                  console.log("Antenna pattern added:",pattern.name,"Frequency:",pattern.frequency,"MHz","Gain:",pattern.gain,"dBi");
+
+                  updateAntennaPatternsList();
+
+                  draw();
+                } else {
+                  console.log("User cancelled antenna pattern upload.");
+                }
+              });
+            }
+          } catch (err) {
+            console.error("Error parsing antenna pattern:", err);
+            NotificationSystem.error("Failed to parse pattern file.\n" + err.message);
+          }
+        };
+
+        reader.onerror = function () {
+          NotificationSystem.error("Could not read the antenna pattern file.");
+        };
+
+        reader.readAsText(file);
+
+        e.target.value = "";
+      }
+    });
+
+    var deleteBtn = document.getElementById("deleteSelectedPattern");
+    if (deleteBtn) deleteBtn.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var select = document.getElementById("defaultAntennaPatternSelect");
+      if (select && select.value !== "-1" && select.value !== null && select.value !== "") {
+        var patternIndex = parseInt(select.value);
+        if (!isNaN(patternIndex) && patternIndex >= 0 && patternIndex < state.antennaPatterns.length) {
+          deleteAntennaPattern(patternIndex);
+        }
+      }
+    });
+
+    var defaultSelect = document.getElementById("defaultAntennaPatternSelect");
+    if (defaultSelect) defaultSelect.addEventListener("change", function (e) {
+      var selectedIndex = parseInt(e.target.value);
+      state.defaultAntennaPatternIndex = selectedIndex;
+
+      var deleteButton = document.getElementById("deleteSelectedPattern");
+      if (deleteButton) {
+        if (selectedIndex !== -1 && !isNaN(selectedIndex)) {
+          deleteButton.style.display = "flex";
+        } else {
+          deleteButton.style.display = "none";
+        }
+      }
+
+      var defaultPattern = getDefaultAntennaPattern();
+      if (defaultPattern && state.antennaPatterns.length > 0) {
+        for (var i = 0; i < state.aps.length; i++) {
+          if (!state.aps[i].antennaPattern) {
+            state.aps[i].antennaPattern = defaultPattern;
+            state.aps[i].antennaPatternFileName = defaultPattern.fileName || (defaultPattern.name ? defaultPattern.name : null);
+          }
+        }
+        draw();
+        console.log("Default pattern changed to:", defaultPattern.name);
+      } else {
+        draw();
+      }
+    });
   }
 
   window.getDefaultAntennaPattern = getDefaultAntennaPattern;
   window.deleteAntennaPattern = deleteAntennaPattern;
   window.updateAntennaPatternsList = updateAntennaPatternsList;
   window.parseAntennaPattern = parseAntennaPattern;
+  window.initAntennaPatternEvents = initAntennaPatternEvents;
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initAntennaPatternEvents);
+  } else {
+    initAntennaPatternEvents();
+  }
 })();

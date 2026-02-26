@@ -28,6 +28,15 @@
     if (canvas) {
       canvas.style.cursor = "default";
     }
+
+    var badge = document.getElementById("footerBadge");
+    var msg = document.getElementById("footerMessage");
+    if (badge) {
+      badge.textContent = "READY";
+      badge.classList.remove("manual", "optimizing", "completed");
+    }
+    if (msg) msg.textContent = "Waiting for adding antenna ...";
+
     draw();
   }
 
@@ -765,9 +774,7 @@
     }
 
     if (!getDefaultAntennaPattern()) {
-      alert(
-        'Please upload an antenna pattern file first using "UPLOAD ANTENNA\'S PATTERN" field.'
-      );
+      NotificationSystem.warning('Please upload an antenna pattern file first using "UPLOAD ANTENNA\'S PATTERN" field.');
       return;
     }
 
@@ -804,7 +811,7 @@
             : state.view === "thr"
               ? "Throughput"
               : "Signal";
-    console.log("Placing " + count + " antenna(s) in grid pattern...");
+    // console.log("Placing " + count + " antenna(s) in grid pattern...");
 
     saveState(); // Save state BEFORE mutating state.aps (fixes auto-placement undo issue)
 
@@ -924,6 +931,15 @@
         if (canvas) {
           canvas.style.cursor = "crosshair";
         }
+
+        var badge = document.getElementById("footerBadge");
+        var msg = document.getElementById("footerMessage");
+        if (badge) {
+          badge.textContent = "PLACING";
+          badge.classList.remove("active", "optimizing", "completed");
+          badge.classList.add("manual");
+        }
+        if (msg) msg.textContent = "Waiting for adding antenna ...";
         var addFloorPlaneBtn = document.getElementById("addFloorPlane");
         if (addFloorPlaneBtn) {
           addFloorPlaneBtn.textContent = "Add Floor Plane";

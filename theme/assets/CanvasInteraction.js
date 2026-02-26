@@ -405,7 +405,7 @@
           }
 
           if (!closestWall) {
-            alert("Please click ON a wall to place a door or window.");
+            NotificationSystem.warning("Please click ON a wall to place a door or window.");
             return;
           }
 
@@ -1815,7 +1815,7 @@
           //   csvValue = interpolateRsrpFromCsv(worldX, worldY);
           // }
 
-          var best = bestApAt(worldX, worldY);
+          var best = (typeof bestApAt === 'function' ? bestApAt : RadioCalculations.bestApAt)(worldX, worldY);
 
           // Show tooltip if we have CSV data or an AP
           if (csvValue !== null || (best && best.ap)) {

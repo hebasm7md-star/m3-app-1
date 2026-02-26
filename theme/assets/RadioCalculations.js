@@ -36,12 +36,8 @@ var RadioCalculations = (function () {
 
   // ── Core radio functions ──
 
-  function rssi(tx, gt, L) {
-    return _propModel.rssi(tx, gt, L);
-  }
-
   function rssiFrom(ap, x, y) {
-    return rssi(
+    return _propModel.rssi(
       ap.tx,
       _getAngleDependentGain(ap, x, y),
       _modelLoss(ap.x, ap.y, x, y)
@@ -55,7 +51,7 @@ var RadioCalculations = (function () {
     for (i = 0; i < _state.aps.length; i++) {
       var a = _state.aps[i];
       if (a.enabled === false) continue;
-      var pr = rssi(
+      var pr = _propModel.rssi(
         a.tx,
         _getAngleDependentGain(a, x, y),
         _modelLoss(a.x, a.y, x, y)
