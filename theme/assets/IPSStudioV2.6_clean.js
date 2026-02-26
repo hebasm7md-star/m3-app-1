@@ -2286,86 +2286,86 @@ function draw() {
             ctx.closePath();
             ctx.fill();
 
-            ctx.restore();
+              ctx.restore();
+            }
           }
         }
       }
-    }
 
-    // Reset canvas state before rendering walls to ensure no transparency is inherited
-    ctx.globalAlpha = 1.0;
-    ctx.globalCompositeOperation = "source-over";
-    ctx.setLineDash([]); // Clear any line dash patterns
+      // Reset canvas state before rendering walls to ensure no transparency is inherited
+      ctx.globalAlpha = 1.0;
+      ctx.globalCompositeOperation = "source-over";
+      ctx.setLineDash([]); // Clear any line dash patterns
 
-    // Render all elements together, sorted by depth for proper occlusion
-    // This ensures elements closer to camera render on top of elements farther away
-    var elementsToRender = [];
+      // Render all elements together, sorted by depth for proper occlusion
+      // This ensures elements closer to camera render on top of elements farther away
+      var elementsToRender = [];
 
-    if (transition > 0) {
-      for (i = 0; i < state.walls.length; i++) {
-        var w = state.walls[i];
-        var elementType = w.elementType || "wall";
-        var elementBottomZ = 0.01;
-        var elementHeight = 2.5; // Default wall height
+      if (transition > 0) {
+        for (i = 0; i < state.walls.length; i++) {
+          var w = state.walls[i];
+          var elementType = w.elementType || "wall";
+          var elementBottomZ = 0.01;
+          var elementHeight = 2.5; // Default wall height
 
-        // Use correct height and bottom Z based on element type
-        if (elementType === "door" || elementType === "doubleDoor") {
-          elementHeight = 2.1; // Door height
-          elementBottomZ = 0.01; // Doors start at floor
-        } else if (elementType === "window") {
-          elementHeight = 1.2; // Window height
-          elementBottomZ = 0.9; // Window sill height
-        } else {
-          elementHeight = w.height || 2.5;
-          elementBottomZ = 0.01;
-        }
+          // Use correct height and bottom Z based on element type
+          if (elementType === "door" || elementType === "doubleDoor") {
+            elementHeight = 2.1; // Door height
+            elementBottomZ = 0.01; // Doors start at floor
+          } else if (elementType === "window") {
+            elementHeight = 1.2; // Window height
+            elementBottomZ = 0.9; // Window sill height
+          } else {
+            elementHeight = w.height || 2.5;
+            elementBottomZ = 0.01;
+          }
 
-        // Calculate depth for proper sorting - use front face depth (closest to camera)
-        // For elements with thickness, we need to find the front face
-        var p1Bottom_3d = projectToCanvas3D(
-          w.p1.x,
-          w.p1.y,
-          elementBottomZ
-        );
-        var p2Bottom_3d = projectToCanvas3D(
-          w.p2.x,
-          w.p2.y,
-          elementBottomZ
-        );
-        var p1Top_3d = projectToCanvas3D(
-          w.p1.x,
-          w.p1.y,
-          elementBottomZ + elementHeight
-        );
-        var p2Top_3d = projectToCanvas3D(
-          w.p2.x,
-          w.p2.y,
-          elementBottomZ + elementHeight
-        );
+          // Calculate depth for proper sorting - use front face depth (closest to camera)
+          // For elements with thickness, we need to find the front face
+          var p1Bottom_3d = projectToCanvas3D(
+            w.p1.x,
+            w.p1.y,
+            elementBottomZ
+          );
+          var p2Bottom_3d = projectToCanvas3D(
+            w.p2.x,
+            w.p2.y,
+            elementBottomZ
+          );
+          var p1Top_3d = projectToCanvas3D(
+            w.p1.x,
+            w.p1.y,
+            elementBottomZ + elementHeight
+          );
+          var p2Top_3d = projectToCanvas3D(
+            w.p2.x,
+            w.p2.y,
+            elementBottomZ + elementHeight
+          );
 
-        // For elements with thickness, calculate front and back face depths
-        var frontDepth, backDepth;
-        if (elementType === "wall") {
-          // Wall has thickness - calculate front and back face
-          var wallThickness = 0.15;
-          var dx = w.p2.x - w.p1.x;
-          var dy = w.p2.y - w.p1.y;
-          var len = Math.sqrt(dx * dx + dy * dy);
-          if (len > 0) {
-            var perpX = ((-dy / len) * wallThickness) / 2;
-            var perpY = ((dx / len) * wallThickness) / 2;
-            var p1Front_3d = projectToCanvas3D(
-              w.p1.x + perpX,
-              w.p1.y + perpY,
-              elementBottomZ
-            );
-            var p2Front_3d = projectToCanvas3D(
-              w.p2.x + perpX,
-              w.p2.y + perpY,
-              elementBottomZ
-            );
-            var p1Back_3d = projectToCanvas3D(
-              w.p1.x - perpX,
+          // For elements with thickness, calculate front and back face depths
+          var frontDepth, backDepth;
+          if (elementType === "wall") {
+            // Wall has thickness - calculate front and back face
+            var wallThickness = 0.15;
+            var dx = w.p2.x - w.p1.x;
+            var dy = w.p2.y - w.p1.y;
+            var len = Math.sqrt(dx * dx + dy * dy);
+            if (len > 0) {
+              var perpX = ((-dy / len) * wallThickness) / 2;
+              var perpY = ((dx / len) * wallThickness) / 2;
+              var p1Front_3d = projectToCanvas3D(
+                w.p1.x + perpX,
+                w.p1.y + perpY,
+                elementBottomZ
+              );
+              var p2Front_3d = projectToCanvas3D(
+                w.p2.x + perpX,
+                w.p2.y + perpY,
+                elementBottomZ
+              );
+              var p1Back_3d = projectToCanvas3D(
+                w.p1.x - perpX,
                 w.p1.y - perpY,
                 elementBottomZ
               );
@@ -4207,6 +4207,7 @@ function draw() {
   bindNum("noise", "noise");
 
   // Debounced update for minVal and maxVal: redraw after 3 seconds of inactivity or on Enter key
+  var minMaxValDebounceTimer = null;
   function scheduleMinMaxValUpdate() {
     // Clear existing timer
     if (minMaxValDebounceTimer) {
