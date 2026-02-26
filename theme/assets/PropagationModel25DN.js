@@ -353,10 +353,10 @@ class PropagationModel25D {
         elevationAngleDeg = (elevationRelativeToBoresightRad * 180) / Math.PI;
         elevationAngleDeg = Math.max(-90, Math.min(90, elevationAngleDeg));
       } else {
-        console.log("✗ Vertical pattern NOT applied. Reasons:");
-        console.log("  horizontalDist > 0.1?", horizontalDist > 0.1);
-        console.log("  pattern.verticalData exists?", pattern.verticalData !== undefined);
-        console.log("  verticalData.length > 0?", pattern.verticalData ? pattern.verticalData.length > 0 : false);
+        // console.log("✗ Vertical pattern NOT applied. Reasons:");
+        // console.log("  horizontalDist > 0.1?", horizontalDist > 0.1);
+        // console.log("  pattern.verticalData exists?", pattern.verticalData !== undefined);
+        // console.log("  verticalData.length > 0?", pattern.verticalData ? pattern.verticalData.length > 0 : false);
       }
 
       const gainDbi = this.getGainFromPattern(pattern, angleDiffDeg, elevationAngleDeg);
@@ -371,7 +371,7 @@ class PropagationModel25D {
 
       const finalGain = peakGainDbi + exaggeratedDbDown;
 
-      console.log(`[Frontend] getAngleDependentGain -> peakGainDbi: ${peakGainDbi}, dbDown: ${dbDown}, exaggeratedDbDown: ${exaggeratedDbDown}, finalGain: ${finalGain}`);
+      // console.log(`[Frontend] getAngleDependentGain -> peakGainDbi: ${peakGainDbi}, dbDown: ${dbDown}, exaggeratedDbDown: ${exaggeratedDbDown}, finalGain: ${finalGain}`);
 
       return finalGain;
     }
@@ -414,10 +414,10 @@ class PropagationModel25D {
 
     // Distance loss with path loss exponent
     // CRITICAL: HTML uses state.N * log10(d), not 10 * n * log10(d)
-    console.log(`Calculating distance loss: N = ${this.N}, distance = ${d.toFixed(2)} m`);
+    // console.log(`Calculating distance loss: N = ${this.N}, distance = ${d.toFixed(2)} m`);
     const distanceLoss = this.N * this.log10(d);
-    console.log("ref loss:", refLoss1m);
-    console.log("dist loss:", distanceLoss);
+    // console.log("ref loss:", refLoss1m);
+    // console.log("dist loss:", distanceLoss);
 
     // Base loss
     const baseLoss = refLoss1m + distanceLoss;
@@ -465,7 +465,7 @@ class PropagationModel25D {
     const offset = this.referenceOffset;
     const finalRssi = this.rssi(tx, gain, loss);
 
-    console.log(`[Frontend] calculateRSSI -> rx=({x: ${rxPos.x.toFixed(2)}, y: ${rxPos.y.toFixed(2)}}), tx=${tx}, gain=${gain.toFixed(2)}, loss=${loss.toFixed(2)}, offset=${offset}, finalRssi=${finalRssi.toFixed(2)}`);
+    // console.log(`[Frontend] calculateRSSI -> rx=({x: ${rxPos.x.toFixed(2)}, y: ${rxPos.y.toFixed(2)}}), tx=${tx}, gain=${gain.toFixed(2)}, loss=${loss.toFixed(2)}, offset=${offset}, finalRssi=${finalRssi.toFixed(2)}`);
 
     return finalRssi;
   }

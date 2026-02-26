@@ -230,20 +230,20 @@
       pattern._maxValue = pattern.gain;
       pattern._minValue = hData.length > 0 ? Math.min.apply(null, hData.map(function(d) { return d.gain; })) : 0;
       pattern._peakAngle = hData.length > 0 ? hData.reduce(function(a, b) { return b.gain > a.gain ? b : a; }).angle : 0;
-      console.log(
-        "Pattern parsed:",
-        pattern.name,
-        "H points:",
-        hData.length,
-        "Range:",
-        pattern._minValue.toFixed(2),
-        "to",
-        pattern._maxValue.toFixed(2),
-        "Peak at angle:",
-        pattern._peakAngle,
-        "Peak gain:",
-        pattern.gain
-      );
+      // console.log(
+      //   "Pattern parsed:",
+      //   pattern.name,
+      //   "H points:",
+      //   hData.length,
+      //   "Range:",
+      //   pattern._minValue.toFixed(2),
+      //   "to",
+      //   pattern._maxValue.toFixed(2),
+      //   "Peak at angle:",
+      //   pattern._peakAngle,
+      //   "Peak gain:",
+      //   pattern.gain
+      // );
     }
 
     return pattern;

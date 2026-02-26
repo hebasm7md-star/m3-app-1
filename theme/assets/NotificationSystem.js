@@ -420,10 +420,16 @@ var NotificationSystem = (function() {
       '<div class="notif-modal-buttons" style="margin-top:20px;padding-top:14px;display:flex;gap:10px;justify-content:flex-end;"></div>';
 
     var btnContainer = modal.querySelector('.notif-modal-buttons');
+    var dismissed = false;
+    function dismissModal() {
+      if (dismissed) return;
+      dismissed = true;
+      if (document.body.contains(overlay)) document.body.removeChild(overlay);
+      document.removeEventListener('keydown', keyHandler, true);
+    }
     buttons.forEach(function(btn) {
       var button = document.createElement('button');
       button.textContent = btn.label;
-      // Determine button style class
       if (btn.danger) {
         button.className = 'notif-btn-danger';
       } else if (btn.primary) {
@@ -432,9 +438,8 @@ var NotificationSystem = (function() {
         button.className = 'notif-btn-secondary';
       }
       button.onclick = function() {
-        if (btn.callback) btn.callback();
-        if (document.body.contains(overlay)) document.body.removeChild(overlay);
-        document.removeEventListener('keydown', keyHandler, true);
+        dismissModal();
+        try { if (btn.callback) btn.callback(); } catch(e) { console.error('Modal callback error:', e); }
       };
       btnContainer.appendChild(button);
     });
@@ -443,37 +448,25 @@ var NotificationSystem = (function() {
     document.body.appendChild(overlay);
 
     var keyHandler = function(e) {
-      if (!document.body.contains(overlay)) return;
+      if (dismissed) return;
       if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();
         var cancelBtn = modal.querySelector('.notif-btn-secondary');
-        if (cancelBtn) {
-          cancelBtn.click();
-        } else {
-          document.body.removeChild(overlay);
-          document.removeEventListener('keydown', keyHandler);
-        }
+        if (cancelBtn) { cancelBtn.click(); } else { dismissModal(); }
       } else if (e.key === 'Enter') {
         e.preventDefault();
         e.stopPropagation();
         var primaryBtn = modal.querySelector('.notif-btn-primary') || modal.querySelector('.notif-btn-danger');
-        if (primaryBtn) {
-          primaryBtn.click();
-        }
+        if (primaryBtn) { primaryBtn.click(); }
       }
     };
-    document.addEventListener('keydown', keyHandler, true); // use capture phase to prevent other Enter listeners
+    document.addEventListener('keydown', keyHandler, true);
 
     overlay.addEventListener('click', function(e) {
       if (e.target === overlay) {
         var cancelBtn = modal.querySelector('.notif-btn-secondary');
-        if (cancelBtn) {
-          cancelBtn.click();
-        } else {
-          document.body.removeChild(overlay);
-          document.removeEventListener('keydown', keyHandler, true);
-        }
+        if (cancelBtn) { cancelBtn.click(); } else { dismissModal(); }
       }
     });
   }

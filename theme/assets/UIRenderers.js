@@ -316,12 +316,12 @@
                 state.heatmapUpdatePending = true; // Set to true to trigger regeneration
                 state.heatmapWorkerCallback = null; // Clear any pending worker callback
 
-                console.log(
-                  "Antenna pattern selected for AP:",
-                  a.id,
-                  "Pattern:",
-                  selectedPattern.name
-                );
+                // console.log(
+                //   "Antenna pattern selected for AP:",
+                //   a.id,
+                //   "Pattern:",
+                //   selectedPattern.name
+                // );
 
                 // Start heatmap regeneration BEFORE draw() to minimize delay and prevent flash
                 if (state.showVisualization) {
@@ -407,7 +407,7 @@
                           window.parent.postMessage({
                             type: 'upload_antenna_pattern',
                             filename: file.name,
-                            content: pattern.rawContent || event.target.result
+                            content: event.target.result
                           }, '*');
                         }
 
@@ -419,17 +419,17 @@
                           state.defaultAntennaPatternIndex = 0;
                         }
 
-                        console.log(
-                          "Antenna pattern added to global list:",
-                          pattern.name,
-                          "Frequency:",
-                          pattern.frequency,
-                          "MHz",
-                          "Gain:",
-                          pattern.gain,
-                          "dBi"
-                        );
-                        console.log("Total patterns:", state.antennaPatterns.length);
+                        // console.log(
+                        //   "Antenna pattern added to global list:",
+                        //   pattern.name,
+                        //   "Frequency:",
+                        //   pattern.frequency,
+                        //   "MHz",
+                        //   "Gain:",
+                        //   pattern.gain,
+                        //   "dBi"
+                        // );
+                        // console.log("Total patterns:", state.antennaPatterns.length);
 
                         // Update UI to show new pattern in all dropdowns
                         updateAntennaPatternsList();
@@ -452,12 +452,12 @@
                         state.heatmapUpdatePending = true; // Set to true to trigger regeneration
                         state.heatmapWorkerCallback = null; // Clear any pending worker callback
 
-                        console.log(
-                          "Antenna pattern loaded for AP:",
-                          a.id,
-                          "Pattern:",
-                          pattern.name
-                        );
+                        // console.log(
+                        //   "Antenna pattern loaded for AP:",
+                        //   a.id,
+                        //   "Pattern:",
+                        //   pattern.name
+                        // );
 
                         // Update dropdown to reflect new selection
                         updatePatternDropdown(patternSelect);
@@ -478,16 +478,12 @@
                     });
                   } catch (err) {
                     console.error("Error parsing antenna pattern:", err);
-                    // alert(
-                    //   "Error parsing antenna pattern file: " + err.message
-                    // );
                     NotificationSystem.error("Failed to parse pattern file.\n" + err.message);
 
                   }
                 };
 
                 reader.onerror = function () {
-                  // alert("Error reading antenna pattern file");
                   NotificationSystem.error("Could not read the antenna pattern file.");
 
                 };
@@ -937,7 +933,7 @@
       }
     } else {
       // Backend value exists, don't override it with HTML calculation
-      // console.log("[HTML] Skipping HTML compliance calculation, using backend value:", state.compliancePercentFromBackend);
+      console.log("[HTML] Skipping HTML compliance calculation, using backend value:", state.compliancePercentFromBackend);
     }
   }
 
@@ -1397,7 +1393,7 @@
     var ap = state.selectedApForDetail;
     var content = document.getElementById("apDetailContent");
 
-    console.log("renderApDetails called", { ap: ap, content: content });
+    // console.log("renderApDetails called", { ap: ap, content: content });
 
     if (!ap || !content) {
       console.warn("Missing AP or content element", {
@@ -1538,7 +1534,7 @@
     content.innerHTML = "";
     content.innerHTML = html;
 
-    console.log("Content set, innerHTML length:", content.innerHTML.length);
+    // console.log("Content set, innerHTML length:", content.innerHTML.length);
 
     // Bind event listeners after DOM is updated
     setTimeout(function () {
