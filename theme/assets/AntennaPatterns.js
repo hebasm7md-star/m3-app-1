@@ -183,13 +183,10 @@
         pattern.hWidth = parseFloat(line.substring(8));
       } else if (line.startsWith("GAIN ")) {
         var gainStr = line.substring(5).trim();
-        pattern.gain = parseFloat(
-          gainStr
-          .replace(" dBi.", "")
-          .replace(" dBi", "")
-          .replace(" dBd.", "")
-          .replace(" dBd", "")
-        );
+        var parsedGain = parseFloat(gainStr);
+        if (!isNaN(parsedGain)) {
+          pattern.gain = /dBd/i.test(gainStr) ? parsedGain + 2.15 : parsedGain;
+        }
       } else if (line.startsWith("HORIZONTAL")) {
         currentSection = "horizontal";
         hData = [];
