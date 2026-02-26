@@ -28,6 +28,15 @@
     if (canvas) {
       canvas.style.cursor = "default";
     }
+
+    var badge = document.getElementById("footerBadge");
+    var msg = document.getElementById("footerMessage");
+    if (badge) {
+      badge.textContent = "READY";
+      badge.classList.remove("manual");
+    }
+    if (msg) msg.textContent = "Waiting for adding antenna ...";
+
     draw();
   }
 
@@ -922,6 +931,15 @@
         if (canvas) {
           canvas.style.cursor = "crosshair";
         }
+
+        var badge = document.getElementById("footerBadge");
+        var msg = document.getElementById("footerMessage");
+        if (badge) {
+          badge.textContent = "PLACING";
+          badge.classList.remove("active", "optimizing");
+          badge.classList.add("manual");
+        }
+        if (msg) msg.textContent = "Click on the canvas to place antenna manually";
         var addFloorPlaneBtn = document.getElementById("addFloorPlane");
         if (addFloorPlaneBtn) {
           addFloorPlaneBtn.textContent = "Add Floor Plane";

@@ -76,8 +76,13 @@ var OptimizationSystem = (function () {
     }
 
     var gridData = new Float32Array(totalBins);
+    var dataMin = Infinity, dataMax = -Infinity;
     for (var i = 0; i < totalBins; i++) {
       gridData[i] = Number(rsrpValues[i]);
+      if (!isNaN(gridData[i])) {
+        if (gridData[i] < dataMin) dataMin = gridData[i];
+        if (gridData[i] > dataMax) dataMax = gridData[i];
+      }
     }
 
     state.optimizationRsrpGrid = {
@@ -88,8 +93,13 @@ var OptimizationSystem = (function () {
       dy: state.h / rows
     };
 
+    if (dataMin !== Infinity && dataMax !== -Infinity) {
+      state.minVal = Math.floor(dataMin);
+      state.maxVal = Math.ceil(dataMax);
+    }
+
     var blBins = Math.round(state.w) * Math.round(state.h);
-    console.log("[BackendRSRP] Received bins:", totalBins, "| BL bins (w*h):", blBins, "| Grid:", cols, "x", rows, "| dx:", (state.w / cols).toFixed(3), "dy:", (state.h / rows).toFixed(3));
+    console.log("[BackendRSRP] Received bins:", totalBins, "| BL bins (w*h):", blBins, "| Grid:", cols, "x", rows, "| dx:", (state.w / cols).toFixed(3), "dy:", (state.h / rows).toFixed(3), "| RSRP range:", dataMin.toFixed(1), "to", dataMax.toFixed(1));
   }
 
   // Handle a single optimization update (one or more antennas)
@@ -158,7 +168,7 @@ var OptimizationSystem = (function () {
           addAPBtn.style.pointerEvents = 'none';
         }
         state.isOptimizing = true;
-      } else if (status === 'completed'|| status === 'finished' || status === 'error' || status === 'idle') {
+      } else if (status === 'finished' || status === 'error' || status === 'idle') {
         if (optimizeBtn && optimizeBtn.disabled) {
           optimizeBtn.disabled = false;
           optimizeBtn.style.opacity = '1';
@@ -180,23 +190,25 @@ var OptimizationSystem = (function () {
       if (status === 'starting') {
         if (footerBadge) {
           footerBadge.textContent = 'STARTING';
-          footerBadge.classList.add('active');
+          footerBadge.classList.remove('active', 'manual');
+          footerBadge.classList.add('optimizing');
         }
         if (footerMessage && message) {
           footerMessage.textContent = message;
         }
       } else if (status === 'running') {
         if (footerBadge) {
-          footerBadge.textContent = 'RUNNING';
-          footerBadge.classList.add('active');
+          footerBadge.textContent = 'OPTIMIZING';
+          footerBadge.classList.remove('active', 'manual');
+          footerBadge.classList.add('optimizing');
         }
         if (footerMessage) {
           footerMessage.textContent = message || 'Running...';
         }
-      } else if (status === 'completed' || status === 'finished') {
+      } else if (status === 'finished') {
         if (footerBadge) {
           footerBadge.textContent = 'COMPLETED';
-          footerBadge.classList.remove('active');
+          footerBadge.classList.remove('active', 'manual', 'optimizing');
         }
         if (footerMessage) {
           footerMessage.textContent = message || 'Completed';
@@ -204,7 +216,7 @@ var OptimizationSystem = (function () {
       } else if (status === 'error') {
         if (footerBadge) {
           footerBadge.textContent = 'ERROR';
-          footerBadge.classList.remove('active');
+          footerBadge.classList.remove('active', 'manual', 'optimizing');
         }
         if (footerMessage) {
           footerMessage.textContent = message || 'Error occurred';
@@ -212,7 +224,7 @@ var OptimizationSystem = (function () {
       } else {
         if (footerBadge) {
           footerBadge.textContent = 'READY';
-          footerBadge.classList.remove('active');
+          footerBadge.classList.remove('active', 'manual', 'optimizing');
         }
         if (footerMessage) {
           footerMessage.textContent = message || 'Ready';
@@ -220,31 +232,19 @@ var OptimizationSystem = (function () {
       }
 
       if (!Array.isArray(newActions) || newActions.length === 0) {
-        // No new antennas yet
-        if (status === "completed" || status === "error" || status === 'finished') {
+        if (status === "error" || status === 'finished') {
           stopOptimizationPolling();
           if (footerBadge) {
-            footerBadge.textContent = status === "completed" ? 'COMPLETED' : 'ERROR';
-            footerBadge.classList.remove('active');
+            footerBadge.textContent = status === 'finished' ? 'COMPLETED' : 'ERROR';
+            footerBadge.classList.remove('active', 'manual', 'optimizing');
           }
-          if (status === "completed" || status === 'finished') {
+          if (status === 'finished') {
             if (footerMessage) footerMessage.textContent = "Optimization process successfully completed.";
             if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportBackendRsrpGrid) {
               DataExportSystem.exportBackendRsrpGrid();
             }
-            window.parent.postMessage(
-              { type: "optimization_finished" },
-              "*"
-            );
           } else {
             if (footerMessage) footerMessage.textContent = "Error: " + (data.error || "Optimization failed.");
-            window.parent.postMessage(
-              {
-                type: "optimization_error",
-                error: data.error || "Unknown error",
-              },
-              "*"
-            );
           }
         }
         return;
@@ -307,14 +307,14 @@ var OptimizationSystem = (function () {
         }
       }
 
-      // If optimization is marked as completed by backend, stop polling
-      if (status === "completed" || status === "error" || status === 'finished') {
+      // If optimization is marked as finished by backend, stop polling
+      if (status === "error" || status === 'finished') {
         stopOptimizationPolling();
 
-        if (status === "completed" || status === 'finished') {
+        if (status === 'finished') {
           if (footerBadge) {
             footerBadge.textContent = 'COMPLETED';
-            footerBadge.classList.remove('active');
+            footerBadge.classList.remove('active', 'manual', 'optimizing');
           }
           if (footerMessage) {
             footerMessage.textContent = "Optimization process successfully completed.";
@@ -322,25 +322,14 @@ var OptimizationSystem = (function () {
           if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportBackendRsrpGrid) {
             DataExportSystem.exportBackendRsrpGrid();
           }
-          window.parent.postMessage(
-            { type: "optimization_finished" },
-            "*"
-          );
         } else {
           if (footerBadge) {
             footerBadge.textContent = 'ERROR';
-            footerBadge.classList.remove('active');
+            footerBadge.classList.remove('active', 'manual', 'optimizing');
           }
           if (footerMessage) {
             footerMessage.textContent = "Error: " + (data.error || "Optimization failed.");
           }
-          window.parent.postMessage(
-            {
-              type: "optimization_error",
-              error: data.error || "Unknown error",
-            },
-            "*"
-          );
         }
       }
     } catch (error) {

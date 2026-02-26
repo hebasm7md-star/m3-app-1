@@ -499,11 +499,11 @@ var BackendSync = (function () {
 
     // Handle optimization status updates (for streaming mode)
     if (event.data && event.data.type === "optimization_update") {
-      console.log("[HTML] Received optimization_update:", {
-        actionCount: (event.data.new_action_configs || []).length,
-        state: event.data.state,
-        lastIndex: event.data.last_index
-      });
+      // console.log("[HTML] Received optimization_update:", {
+      //   actionCount: (event.data.new_action_configs || []).length,
+      //   state: event.data.state,
+      //   lastIndex: event.data.last_index
+      // });
       if (typeof window.handleOptimizationUpdate === 'function') {
         window.handleOptimizationUpdate(event.data);
       }
@@ -543,7 +543,7 @@ var BackendSync = (function () {
       var footerMessage = document.getElementById('footerMessage');
       if (footerBadge) {
         footerBadge.textContent = 'COMPLETED';
-        footerBadge.classList.remove('active');
+        footerBadge.classList.remove('active', 'manual', 'optimizing');
       }
       if (footerMessage) {
         footerMessage.textContent = 'Optimization completed successfully';
@@ -577,7 +577,7 @@ var BackendSync = (function () {
       var footerMessage = document.getElementById('footerMessage');
       if (footerBadge) {
         footerBadge.textContent = 'ERROR';
-        footerBadge.classList.remove('active');
+        footerBadge.classList.remove('active', 'manual', 'optimizing');
       }
       if (footerMessage) {
         footerMessage.textContent = 'Optimization error occurred';

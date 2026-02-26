@@ -1773,6 +1773,16 @@ canvas {
   box-shadow: 0 2px 4px rgba(14, 165, 233, 0.3);
 }
 
+.footer-badge.manual {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  box-shadow: 0 2px 4px rgba(139, 92, 246, 0.35);
+}
+
+.footer-badge.optimizing {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  box-shadow: 0 2px 4px rgba(34, 197, 94, 0.35);
+}
+
 /* Dark mode */
 .dark-mode .footer-badge {
   background: rgba(99,102,241,0.14);
@@ -1785,6 +1795,20 @@ canvas {
   background: rgba(14,165,233,0.2);              /* sky-500/20 */
   border-color: rgba(14,165,233,0.3);            /* sky-500/30 */
   color: var(--color-active-light);               /* sky-400 */
+  box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+}
+
+.dark-mode .footer-badge.manual {
+  background: rgba(139,92,246,0.22);
+  border-color: rgba(139,92,246,0.35);
+  color: #c4b5fd;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+}
+
+.dark-mode .footer-badge.optimizing {
+  background: rgba(34,197,94,0.2);
+  border-color: rgba(34,197,94,0.3);
+  color: #86efac;
   box-shadow: 0 1px 4px rgba(0,0,0,0.18);
 }
 
@@ -1900,679 +1924,679 @@ EXTRACTED INLINE STYLES FROM HTML
   background: rgba(255, 255, 255, 0.15);
   border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 8px;
-    backdrop-filter: blur(8px);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-family: inherit;
-  }
-
-  .project-btn:hover {
-    background: rgba(255, 255, 255, 0.28);
-    border-color: rgba(255, 255, 255, 0.45);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    transform: translateY(-1px);
-  }
-
-  .project-btn:active {
-    transform: translateY(0);
-  }
-
-  .dark-mode .project-btn {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.18);
-  }
-
-  .dark-mode .project-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
-    border-color: rgba(255, 255, 255, 0.35);
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
-  }
-
-  /* File Input Hidden — merged into display:none group above */
-
-  /* Full Width Input */
-  .full-width,
-  .xd-image-upload {
-    width: 100%;
-  }
-
-  /* Upload row: file input + delete icon side by side */
-  .upload-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .upload-row .full-width {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .delete-icon-btn {
-    display: none;
-    align-items: center;
-    justify-content: center;
-    width: 34px;
-    height: 34px;
-    min-width: 34px;
-    padding: 0;
-    border: 1px solid var(--color-slate-200);
-    border-radius: 8px;
-    background: #fff;
-    color: var(--color-slate-400);
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .delete-icon-btn:hover {
-    background: #fef2f2;
-    color: #ef4444;
-    border-color: #fca5a5;
-    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.18);
-  }
-
-  .dark-mode .delete-icon-btn {
-    background: rgba(15, 23, 42, 0.6);
-    border-color: var(--color-slate-700);
-    color: var(--color-slate-500);
-  }
-
-  .dark-mode .delete-icon-btn:hover {
-    background: rgba(239, 68, 68, 0.15);
-    color: #f87171;
-    border-color: #f87171;
-    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
-  }
-
-  /* Range Input Full Width */
-  .range-input-full {
-    width: 100%;
-  }
-
-  /* Full-width sidebar action button (inherits base button) */
-  .action-btn {
-    width: 100%;
-    margin-bottom: 8px;
-    letter-spacing: 0.3px;
-  }
-
-  /* Compact button row inside AP list items */
-  .ap-action-btn {
-    flex: 1; /* Keep the buttons uniform width when in a row like Antenna pattern buttons */
-    min-width: max-content; /* Ensure the button accommodates its content (e.g. Delete with trash can icon) */
-    font-size: 13px;
-    padding: 6px 10px; /* Increased padding slightly for better touch target */
-    border-radius: 6px; /* Added explicit border radius */
-    white-space: nowrap; /* Prevent text wrapping inside the button */
-  }
-
-  /* Pattern container in AP detail sidebar */
-  .pattern-container {
-    margin-top: 8px;
-    padding: 8px;
-    background: var(--color-slate-50);
-    border-radius: 6px;
-    border: 1px solid var(--color-slate-200);
-  }
-
-  .pattern-label {
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--color-slate-500);
-    display: block;
-    margin-bottom: 4px;
-  }
-
-  .pattern-filename {
-    font-size: 11px;
-    color: var(--color-slate-400);
-    margin-bottom: 6px;
-  }
-
-  .pattern-filename.has-file {
-    color: var(--color-active);
-  }
-
-  .pattern-select {
-    width: 100%;
-    flex: 1;
-    min-width: 0;
-    padding: 6px;
-    margin-bottom: 8px;
-    font-size: 12px;
-    border: 1px solid var(--color-slate-200);
-    border-radius: 6px;
-    background: #ffffff;
-    color: var(--color-slate-800);
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .pattern-hint {
-    font-size: 11px;
-    color: var(--color-slate-500);
-    margin-top: 4px;
-    font-style: italic;
-  }
-
-  .dark-mode .pattern-container {
-    background: rgba(15, 23, 42, 0.6);
-    border-color: var(--color-slate-700);
-  }
-
-  /* .dark-mode .pattern-label — merged into color:#94a3b8 group above */
-
-  .dark-mode .pattern-filename,
-  .dark-mode .pattern-hint {
-    color: var(--color-slate-500);
-  }
-
-  .dark-mode .pattern-select {
-    background: rgba(15, 23, 42, 0.8);
-    color: var(--color-slate-800);
-    border-color: var(--color-slate-700);
-  }
-
-  /* AP list item layout helpers */
-  .ap-item-title {
-    font-size: 14px;
-    font-weight: 600;
-    margin-bottom: 8px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid var(--color-slate-200);
-  }
-
-  .dark-mode .ap-item-title {
-    border-bottom-color: var(--color-slate-700);
-  }
-
-  .ap-item-actions {
-    display: flex;
-    gap: 4px;
-    flex-wrap: wrap;
-    margin-bottom: 8px;
-  }
-
-  .ap-item-disabled {
-    opacity: 0.5;
-    background-color: #f3f4f6;
-  }
-
-  .dark-mode .ap-item-disabled {
-    background-color: rgba(15, 23, 42, 0.5);
-  }
-
-  /* Calibration Controls Hidden */
-  .calibration-controls {
-    display: none;
-    margin-top: 10px;
-  }
-
-  /* Card Helper Text Small */
-  .helper-text-small {
-    font-size: 11px;
-    margin-top: 8px;
-    margin-bottom: 12px;
-  }
-
-  /* Form Group Spacing */
-  .form-group-spacing,
-  .element-type-container {
-    margin-bottom: 12px;
-  }
-
-  .form-group-spacing-top,
-  .wall-list,
-  .floor-plane-list,
-  .xd-form-group-spacing-12 {
-    margin-top: 12px;
-  }
-
-  /* Antenna Pattern List */
-
-  .antenna-pattern-label {
-    font-size: 12px;
-    color: var(--color-slate-500);
-    margin-bottom: 6px;
-    display: block;
-  }
-
-  /* Pattern Select Container */
-  .pattern-select-container {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-    min-width: 0;
-    width: 100%;
-  }
-
-  .pattern-delete-icon {
-    display: none;
-    flex-shrink: 0;
-  }
-
-  /* Auto Place Input */
-  .auto-place-input {
-    width: 100%;
-    padding: 8px;
-    border-radius: 6px;
-    border: 1px solid var(--color-slate-200);
-    font-size: 12px;
-    margin-bottom: 8px;
-  }
-
-  /* Antenna Data Status */
-  .antenna-data-status {
-    display: none;
-    margin-top: 8px;
-    margin-bottom: 12px;
-    padding: 8px;
-    border-radius: 4px;
-    font-size: 12px;
-  }
-
-  /* Card Title with Icon */
-  .card-title-icon {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  /* Element Type Container — merged into margin-bottom:12px group above */
-
-  /* Wall Type / Custom Wall — merged into hidden-group above */
-
-  /* Assisted Drawing Checkbox */
-  .assisted-drawing-checkbox {
-    margin-bottom: 8px;
-  }
-
-  /* Wall List — merged into margin-top:12px group above */
-
-  .antenna-pattern-list,
-  .wall-type-container,
-  .custom-wall-input,
-  .floor-plane-attenuation-container,
-  .floor-plane-height-container,
-  .floor-plane-type-container,
-  .floor-plane-inclination-container,
-  .floor-plane-direction-container {
-    display: none;
-    /* min_width: 0; */
-    max-width: 100%;
-    margin-bottom: 12px;
-  }
-
-  .floor-plane-direction-hint {
-    font-size: 11px;
-    color: #666;
-    margin-top: 4px;
-  }
-
-  /* Floor Plane List — merged into margin-top:12px group above */
-
-  /* XD Image Upload — merged into width:100% group above */
-
-  /* XD Advanced Toggle */
-  .xd-advanced-container {
-    display: none;
-    background: var(--color-slate-50);
-    padding: 12px;
-    border-radius: 8px;
-    border: 1px solid var(--color-slate-200);
-    margin-top: 8px;
-  }
-
-  .xd-form-group-spacing,
-  .generate-dxf-btn {
-    margin-top: 16px;
-  }
-
-  /* SAHI Options Container */
-  .xd-sahi-options {
-    margin-top: 8px;
-    padding-left: 20px;
-    border-left: 2px solid #3b82f6;
-  }
-
-  .xd-sahi-spacing {
-    margin-top: 8px;
-  }
-
-  /* Canvas Stats Row */
-  .canvas-stats-flex {
-    display: flex;
-    gap: 6px;
-  }
-
-  /* Toast Container */
-  .toast-container {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 10000;
-  }
-
-  /* Alert Buttons — merged into display:none group above */
-
-  #addAP {
-    margin-bottom: 12px;
-  }
-
-  /* Help Modal Hidden — merged into display:none group above */
-
-  /* XD Advanced Container with Margin */
-  .xd-container-margin {
-    margin-top: 16px;
-    margin-bottom: 12px;
-  }
-
-  /* Premium Glassy Alert Modal */
-  .alert-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(15, 23, 42, 0.4);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    z-index: 20000;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    animation: fadeIn 0.3s ease;
-  }
-
-  .alert-modal {
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    border-radius: 28px;
-    padding: 40px;
-    width: 420px;
-    max-width: 90%;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-    text-align: center;
-    position: relative;
-    animation: modalScaleIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  }
-
-  .alert-header {
-    font-size: 13px;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 3px;
-    color: #667eea;
-    margin-bottom: 24px;
-    display: block;
-    opacity: 0.8;
-  }
-
-  .alert-message {
-    font-size: 17px;
-    line-height: 1.6;
-    color: var(--color-slate-800);
-    margin-bottom: 32px;
-    font-weight: 500;
-    white-space: pre-wrap;
-  }
-
-  .alert-btn {
-    background: var(--gradient-primary);
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 8px;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 10px 25px -5px var(--color-primary-shadow);
-    width: 100%;
-    margin-bottom: 8px;
-  }
-
-  .alert-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 15px 30px -5px var(--color-primary-shadow);
-    filter: brightness(1.1);
-  }
-
-  .alert-btn:active {
-    transform: translateY(0);
-  }
-
-  .alert-btn.secondary {
-    background: linear-gradient(135deg, var(--color-slate-500) 0%, var(--color-slate-600) 100%);
-    box-shadow: 0 10px 25px -5px rgba(100, 116, 139, 0.3);
-  }
-
-  .alert-btn.secondary:hover {
-    box-shadow: 0 15px 30px -5px rgba(100, 116, 139, 0.4);
-  }
-
-  .alert-buttons {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-top: 16px;
-  }
-
-  .alert-buttons .alert-btn {
-    margin-bottom: 0;
-  }
-
-  #customAlertBtn {
-    padding: 6px 12px;
-    font-size: 11px;
-    border-radius: 6px;
-  }
-
-  @keyframes modalScaleIn {
-    from {
-      opacity: 0;
-      transform: scale(0.8) translateY(20px);
-    }
-
-    to {
-      opacity: 1;
-      transform: scale(1) translateY(0);
-    }
-  }
-
-  .ap-detail-sidebar .close-btn .material-icons {
-    font-size: 28px;
-  }
-
-  /* AP Detail Sidebar — buttons use app theme colors */
-  .ap-detail-sidebar .ap-detail-card {
-    background: var(--color-slate-50);
-    color: var(--color-slate-800);
-    padding: 16px;
-    border-radius: 12px;
-    margin-bottom: 16px;
-    box-shadow: var(--shadow-md);
-    border: 1px solid var(--color-slate-200);
-  }
-
-  .dark-mode .ap-detail-sidebar .ap-detail-card {
-    background: rgba(15, 23, 42, 0.8);
-    color: var(--color-slate-800);
-    border-color: var(--color-slate-700);
-  }
-
-  .ap-detail-sidebar .ap-detail-section-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--color-slate-800);
-    margin: 0 0 12px 0;
-    display: block;
-  }
-
-  .ap-detail-sidebar .ap-detail-label {
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--color-slate-500);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    display: block;
-    margin-bottom: 4px;
-  }
-
-  .ap-detail-sidebar .ap-detail-input {
-    background: var(--color-slate-50);
-    border: 1px solid var(--color-slate-200);
-    border-radius: 8px;
-    padding: 8px 12px;
-    font-size: 13px;
-    color: var(--color-slate-800);
-    font-family: inherit;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .dark-mode .ap-detail-sidebar .ap-detail-input {
-    background: rgba(15, 23, 42, 0.8);
-    border-color: var(--color-slate-700);
-  }
-
-  .ap-detail-sidebar .ap-detail-pattern-block {
-    background: var(--color-slate-50);
-    border: 2px solid var(--color-slate-200);
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 12px;
-  }
-
-  .dark-mode .ap-detail-sidebar .ap-detail-pattern-block {
-    background: rgba(15, 23, 42, 0.6);
-    border-color: var(--color-slate-700);
-  }
-
-  .ap-detail-sidebar .ap-detail-pattern-block .ap-detail-label {
-    font-size: 11px;
-    margin-bottom: 4px;
-  }
-
-  .ap-detail-sidebar .ap-detail-pattern-block .ap-detail-value {
-    font-size: 13px;
-    font-weight: 500;
-    color: inherit;
-  }
-
-  .ap-detail-sidebar .ap-detail-pattern-filename-row {
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px solid var(--color-slate-200);
-  }
-
-  .dark-mode .ap-detail-sidebar .ap-detail-pattern-filename-row {
-    border-top-color: var(--color-slate-700);
-  }
-
-  .ap-detail-sidebar .ap-detail-pattern-filename {
-    color: var(--color-accent);
-    font-weight: 500;
-  }
-
-  .ap-detail-sidebar .ap-detail-no-pattern {
-    background: rgba(230, 44, 44, 0.08);
-    border: 1px solid rgba(230, 44, 44, 0.25);
-    border-radius: 8px;
-    padding: 12px;
-    color: var(--color-danger);
-    font-size: 13px;
-    text-align: center;
-  }
-
-  .ap-detail-sidebar .ap-detail-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    width: 100%;
-    padding: 10px 20px;
-    font-size: 13px;
-    font-weight: 600;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-    margin-bottom: 8px;
-    font-family: inherit;
-  }
-
-  .ap-detail-sidebar .ap-detail-btn .material-icons {
-    font-size: 18px;
-  }
-
-  .ap-detail-sidebar .ap-detail-btn-select {
-    background: var(--color-slate-200);
-    color: var(--color-slate-600);
-  }
-
-  .ap-detail-sidebar .ap-detail-btn-select:hover {
-    background: var(--color-slate-300);
-    color: var(--color-slate-700);
-  }
-
-  .ap-detail-sidebar .ap-detail-btn-select.selected {
-    background: #10b981;
-    color: white;
-  }
-
-  .ap-detail-sidebar .ap-detail-btn-select.selected:hover {
-    background: #059669;
-  }
-
-  .ap-detail-sidebar .ap-detail-btn-toggle {
-    background: #ef4444;
-    color: white;
-  }
-
-  .ap-detail-sidebar .ap-detail-btn-toggle:hover {
-    background: #dc2626;
-    box-shadow: 0 2px 10px rgba(239, 68, 68, 0.35);
-  }
-
-  .ap-detail-sidebar .ap-detail-btn-toggle.turn-on {
-    background: #10b981;
-    color: white;
-  }
-
-  .ap-detail-sidebar .ap-detail-btn-toggle.turn-on:hover {
-    background: #059669;
-    box-shadow: 0 2px 10px rgba(16, 185, 129, 0.35);
-  }
-
-  .ap-detail-sidebar .ap-detail-btn-download {
-    background: #3b82f6;
-    color: white;
-  }
-
-  .ap-detail-sidebar .ap-detail-btn-download:hover {
-    background: #2563eb;
-    box-shadow: 0 2px 10px rgba(59, 130, 246, 0.4);
-  }
-
-  .dark-mode .ap-detail-sidebar .ap-detail-btn-select {
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--color-slate-400);
-  }
-
-  .dark-mode .ap-detail-sidebar .ap-detail-btn-select:hover {
-    background: rgba(255, 255, 255, 0.15);
-    color: var(--color-slate-300);
-  }
-
-  .dark-mode .ap-detail-sidebar .ap-detail-btn-select.selected {
-    background: #10b981;
-    color: white;
-  }
-
-  .dark-mode .ap-detail-sidebar .ap-detail-btn-download {
-    background: #3b82f6;
-    color: white;
-  }
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.project-btn:hover {
+  background: rgba(255, 255, 255, 0.28);
+  border-color: rgba(255, 255, 255, 0.45);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
+
+.project-btn:active {
+  transform: translateY(0);
+}
+
+.dark-mode .project-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.dark-mode .project-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.35);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+
+/* File Input Hidden — merged into display:none group above */
+
+/* Full Width Input */
+.full-width,
+.xd-image-upload {
+  width: 100%;
+}
+
+/* Upload row: file input + delete icon side by side */
+.upload-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.upload-row .full-width {
+  flex: 1;
+  min-width: 0;
+}
+
+.delete-icon-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  padding: 0;
+  border: 1px solid var(--color-slate-200);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--color-slate-400);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.delete-icon-btn:hover {
+  background: #fef2f2;
+  color: #ef4444;
+  border-color: #fca5a5;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.18);
+}
+
+.dark-mode .delete-icon-btn {
+  background: rgba(15, 23, 42, 0.6);
+  border-color: var(--color-slate-700);
+  color: var(--color-slate-500);
+}
+
+.dark-mode .delete-icon-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border-color: #f87171;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
+}
+
+/* Range Input Full Width */
+.range-input-full {
+  width: 100%;
+}
+
+/* Full-width sidebar action button (inherits base button) */
+.action-btn {
+  width: 100%;
+  margin-bottom: 8px;
+  letter-spacing: 0.3px;
+}
+
+/* Compact button row inside AP list items */
+.ap-action-btn {
+  flex: 1; /* Keep the buttons uniform width when in a row like Antenna pattern buttons */
+  min-width: max-content; /* Ensure the button accommodates its content (e.g. Delete with trash can icon) */
+  font-size: 13px;
+  padding: 6px 10px; /* Increased padding slightly for better touch target */
+  border-radius: 6px; /* Added explicit border radius */
+  white-space: nowrap; /* Prevent text wrapping inside the button */
+}
+
+/* Pattern container in AP detail sidebar */
+.pattern-container {
+  margin-top: 8px;
+  padding: 8px;
+  background: var(--color-slate-50);
+  border-radius: 6px;
+  border: 1px solid var(--color-slate-200);
+}
+
+.pattern-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-slate-500);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.pattern-filename {
+  font-size: 11px;
+  color: var(--color-slate-400);
+  margin-bottom: 6px;
+}
+
+.pattern-filename.has-file {
+  color: var(--color-active);
+}
+
+.pattern-select {
+  width: 100%;
+  flex: 1;
+  min-width: 0;
+  padding: 6px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  border: 1px solid var(--color-slate-200);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--color-slate-800);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pattern-hint {
+  font-size: 11px;
+  color: var(--color-slate-500);
+  margin-top: 4px;
+  font-style: italic;
+}
+
+.dark-mode .pattern-container {
+  background: rgba(15, 23, 42, 0.6);
+  border-color: var(--color-slate-700);
+}
+
+/* .dark-mode .pattern-label — merged into color:#94a3b8 group above */
+
+.dark-mode .pattern-filename,
+.dark-mode .pattern-hint {
+  color: var(--color-slate-500);
+}
+
+.dark-mode .pattern-select {
+  background: rgba(15, 23, 42, 0.8);
+  color: var(--color-slate-800);
+  border-color: var(--color-slate-700);
+}
+
+/* AP list item layout helpers */
+.ap-item-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-slate-200);
+}
+
+.dark-mode .ap-item-title {
+  border-bottom-color: var(--color-slate-700);
+}
+
+.ap-item-actions {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.ap-item-disabled {
+  opacity: 0.5;
+  background-color: #f3f4f6;
+}
+
+.dark-mode .ap-item-disabled {
+  background-color: rgba(15, 23, 42, 0.5);
+}
+
+/* Calibration Controls Hidden */
+.calibration-controls {
+  display: none;
+  margin-top: 10px;
+}
+
+/* Card Helper Text Small */
+.helper-text-small {
+  font-size: 11px;
+  margin-top: 8px;
+  margin-bottom: 12px;
+}
+
+/* Form Group Spacing */
+.form-group-spacing,
+.element-type-container {
+  margin-bottom: 12px;
+}
+
+.form-group-spacing-top,
+.wall-list,
+.floor-plane-list,
+.xd-form-group-spacing-12 {
+  margin-top: 12px;
+}
+
+/* Antenna Pattern List */
+
+.antenna-pattern-label {
+  font-size: 12px;
+  color: var(--color-slate-500);
+  margin-bottom: 6px;
+  display: block;
+}
+
+/* Pattern Select Container */
+.pattern-select-container {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+  width: 100%;
+}
+
+.pattern-delete-icon {
+  display: none;
+  flex-shrink: 0;
+}
+
+/* Auto Place Input */
+.auto-place-input {
+  width: 100%;
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid var(--color-slate-200);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+/* Antenna Data Status */
+.antenna-data-status {
+  display: none;
+  margin-top: 8px;
+  margin-bottom: 12px;
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+/* Card Title with Icon */
+.card-title-icon {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Element Type Container — merged into margin-bottom:12px group above */
+
+/* Wall Type / Custom Wall — merged into hidden-group above */
+
+/* Assisted Drawing Checkbox */
+.assisted-drawing-checkbox {
+  margin-bottom: 8px;
+}
+
+/* Wall List — merged into margin-top:12px group above */
+
+.antenna-pattern-list,
+.wall-type-container,
+.custom-wall-input,
+.floor-plane-attenuation-container,
+.floor-plane-height-container,
+.floor-plane-type-container,
+.floor-plane-inclination-container,
+.floor-plane-direction-container {
+  display: none;
+  /* min_width: 0; */
+  max-width: 100%;
+  margin-bottom: 12px;
+}
+
+.floor-plane-direction-hint {
+  font-size: 11px;
+  color: #666;
+  margin-top: 4px;
+}
+
+/* Floor Plane List — merged into margin-top:12px group above */
+
+/* XD Image Upload — merged into width:100% group above */
+
+/* XD Advanced Toggle */
+.xd-advanced-container {
+  display: none;
+  background: var(--color-slate-50);
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--color-slate-200);
+  margin-top: 8px;
+}
+
+.xd-form-group-spacing,
+.generate-dxf-btn {
+  margin-top: 16px;
+}
+
+/* SAHI Options Container */
+.xd-sahi-options {
+  margin-top: 8px;
+  padding-left: 20px;
+  border-left: 2px solid #3b82f6;
+}
+
+.xd-sahi-spacing {
+  margin-top: 8px;
+}
+
+/* Canvas Stats Row */
+.canvas-stats-flex {
+  display: flex;
+  gap: 6px;
+}
+
+/* Toast Container */
+.toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10000;
+}
+
+/* Alert Buttons — merged into display:none group above */
+
+#addAP {
+  margin-bottom: 12px;
+}
+
+/* Help Modal Hidden — merged into display:none group above */
+
+/* XD Advanced Container with Margin */
+.xd-container-margin {
+  margin-top: 16px;
+  margin-bottom: 12px;
+}
+
+/* Premium Glassy Alert Modal */
+.alert-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 20000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.3s ease;
+}
+
+.alert-modal {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 28px;
+  padding: 40px;
+  width: 420px;
+  max-width: 90%;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  text-align: center;
+  position: relative;
+  animation: modalScaleIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.alert-header {
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  color: #667eea;
+  margin-bottom: 24px;
+  display: block;
+  opacity: 0.8;
+}
+
+.alert-message {
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--color-slate-800);
+  margin-bottom: 32px;
+  font-weight: 500;
+  white-space: pre-wrap;
+}
+
+.alert-btn {
+  background: var(--gradient-primary);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 25px -5px var(--color-primary-shadow);
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.alert-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 30px -5px var(--color-primary-shadow);
+  filter: brightness(1.1);
+}
+
+.alert-btn:active {
+  transform: translateY(0);
+}
+
+.alert-btn.secondary {
+  background: linear-gradient(135deg, var(--color-slate-500) 0%, var(--color-slate-600) 100%);
+  box-shadow: 0 10px 25px -5px rgba(100, 116, 139, 0.3);
+}
+
+.alert-btn.secondary:hover {
+  box-shadow: 0 15px 30px -5px rgba(100, 116, 139, 0.4);
+}
+
+.alert-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.alert-buttons .alert-btn {
+  margin-bottom: 0;
+}
+
+#customAlertBtn {
+  padding: 6px 12px;
+  font-size: 11px;
+  border-radius: 6px;
+}
+
+@keyframes modalScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8) translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.ap-detail-sidebar .close-btn .material-icons {
+  font-size: 28px;
+}
+
+/* AP Detail Sidebar — buttons use app theme colors */
+.ap-detail-sidebar .ap-detail-card {
+  background: var(--color-slate-50);
+  color: var(--color-slate-800);
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--color-slate-200);
+}
+
+.dark-mode .ap-detail-sidebar .ap-detail-card {
+  background: rgba(15, 23, 42, 0.8);
+  color: var(--color-slate-800);
+  border-color: var(--color-slate-700);
+}
+
+.ap-detail-sidebar .ap-detail-section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-slate-800);
+  margin: 0 0 12px 0;
+  display: block;
+}
+
+.ap-detail-sidebar .ap-detail-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-slate-500);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.ap-detail-sidebar .ap-detail-input {
+  background: var(--color-slate-50);
+  border: 1px solid var(--color-slate-200);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--color-slate-800);
+  font-family: inherit;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.dark-mode .ap-detail-sidebar .ap-detail-input {
+  background: rgba(15, 23, 42, 0.8);
+  border-color: var(--color-slate-700);
+}
+
+.ap-detail-sidebar .ap-detail-pattern-block {
+  background: var(--color-slate-50);
+  border: 2px solid var(--color-slate-200);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.dark-mode .ap-detail-sidebar .ap-detail-pattern-block {
+  background: rgba(15, 23, 42, 0.6);
+  border-color: var(--color-slate-700);
+}
+
+.ap-detail-sidebar .ap-detail-pattern-block .ap-detail-label {
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+
+.ap-detail-sidebar .ap-detail-pattern-block .ap-detail-value {
+  font-size: 13px;
+  font-weight: 500;
+  color: inherit;
+}
+
+.ap-detail-sidebar .ap-detail-pattern-filename-row {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-slate-200);
+}
+
+.dark-mode .ap-detail-sidebar .ap-detail-pattern-filename-row {
+  border-top-color: var(--color-slate-700);
+}
+
+.ap-detail-sidebar .ap-detail-pattern-filename {
+  color: var(--color-accent);
+  font-weight: 500;
+}
+
+.ap-detail-sidebar .ap-detail-no-pattern {
+  background: rgba(230, 44, 44, 0.08);
+  border: 1px solid rgba(230, 44, 44, 0.25);
+  border-radius: 8px;
+  padding: 12px;
+  color: var(--color-danger);
+  font-size: 13px;
+  text-align: center;
+}
+
+.ap-detail-sidebar .ap-detail-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 8px;
+  font-family: inherit;
+}
+
+.ap-detail-sidebar .ap-detail-btn .material-icons {
+  font-size: 18px;
+}
+
+.ap-detail-sidebar .ap-detail-btn-select {
+  background: var(--color-slate-200);
+  color: var(--color-slate-600);
+}
+
+.ap-detail-sidebar .ap-detail-btn-select:hover {
+  background: var(--color-slate-300);
+  color: var(--color-slate-700);
+}
+
+.ap-detail-sidebar .ap-detail-btn-select.selected {
+  background: #10b981;
+  color: white;
+}
+
+.ap-detail-sidebar .ap-detail-btn-select.selected:hover {
+  background: #059669;
+}
+
+.ap-detail-sidebar .ap-detail-btn-toggle {
+  background: #ef4444;
+  color: white;
+}
+
+.ap-detail-sidebar .ap-detail-btn-toggle:hover {
+  background: #dc2626;
+  box-shadow: 0 2px 10px rgba(239, 68, 68, 0.35);
+}
+
+.ap-detail-sidebar .ap-detail-btn-toggle.turn-on {
+  background: #10b981;
+  color: white;
+}
+
+.ap-detail-sidebar .ap-detail-btn-toggle.turn-on:hover {
+  background: #059669;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.35);
+}
+
+.ap-detail-sidebar .ap-detail-btn-download {
+  background: #3b82f6;
+  color: white;
+}
+
+.ap-detail-sidebar .ap-detail-btn-download:hover {
+  background: #2563eb;
+  box-shadow: 0 2px 10px rgba(59, 130, 246, 0.4);
+}
+
+.dark-mode .ap-detail-sidebar .ap-detail-btn-select {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-slate-400);
+}
+
+.dark-mode .ap-detail-sidebar .ap-detail-btn-select:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--color-slate-300);
+}
+
+.dark-mode .ap-detail-sidebar .ap-detail-btn-select.selected {
+  background: #10b981;
+  color: white;
+}
+
+.dark-mode .ap-detail-sidebar .ap-detail-btn-download {
+  background: #3b82f6;
+  color: white;
+}
