@@ -1815,7 +1815,7 @@
             //   csvValue = interpolateRsrpFromCsv(worldX, worldY);
             // }
 
-            var best = bestApAt(worldX, worldY);
+            var best = (typeof bestApAt === 'function' ? bestApAt : RadioCalculations.bestApAt)(worldX, worldY);
 
             // Show tooltip if we have CSV data or an AP
             if (csvValue !== null || (best && best.ap)) {

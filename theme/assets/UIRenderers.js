@@ -909,8 +909,7 @@
       for (var x = 0; x <= state.w; x += sampleSpacing) {
         for (var y = 0; y <= state.h; y += sampleSpacing) {
           totalPoints++;
-          // Check if point has coverage above threshold
-          var best = bestApAt(x, y);
+          var best = (typeof bestApAt === 'function' ? bestApAt : RadioCalculations.bestApAt)(x, y);
           if (best && best.ap && best.rssiDbm >= threshold) {
             compliantPoints++;
           }

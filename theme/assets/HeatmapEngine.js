@@ -122,12 +122,12 @@
           if (ap.antennaPattern) {
             // Verify pattern has required data arrays
             var hasHorizontalData = ap.antennaPattern.horizontalData && 
-                                    Array.isArray(ap.antennaPattern.horizontalData) && 
-                                    ap.antennaPattern.horizontalData.length > 0;
+              Array.isArray(ap.antennaPattern.horizontalData) && 
+              ap.antennaPattern.horizontalData.length > 0;
             var hasVerticalData = ap.antennaPattern.verticalData && 
-                                  Array.isArray(ap.antennaPattern.verticalData) && 
-                                  ap.antennaPattern.verticalData.length > 0;
-            
+              Array.isArray(ap.antennaPattern.verticalData) && 
+              ap.antennaPattern.verticalData.length > 0;
+
             // Only include pattern if it has valid data
             if (hasHorizontalData || hasVerticalData) {
               patternData = {
@@ -137,7 +137,7 @@
               };
             }
           }
-          
+
           return {
             id: ap.id,
             x: ap.x,
@@ -164,19 +164,19 @@
         highlight: state.highlight,
         defaultPattern:
           state.defaultAntennaPatternIndex >= 0 &&
-            state.antennaPatterns[state.defaultAntennaPatternIndex]
-            ? {
-              horizontalData:
-                state.antennaPatterns[state.defaultAntennaPatternIndex]
-                  .horizontalData,
-              verticalData:
-                state.antennaPatterns[state.defaultAntennaPatternIndex]
-                  .verticalData,
-              _maxValue:
-                state.antennaPatterns[state.defaultAntennaPatternIndex]
-                  ._maxValue,
-            }
-            : null,
+          state.antennaPatterns[state.defaultAntennaPatternIndex]
+          ? {
+            horizontalData:
+              state.antennaPatterns[state.defaultAntennaPatternIndex]
+              .horizontalData,
+            verticalData:
+              state.antennaPatterns[state.defaultAntennaPatternIndex]
+              .verticalData,
+            _maxValue:
+              state.antennaPatterns[state.defaultAntennaPatternIndex]
+              ._maxValue,
+          }
+          : null,
         apColorMap: state.apColorMap,
         freq: state.freq || 2400,
         N: state.N || 2.5,
@@ -258,31 +258,31 @@
               // Use backend-computed RSRP when available (from optimization)
               if (state.optimizationRsrpGrid && state.view === "rssi") {
                 var bgrid = state.optimizationRsrpGrid;
-                
+
                 // Convert (x,y) to backend grid coordinates (floating point)
                 var bx = x / bgrid.dx;
                 var by = y / bgrid.dy;
-                
+
                 // Get integer indices for 4 nearest neighbors
                 var gx0 = Math.max(0, Math.min(bgrid.cols - 1, Math.floor(bx - 0.5)));
                 var gx1 = Math.max(0, Math.min(bgrid.cols - 1, gx0 + 1));
                 var gy0 = Math.max(0, Math.min(bgrid.rows - 1, Math.floor(by - 0.5)));
                 var gy1 = Math.max(0, Math.min(bgrid.rows - 1, gy0 + 1));
-                
+
                 // Fractional distances
                 var tx = (bx - 0.5) - gx0;
                 var ty = (by - 0.5) - gy0;
-                
+
                 // Interpolate
                 var v00 = bgrid.data[gy0 * bgrid.cols + gx0];
                 var v10 = bgrid.data[gy0 * bgrid.cols + gx1];
                 var v01 = bgrid.data[gy1 * bgrid.cols + gx0];
                 var v11 = bgrid.data[gy1 * bgrid.cols + gx1];
-                
+
                 var v0 = v00 * (1 - tx) + v10 * tx;
                 var v1 = v01 * (1 - tx) + v11 * tx;
                 var bval = v0 * (1 - ty) + v1 * ty;
-                
+
                 if (!isNaN(bval)) {
                   var bcolor = colorNumeric(state.view === "snr" ? bval - state.noise : bval);
                   img.data[idx] = bcolor[0];
@@ -318,7 +318,7 @@
               // }
 
               if (state.view === "best") {
-                var best = bestApAt(x, y);
+                var best = (typeof bestApAt === 'function' ? bestApAt : RadioCalculations.bestApAt)(x, y);
                 if (useOnlySelected) {
                   best.ap = selectedAP;
                   best.rssiDbm = rssi(
@@ -337,7 +337,7 @@
                 continue;
               }
               if (state.view === "servch") {
-                var best2 = bestApAt(x, y);
+                var best2 = (typeof bestApAt === 'function' ? bestApAt : RadioCalculations.bestApAt)(x, y);
                 if (useOnlySelected) {
                   best2.ap = selectedAP;
                   best2.rssiDbm = rssi(
@@ -355,7 +355,7 @@
                 continue;
               }
 
-              var bestN = bestApAt(x, y);
+              var bestN = (typeof bestApAt === 'function' ? bestApAt : RadioCalculations.bestApAt)(x, y);
               if (useOnlySelected) {
                 bestN.ap = selectedAP;
                 bestN.rssiDbm = rssi(
