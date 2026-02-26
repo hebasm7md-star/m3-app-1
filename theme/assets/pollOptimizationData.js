@@ -96,6 +96,23 @@ var OptimizationSystem = (function () {
     if (dataMin !== Infinity && dataMax !== -Infinity) {
       state.minVal = Math.floor(dataMin);
       state.maxVal = Math.ceil(dataMax);
+
+      var legendMinEl = document.getElementById("legendMin");
+      var legendMaxEl = document.getElementById("legendMax");
+      if (legendMinEl) legendMinEl.textContent = state.minVal;
+      if (legendMaxEl) legendMaxEl.textContent = state.maxVal;
+
+      var minInput = document.getElementById("minVal");
+      var maxInput = document.getElementById("maxVal");
+      if (minInput) minInput.value = state.minVal;
+      if (maxInput) maxInput.value = state.maxVal;
+
+      if (typeof updateLegendBar === 'function') updateLegendBar();
+
+      state.cachedHeatmap = null;
+      if (typeof generateHeatmapAsync === 'function') {
+        generateHeatmapAsync(null, true);
+      }
     }
 
     var blBins = Math.round(state.w) * Math.round(state.h);
