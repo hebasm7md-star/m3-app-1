@@ -71,6 +71,31 @@ var OptimizationSystem = (function () {
     // if (typeof draw === 'function') draw();
   }
 
+  // ── Compliance Display ─────────────────────────────────────────────────
+
+  function setComplianceDisplay(value) {
+    var el = document.getElementById('compliancePercent');
+    if (!el) return;
+    el.textContent = value;
+    // Color-code: red < 60, orange 60–79, green ≥ 80
+    el.classList.remove('compliance-low', 'compliance-mid', 'compliance-high');
+    if (value < 60)       el.classList.add('compliance-low');
+    else if (value < 80)  el.classList.add('compliance-mid');
+    else                  el.classList.add('compliance-high');
+    // Show AI source badge on the label
+    var label = document.getElementById('complianceLabelAI');
+    if (label) label.style.display = 'inline';
+  }
+
+  function clearComplianceDisplay() {
+    var el = document.getElementById('compliancePercent');
+    if (el) el.classList.remove('compliance-low', 'compliance-mid', 'compliance-high');
+    var label = document.getElementById('complianceLabelAI');
+    if (label) label.style.display = 'none';
+    // Unblock UIRenderers so frontend calc resumes
+    state.compliancePercentFromBackend = null;
+  }
+
   function handleTerminalStatus(status, data, footerBadge, footerMessage) {
     if (status !== 'finished' && status !== 'error') return;
     stopOptimizationPolling();
@@ -81,6 +106,7 @@ var OptimizationSystem = (function () {
       }
     } else {
       setFooter(footerBadge, footerMessage, 'ERROR', "Error: " + (data.error || "Optimization failed."));
+      clearComplianceDisplay();  // reset to frontend calc on error
     }
   }
 
@@ -132,8 +158,8 @@ var OptimizationSystem = (function () {
     }
 
     console.log("[BackendRSRP] Grid:", cols, "x", rows,
-      "| dx:", (state.w / cols).toFixed(3), "dy:", (state.h / rows).toFixed(3),
-      "| RSRP:", dataMin.toFixed(1), "to", dataMax.toFixed(1));
+                "| dx:", (state.w / cols).toFixed(3), "dy:", (state.h / rows).toFixed(3),
+                "| RSRP:", dataMin.toFixed(1), "to", dataMax.toFixed(1));
   }
 
   // ── Main Update Handler ───────────────────────────────────────────────
@@ -156,13 +182,14 @@ var OptimizationSystem = (function () {
         }
       }
 
-      // Compliance
+      // Compliance — backend value owns the display during and after optimization
       if (Array.isArray(newCompliance) && newCompliance.length > 0) {
         var latest = newCompliance[newCompliance.length - 1];
         if (latest !== undefined && latest !== null) {
-          state.optimizationCompliancePercent = Math.round(Number(latest));
-          var el = document.getElementById("compliancePercent");
-          if (el) el.textContent = state.optimizationCompliancePercent;
+          var rounded = Math.round(Number(latest));
+          state.optimizationCompliancePercent = rounded;
+          state.compliancePercentFromBackend = rounded;  // blocks UIRenderers frontend calc
+          setComplianceDisplay(rounded);
         }
       }
 
@@ -275,7 +302,7 @@ var OptimizationSystem = (function () {
 
       var enabledRaw = pickField(action, ['is_turnning_on', 'on', 'enabled']);
       var enabled = enabledRaw === "True" || enabledRaw === true ||
-                    enabledRaw === "true" || enabledRaw === 1 || enabledRaw === "1";
+        enabledRaw === "true" || enabledRaw === 1 || enabledRaw === "1";
 
       if (!antennaId || !Number.isFinite(backendX) || !Number.isFinite(backendY)) {
         console.warn("Invalid action config:", action);
