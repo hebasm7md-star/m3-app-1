@@ -932,7 +932,7 @@
       }
     } else {
       // Backend value exists, don't override it with HTML calculation
-      console.log("[HTML] Skipping HTML compliance calculation, using backend value:", state.compliancePercentFromBackend);
+      console.log("[HTML compliance] Skipping HTML compliance calculation, using backend value:", state.compliancePercentFromBackend);
     }
   }
 
