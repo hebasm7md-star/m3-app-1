@@ -370,148 +370,398 @@
     return positions.slice(0, count);
   }
 
-  // --- Helper: check if a number is prime ---
-  function isPrimeNumber(n) {
-    if (n < 2) return false;
-    if (n === 2) return true;
-    if (n % 2 === 0) return false;
-    for (var i = 3; i <= Math.sqrt(n); i += 2) {
-      if (n % i === 0) return false;
-    }
-    return true;
-  }
+  function findOptimalAntennaPositions(count, gridSpacing) {
+    gridSpacing = gridSpacing || 2.0;
+    var minDistanceFromWalls = 0.5;
 
-  // --- Helper: find (rows, cols) factorization of n closest to canvas aspect ratio ---
-  // Uses log-ratio comparison so overshooting and undershooting are treated symmetrically
-  function findBestGridFactors(n) {
-    var canvasRatio = state.w / state.h;
-    var logCanvas = Math.log(canvasRatio);
-    var bestCols = n, bestRows = 1;
-    var bestDiff = Infinity;
+    var canvasDiagonal = hypot(state.w, state.h);
+    var minDistanceFromAntennas = Math.max(
+      (canvasDiagonal / (count + 1)) * 0.7,
+      (Math.min(state.w, state.h) / Math.max(count, 2)) * 0.8,
+      3.0
+    );
 
-    for (var i = 1; i <= Math.sqrt(n); i++) {
-      if (n % i !== 0) continue;
-      var j = n / i;
+    var samplePoints = sampleFreeAreas(1.0);
 
-      // Try orientation 1: cols = j, rows = i  (grid ratio = j/i)
-      var diff1 = Math.abs(Math.log(j / i) - logCanvas);
-      if (diff1 < bestDiff) {
-        bestDiff = diff1;
-        bestCols = j;
-        bestRows = i;
-      }
-
-      // Try orientation 2: cols = i, rows = j  (grid ratio = i/j)
-      var diff2 = Math.abs(Math.log(i / j) - logCanvas);
-      if (diff2 < bestDiff) {
-        bestDiff = diff2;
-        bestCols = i;
-        bestRows = j;
-      }
+    if (samplePoints.length === 0) {
+      return [];
     }
 
-    return { rows: bestRows, cols: bestCols };
-  }
+    var defaultPattern = getDefaultAntennaPattern();
+    var defaultTx = 15;
+    var defaultGt = 5;
+    var defaultCh = 1;
 
-  // --- Helper: place antennas in an evenly-spaced rows×cols grid ---
-  function placeAntennaGrid(rows, cols, minX, minY, availableWidth, availableHeight) {
-    var positions = [];
-    var spacingX = availableWidth / (cols + 1);
-    var spacingY = availableHeight / (rows + 1);
+    var cols = Math.ceil(Math.sqrt(count * (state.w / state.h)));
+    var rows = Math.ceil(count / cols);
+    var regionWidth = state.w / cols;
+    var regionHeight = state.h / rows;
 
+    var regionCandidates = [];
     for (var r = 0; r < rows; r++) {
       for (var c = 0; c < cols; c++) {
-        positions.push({
-          x: minX + spacingX * (c + 1),
-          y: minY + spacingY * (r + 1)
-        });
+        var regionMinX = c * regionWidth;
+        var regionMaxX = (c + 1) * regionWidth;
+        var regionMinY = r * regionHeight;
+        var regionMaxY = (r + 1) * regionHeight;
+
+        var candidates = [];
+        for (
+          var x = regionMinX + 1.0;
+          x < regionMaxX - 1.0;
+          x += gridSpacing
+        ) {
+          for (
+            var y = regionMinY + 1.0;
+            y < regionMaxY - 1.0;
+            y += gridSpacing
+          ) {
+            if (isPointFree(x, y, minDistanceFromWalls, 0)) {
+              candidates.push({ x: x, y: y, region: r * cols + c });
+            }
+          }
+        }
+        if (candidates.length > 0) {
+          regionCandidates.push(candidates);
+        }
       }
     }
-    return positions;
-  }
 
-  // Find optimal positions for automatic antenna placement
-  // - Perfect square count  → square grid  (√N × √N)
-  // - Composite count       → rectangle grid mimicking canvas aspect ratio
-  // - Prime count           → place (count-1) in a grid, add extra between the two farthest antennas
-  function findOptimalAntennaPositions(count, gridSpacing) {
-    if (count <= 0) return [];
-
-    // Use full canvas — edge gap equals inter-antenna spacing
-    var minX = 0;
-    var minY = 0;
-    var availableWidth = state.w;
-    var availableHeight = state.h;
-
-    // Single antenna → center of canvas
-    if (count === 1) {
-      return [{ x: state.w / 2, y: state.h / 2 }];
+    if (regionCandidates.length === 0) {
+      return findOptimalAntennaPositionsFallback(count, gridSpacing);
     }
 
-    // Two antennas → 1×2 or 2×1 rectangle matching canvas shape
-    if (count === 2) {
-      var grid2 = findBestGridFactors(2);
-      return placeAntennaGrid(grid2.rows, grid2.cols, minX, minY, availableWidth, availableHeight);
+    var selectedPositions = [];
+    var currentAps = state.aps.slice();
+    var regionUsage = new Array(regionCandidates.length).fill(0);
+    var usedRegions = new Set();
+
+    var regionIndices = [];
+    for (var i = 0; i < regionCandidates.length; i++) {
+      regionIndices.push(i);
+    }
+    for (var i = regionIndices.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var temp = regionIndices[i];
+      regionIndices[i] = regionIndices[j];
+      regionIndices[j] = temp;
     }
 
-    var sqrt = Math.sqrt(count);
-    var isPerfectSquare = sqrt === Math.floor(sqrt);
-    var prime = isPrimeNumber(count);
+    for (var antennaIndex = 0; antennaIndex < count; antennaIndex++) {
+      var bestPosition = null;
+      var bestValue = -Infinity;
+      var bestRegionIndex = -1;
 
-    // --- Perfect square: square grid ---
-    if (isPerfectSquare) {
-      var side = Math.floor(sqrt);
-      return placeAntennaGrid(side, side, minX, minY, availableWidth, availableHeight);
-    }
+      var foundInUnusedRegion = false;
+      for (var idx = 0; idx < regionIndices.length; idx++) {
+        var regionIdx = regionIndices[idx];
+        if (usedRegions.has(regionIdx)) continue;
 
-    // --- Prime: place (count-1) in a grid, then insert extra antenna ---
-    if (prime) {
-      var gridCount = count - 1; // always even (≥2) for primes ≥3
-      var sqrtG = Math.sqrt(gridCount);
-      var positions;
+        var candidates = regionCandidates[regionIdx];
+        if (candidates.length === 0) continue;
 
-      if (sqrtG === Math.floor(sqrtG)) {
-        // gridCount is a perfect square
-        positions = placeAntennaGrid(Math.floor(sqrtG), Math.floor(sqrtG), minX, minY, availableWidth, availableHeight);
-      } else {
-        // gridCount is composite → rectangle matching canvas ratio
-        var gf = findBestGridFactors(gridCount);
-        positions = placeAntennaGrid(gf.rows, gf.cols, minX, minY, availableWidth, availableHeight);
+        for (var i = 0; i < candidates.length; i++) {
+          var candidate = candidates[i];
+
+          var tooClose = false;
+          for (var j = 0; j < selectedPositions.length; j++) {
+            var dist = hypot(
+              candidate.x - selectedPositions[j].x,
+              candidate.y - selectedPositions[j].y
+            );
+            if (dist < minDistanceFromAntennas) {
+              tooClose = true;
+              break;
+            }
+          }
+          if (tooClose) continue;
+
+          var testAp = {
+            id: "TEST",
+            x: candidate.x,
+            y: candidate.y,
+            tx: defaultTx,
+            gt: 5,
+            ch: defaultCh,
+            azimuth: 0,
+            tilt: 0,
+            enabled: true,
+          };
+
+          if (defaultPattern) {
+            testAp.antennaPattern = defaultPattern;
+          }
+
+          var testAntennas = currentAps.concat([testAp]);
+          var totalValue = calculateTotalValue(samplePoints, testAntennas);
+
+          if (totalValue > bestValue) {
+            bestValue = totalValue;
+            bestPosition = candidate;
+            bestRegionIndex = regionIdx;
+            foundInUnusedRegion = true;
+          }
+        }
+
+        if (foundInUnusedRegion) break;
       }
 
-      // Find the two farthest-apart antennas and place extra at their midpoint
-      var maxDist = 0, farI = 0, farJ = 1;
-      for (var i = 0; i < positions.length; i++) {
-        for (var j = i + 1; j < positions.length; j++) {
-          var d = hypot(positions[i].x - positions[j].x, positions[i].y - positions[j].y);
-          if (d > maxDist) {
-            maxDist = d;
-            farI = i;
-            farJ = j;
+      if (!foundInUnusedRegion) {
+        for (
+          var regionIdx = 0;
+          regionIdx < regionCandidates.length;
+          regionIdx++
+        ) {
+          var candidates = regionCandidates[regionIdx];
+          if (candidates.length === 0) continue;
+
+          for (var i = 0; i < candidates.length; i++) {
+            var candidate = candidates[i];
+
+            var tooClose = false;
+            for (var j = 0; j < selectedPositions.length; j++) {
+              var dist = hypot(
+                candidate.x - selectedPositions[j].x,
+                candidate.y - selectedPositions[j].y
+              );
+              if (dist < minDistanceFromAntennas) {
+                tooClose = true;
+                break;
+              }
+            }
+            if (tooClose) continue;
+
+            var testAp = {
+              id: "TEST",
+              x: candidate.x,
+              y: candidate.y,
+              tx: defaultTx,
+              gt: 5,
+              ch: defaultCh,
+              azimuth: 0,
+              tilt: 0,
+              enabled: true,
+            };
+
+            if (defaultPattern) {
+              testAp.antennaPattern = defaultPattern;
+            }
+
+            var testAntennas = currentAps.concat([testAp]);
+            var totalValue = calculateTotalValue(
+              samplePoints,
+              testAntennas
+            );
+
+            var penalty = usedRegions.has(regionIdx) ? 0.8 : 1.0;
+            var adjustedValue = totalValue * penalty;
+
+            if (adjustedValue > bestValue) {
+              bestValue = adjustedValue;
+              bestPosition = candidate;
+              bestRegionIndex = regionIdx;
+            }
           }
         }
       }
-      positions.push({
-        x: (positions[farI].x + positions[farJ].x) / 2,
-        y: (positions[farI].y + positions[farJ].y) / 2
-      });
 
-      return positions.slice(0, count);
+      if (bestPosition && bestRegionIndex >= 0) {
+        selectedPositions.push(bestPosition);
+        usedRegions.add(bestRegionIndex);
+        regionUsage[bestRegionIndex]++;
+
+        var newAp = {
+          id: "TEMP",
+          x: bestPosition.x,
+          y: bestPosition.y,
+          tx: defaultTx,
+          gt: 5,
+          ch: defaultCh,
+          azimuth: 0,
+          tilt: 0,
+          enabled: true,
+        };
+        if (defaultPattern) {
+          newAp.antennaPattern = defaultPattern;
+        }
+        currentAps.push(newAp);
+      } else {
+        if (selectedPositions.length === 0) {
+          return findOptimalAntennaPositionsFallback(count, gridSpacing);
+        }
+        break;
+      }
     }
 
-    // --- Composite (not perfect square): rectangle mimicking canvas aspect ratio ---
-    var grid = findBestGridFactors(count);
-    return placeAntennaGrid(grid.rows, grid.cols, minX, minY, availableWidth, availableHeight);
+    return selectedPositions;
   }
 
-  // Fallback — delegates to the main optimal placement function
   function findOptimalAntennaPositionsFallback(count, gridSpacing) {
-    return findOptimalAntennaPositions(count, gridSpacing);
+    gridSpacing = gridSpacing || 2.0;
+    var minDistanceFromWalls = 0.5;
+    var minDistanceFromAntennas = 2.0;
+
+    var samplePoints = sampleFreeAreas(1.0);
+
+    if (samplePoints.length === 0) {
+      return [];
+    }
+
+    var candidatePositions = [];
+    for (var x = 1.0; x < state.w - 1.0; x += gridSpacing) {
+      for (var y = 1.0; y < state.h - 1.0; y += gridSpacing) {
+        if (
+          isPointFree(x, y, minDistanceFromWalls, minDistanceFromAntennas)
+        ) {
+          candidatePositions.push({ x: x, y: y });
+        }
+      }
+    }
+
+    if (candidatePositions.length === 0) {
+      if (gridSpacing > 1.0) {
+        return findOptimalAntennaPositionsFallback(
+          count,
+          gridSpacing * 0.7
+        );
+      }
+      return [];
+    }
+
+    var defaultPattern = getDefaultAntennaPattern();
+    var defaultTx = 15;
+    var defaultGt = 5;
+    var defaultCh = 1;
+
+    var selectedPositions = [];
+    var currentAps = state.aps.slice();
+
+    var canvasDiagonal = hypot(state.w, state.h);
+    var minSpacing = Math.max(
+      (canvasDiagonal / (count + 1)) * 0.7,
+      (Math.min(state.w, state.h) / Math.max(count, 2)) * 0.8,
+      3.0
+    );
+
+    for (var antennaIndex = 0; antennaIndex < count; antennaIndex++) {
+      var bestPosition = null;
+      var bestValue = -Infinity;
+
+      for (var i = 0; i < candidatePositions.length; i++) {
+        var candidate = candidatePositions[i];
+
+        var tooClose = false;
+        for (var j = 0; j < selectedPositions.length; j++) {
+          var dist = hypot(
+            candidate.x - selectedPositions[j].x,
+            candidate.y - selectedPositions[j].y
+          );
+          if (dist < minSpacing) {
+            tooClose = true;
+            break;
+          }
+        }
+        if (tooClose) continue;
+
+        var testAp = {
+          id: "TEST",
+          x: candidate.x,
+          y: candidate.y,
+          tx: defaultTx,
+          gt: 5,
+          ch: defaultCh,
+          azimuth: 0,
+          tilt: 0,
+          enabled: true,
+        };
+
+        if (defaultPattern) {
+          testAp.antennaPattern = defaultPattern;
+        }
+
+        var testAntennas = currentAps.concat([testAp]);
+        var totalValue = calculateTotalValue(samplePoints, testAntennas);
+
+        if (totalValue > bestValue) {
+          bestValue = totalValue;
+          bestPosition = candidate;
+        }
+      }
+
+      if (bestPosition) {
+        selectedPositions.push(bestPosition);
+
+        var newAp = {
+          id: "TEMP",
+          x: bestPosition.x,
+          y: bestPosition.y,
+          tx: defaultTx,
+          gt: 5,
+          ch: defaultCh,
+          azimuth: 0,
+          tilt: 0,
+          enabled: true,
+        };
+        if (defaultPattern) {
+          newAp.antennaPattern = defaultPattern;
+        }
+        currentAps.push(newAp);
+      } else {
+        break;
+      }
+    }
+
+    return selectedPositions;
   }
 
-  // Simple grid fallback — delegates to the main optimal placement function
   function findValidAntennaPositions(count, gridSpacing) {
-    return findOptimalAntennaPositions(count, gridSpacing);
+    gridSpacing = gridSpacing || 3.0;
+    var minDistanceFromWalls = 0.5;
+    var minDistanceFromAntennas = 2.0;
+
+    var validPositions = [];
+    var gridPoints = [];
+
+    for (var x = 1.0; x < state.w - 1.0; x += gridSpacing) {
+      for (var y = 1.0; y < state.h - 1.0; y += gridSpacing) {
+        gridPoints.push({ x: x, y: y });
+      }
+    }
+
+    for (var i = gridPoints.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var temp = gridPoints[i];
+      gridPoints[i] = gridPoints[j];
+      gridPoints[j] = temp;
+    }
+
+    for (
+      var i = 0;
+      i < gridPoints.length && validPositions.length < count;
+      i++
+    ) {
+      var point = gridPoints[i];
+      if (
+        isPointFree(
+          point.x,
+          point.y,
+          minDistanceFromWalls,
+          minDistanceFromAntennas
+        )
+      ) {
+        validPositions.push(point);
+      }
+    }
+
+    if (validPositions.length < count && gridSpacing > 1.0) {
+      var additionalPositions = findValidAntennaPositions(
+        count - validPositions.length,
+        gridSpacing * 0.7
+      );
+      validPositions = validPositions.concat(additionalPositions);
+    }
+
+    return validPositions.slice(0, count);
   }
 
   function performAutoPlacement() {
@@ -532,11 +782,11 @@
       "<p>You are about to automatically place <strong>" + count + " antenna(s)</strong> on the canvas.</p>" +
       "<ul>" +
       "<li>They will be distributed evenly in a grid pattern.</li>";
-
+      
     if (state.aps && state.aps.length > 0) {
       confirmMsg += "<li><strong>Warning:</strong> All existing antennas will be removed!</li>";
     }
-
+    
     confirmMsg += "</ul><p>Do you want to proceed?</p>";
 
     NotificationSystem.confirm(confirmMsg, "Confirm Automatic Placement", function(confirmed) {
@@ -553,22 +803,21 @@
     var countInput = document.getElementById("autoPlaceCount");
     var viewModeName =
       state.view === "rssi"
-      ? "RSSI"
-      : state.view === "snr"
-      ? "SNR"
-      : state.view === "cci"
-      ? "CCI Count"
-      : state.view === "thr"
-      ? "Throughput"
-      : "Signal";
+        ? "RSSI"
+        : state.view === "snr"
+          ? "SNR"
+          : state.view === "cci"
+            ? "CCI Count"
+            : state.view === "thr"
+              ? "Throughput"
+              : "Signal";
     // console.log("Placing " + count + " antenna(s) in grid pattern...");
 
     saveState(); // Save state BEFORE mutating state.aps (fixes auto-placement undo issue)
 
     state.aps = [];
 
-    // Find optimal positions for antenna placement (square/rectangle/prime logic)
-    var positions = findOptimalAntennaPositions(count);
+    var positions = findGridAntennaPositions(count);
 
     if (positions.length === 0) {
       NotificationSystem.warning("Could not find any free areas to place antennas.\nPlease check your canvas layout.");
@@ -637,7 +886,7 @@
     //showAnvilNotification("Successfully placed " + positions.length + " antenna(s)!", "Success", "success");
 
     setTimeout(function () {
-
+ 
       // Auto-download RSRP for each placed antenna (staggered to avoid browser blocking)
       // state.aps.forEach(function (ap, idx) {
       //   setTimeout(function () {
@@ -652,9 +901,6 @@
   window.sampleFreeAreas = sampleFreeAreas;
   window.calculateTotalValue = calculateTotalValue;
   window.findGridAntennaPositions = findGridAntennaPositions;
-  window.isPrimeNumber = isPrimeNumber;
-  window.findBestGridFactors = findBestGridFactors;
-  window.placeAntennaGrid = placeAntennaGrid;
   window.findOptimalAntennaPositions = findOptimalAntennaPositions;
   window.findOptimalAntennaPositionsFallback = findOptimalAntennaPositionsFallback;
   window.findValidAntennaPositions = findValidAntennaPositions;

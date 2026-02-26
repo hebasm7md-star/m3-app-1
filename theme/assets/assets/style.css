@@ -772,14 +772,14 @@ canvas {
 }
 
 
-.footer-badge.manual,
-.footer-badge.completed{
+.footer-badge.manual {
     background: linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary-darker) 100%);
     box-shadow: 0 2px 4px rgba(139, 92, 246, 0.35);
 }
 
 .footer-badge.optimizing,
-.footer-badge.active {
+.footer-badge.active,
+.footer-badge.completed {
     background: linear-gradient(135deg, var(--color-success) 0%, var(--color-success-dark) 100%);
     box-shadow: 0 2px 4px rgba(34, 197, 94, 0.35);
 }
@@ -2172,15 +2172,15 @@ button.small {
     box-shadow: 0 1px 4px rgba(0,0,0,0.18);
 }
 
-.dark-mode .footer-badge.manual,
-.dark-mode .footer-badge.completed{
+.dark-mode .footer-badge.manual {
     background: rgba(139,92,246,0.22);
     border-color: rgba(139,92,246,0.35);
     color: #c4b5fd;
     box-shadow: 0 1px 4px rgba(0,0,0,0.18);
 }
 
-.dark-mode .footer-badge.optimizing {
+.dark-mode .footer-badge.optimizing,
+.dark-mode .footer-badge.completed {
     background: rgba(34,197,94,0.2);
     border-color: rgba(34,197,94,0.3);
     color: #86efac;

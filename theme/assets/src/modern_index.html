@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AION ROM</title>
+    <!-- SheetJS library for Excel export -->
+    <script src="../assets/xlsx.full.min.js"></script>
+    <!-- Three.js library for GPU-accelerated 3D rendering -->
+    <script src="../assets/three.min.js"></script>
+    
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<link rel="stylesheet" href="../assets/modern_style.css">
+</head>
+
+<body>
+  <!-- SVG sprite removed — using Material Icons instead -->
+  <div class="container">
+    <!-- Icon Sidebar -->
+    <div class="icon-sidebar">
+      <button class="icon-btn active" data-section="floorplan" title="Floor Plan">
+        <!-- <span class="material-icons">apartment</span> -->
+        🏢
+        <span class="tooltip">Floor Plan</span>
+      </button>
+      <button class="icon-btn" data-section="propagation" title="Propagation Model">
+        <!-- <span class="material-icons">wifi</span> -->
+        <!-- 📊 -->
+        🛜
+        <span class="tooltip">Propagation Model</span>
+      </button>
+      <button class="icon-btn" data-section="visualization" title="Visualization">
+        <!-- <span class="material-icons">gradient</span> -->
+        🗺️
+        <span class="tooltip">Visualization</span>
+      </button>
+      <button class="icon-btn" data-section="accesspoints" title="Antennas">
+        <!-- <span class="material-icons">cell_tower</span> -->
+        📡
+        <span class="tooltip">Antennas</span>
+      </button>
+      
+      <button class="icon-btn" data-section="optimization" title="Optimization">
+        <!-- <span class="material-icons">track_changes</span> -->
+        🎯
+        <span class="tooltip">Optimization</span>
+      </button>
+      <button class="icon-btn" data-section="walls" title="Walls & Obstacles">
+        <!-- <span class="material-icons">apartment</span> -->
+        🧱
+        <span class="tooltip">Walls & Obstacles</span>
+      </button>
+      <button class="icon-btn" data-section="xd" title="XD">
+        <!-- <span class="material-icons">precision_manufacturing</span> -->
+        🏗️
+        <span class="tooltip">XD</span>
+      </button>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="mainSidebar">
+      <div class="sidebar-header">
+        <!-- <h1>📡 IPS Studio</h1>
+        <p class="subtitle">Advanced RF Coverage Analysis</p> -->
+        <h1 id="sidebarHeaderTitle">Floor Plan</h1>
+        <div class="project-buttons-container">
+          <button id="saveProjectBtn" class="project-btn">
+            <span class="material-icons mi-inline">save</span> Save Project
+          </button>
+          <button id="loadProjectBtn" class="project-btn">
+            <span class="material-icons mi-inline">folder_open</span> Load Project
+          </button>
+        </div>
+        <input type="file" id="loadProjectFile" accept=".json,.ipsproject" class="hidden-file-input" />
+      </div>
+
+      <div class="sidebar-content">
+        <!-- Floor Plan -->
+        <div class="section-content active" data-section="floorplan">
+          <div class="card">
+            <h2 class="card-title">Floor Plan</h3>
+
+            <div class="upload-mode-toggle">
+              <button class="upload-mode-btn active" data-mode="image">
+                <!-- <span class="material-icons mi-inline">image</span> -->
+                🖼️ Image
+              </button>
+              <button class="upload-mode-btn" data-mode="dxf">
+                <!-- <span class="material-icons mi-inline">architecture</span> -->
+                🏗️ DXF File
+              </button>
+            </div>
+
+            <div id="imageUploadSection" class="upload-section">
+              <div class="upload-zone" id="imageUploadZone">
+                <input type="file" id="imageLoader" accept="image/*" class="upload-zone-input" />
+                <span class="material-icons upload-zone-icon">image</span>
+                <div class="upload-zone-text"><strong>Click to upload</strong> or drag &amp; drop</div>
+                <div class="upload-zone-hint">PNG, JPG, SVG up to 20 MB</div>
+              </div>
+              <button id="deleteImageBtn" class="delete-icon-btn upload-zone-delete" title="Remove floor plan image">
+                <span class="material-icons mi-inline">delete</span> Remove Floor Plan Image
+              </button>
+              <div class="form-group">
+                <label id="alphaLabel">Image Opacity: 70%</label>
+                <input type="range" id="alphaSlider" min="0" max="1" step="0.05" value="0.7" class="range-input-full" />
+              </div>
+
+              <p class="helper-text">
+                <span class="material-icons mi-hint">lightbulb</span> Upload an image, then calibrate the scale by drawing a line
+                of known length.
+              </p>
+
+              <button id="calibrateBtn" class="shadcn-btn shadcn-btn-secondary" style="margin-top:8px;">
+                <span class="material-icons">straighten</span> Calibrate Image Scale
+              </button>
+              <div id="calibrationControls" class="calibration-controls">
+                <div class="form-group">
+                  <label>Real Length (meters)</label>
+                  <input type="number" id="realLengthInput" value="10" step="0.1" />
+                </div>
+                <button id="applyScaleBtn" class="shadcn-btn shadcn-btn-primary">
+                  <span class="material-icons">check</span> Apply Scale to Image
+                </button>
+              </div>
+            </div>
+
+            <div id="dxfUploadSection" class="upload-section hidden">
+              <div class="upload-zone" id="dxfUploadZone">
+                <input type="file" id="dxfLoader" accept=".dxf" class="upload-zone-input" />
+                <span class="material-icons upload-zone-icon">architecture</span>
+                <div class="upload-zone-text"><strong>Click to upload</strong> or drag &amp; drop</div>
+                <div class="upload-zone-hint">DXF / CAD file format</div>
+              </div>
+              <button id="deleteDxfBtn" class="delete-icon-btn upload-zone-delete" title="Remove DXF file">
+                <span class="material-icons mi-inline">delete</span> Remove DXF File
+              </button>
+              <p class="helper-text">
+                <span class="material-icons mi-hint">lightbulb</span> Upload a DXF file to automatically generate walls and structures.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Propagation Model -->
+        <div class="section-content" data-section="propagation">
+          <div class="card">
+            <h3 class="card-title">Propagation Model</h3>
+            <div class="form-group">
+              <label class="shadcn-label">Model Name</label>
+              <select id="model" class="shadcn-select">
+                <option value="p25d" selected>2.5D Propagation Model</option>
+                <option value="p525">ITU P.525 (Free-Space)</option>
+              </select>
+            </div>
+
+            <div class="card-divider"></div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Frequency (MHz)</label>
+                <input id="freq" type="number" value="2400" step="100" />
+              </div>
+              <div class="form-group">
+                <label>Path Loss Exponent</label>
+                <input id="N" type="number" value="10" step="0.5" title="Path loss exponent" />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Grid Resolution (m)</label>
+                <input id="res" type="number" value="0.2" step="0.05" />
+              </div>
+              <div class="form-group">
+                <label>Noise Floor (dBm)</label>
+                <input id="noise" type="number" value="-92" step="1" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Visualization -->
+        <div class="section-content" data-section="visualization">
+          <div class="card">
+            <h3 class="card-title">Visualization</h3>
+            <div class="form-group">
+              <label class="shadcn-label">Coverage Map Type</label>
+              <select id="view" class="shadcn-select">
+                <option value="rssi">RSSI (Signal Strength)</option>
+                <option value="snr">SNR (Signal-to-Noise)</option>
+                <option value="sinr">SINR (Signal-to-Interference+Noise)</option>
+                <option value="cci">CCI (Co-Channel Interference)</option>
+                <option value="thr">Throughput (Mbps)</option>
+                <option value="best">Best Server</option>
+                <option value="servch">Serving Channel</option>
+              </select>
+            </div>
+
+            <div class="card-divider"></div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label id="legendLabel">Min Value</label>
+                <input id="minVal" type="number" value="-100" />
+              </div>
+              <div class="form-group">
+                <label>Max Value</label>
+                <input id="maxVal" type="number" value="-30" />
+              </div>
+            </div>
+            <label class="checkbox-label">
+              <input type="checkbox" id="showContours" />
+              <span>Show Zone Boundaries</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="showTooltip" />
+              <span>Show Cursor Tooltip</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="showVisualization" checked />
+              <span>Show Coverage Map</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Optimization -->
+        <div class="section-content" data-section="optimization">
+          <div class="card">
+            <h3 class="card-title">AI Optimization</h3>
+            <p class="helper-text">
+              <span class="material-icons mi-hint">lightbulb</span> Set coverage targets, then run optimization to automatically tune antenna placement.
+            </p>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Threshold (dBm)</label>
+                <input id="complianceThreshold" type="number" value="-85" />
+              </div>
+              <div class="form-group">
+                <label>Target Coverage %</label>
+                <input id="compliancePercentage" type="number" value="80" />
+              </div>
+            </div>
+            <div class="card-divider"></div>
+            <div class="form-group">
+              <input type="file" id="coverageCsvFile" accept=".csv" class="hidden-file-input" />
+              <button id="optimizeBtn" class="shadcn-btn shadcn-btn-primary">
+                <span class="material-icons">rocket_launch</span> Optimize
+              </button>
+            </div>
+            <p class="helper-text helper-text-small">
+              <span class="material-icons mi-hint">lightbulb</span> Optimization will adjust antenna positions to meet the coverage targets above.
+            </p>
+          </div>
+        </div>
+
+        <!-- Access Points -->
+        <div class="section-content" data-section="accesspoints">
+          <div class="card">
+            <h3 class="card-title">Antennas</h3>
+
+            <label class="shadcn-label">Antenna Pattern</label>
+            <div class="upload-zone" id="antennaPatternUploadZone">
+              <input type="file" id="antennaPatternUpload" accept=".txt,.msi" class="upload-zone-input" />
+              <span class="material-icons upload-zone-icon">settings_input_antenna</span>
+              <div class="upload-zone-text"><strong>Click to upload</strong> or drag &amp; drop</div>
+              <div class="upload-zone-hint">.txt, .msi antenna pattern files</div>
+            </div>
+
+            <div id="antennaPatternsList" class="antenna-pattern-list">
+              <label class="shadcn-label">Default Pattern</label>
+              <div class="pattern-select-container">
+                <select id="defaultAntennaPatternSelect" class="shadcn-select">
+                  <option value="-1">No default pattern</option>
+                </select>
+                <button id="deleteSelectedPattern" title="Delete selected pattern" class="shadcn-icon-btn shadcn-icon-btn-danger pattern-delete-icon">
+                  <span class="material-icons">delete</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="card-divider"></div>
+
+            <div class="shadcn-btn-stack">
+              <button id="addAP" class="shadcn-btn add-antenna-btn">
+                <span class="material-icons">cell_tower</span>
+                <span id="addAPBtnLabel">Place Antenna</span>
+              </button>
+              <button id="autoPlaceAntennas" class="shadcn-btn shadcn-btn-secondary">
+                <span class="material-icons">auto_fix_high</span> Automatic Antenna Placement
+              </button>
+              <button id="exportCoverageBtn" class="shadcn-btn shadcn-btn-outline">
+                <span class="material-icons">download</span> Export Coverage Map
+              </button>
+            </div>
+
+            <div id="autoPlaceInputContainer" class="antenna-data-status auto-place-container" style="display:none;">
+              <div class="auto-place-row">
+                <input type="number" id="autoPlaceCount" placeholder="Number of antennas to place" min="1" max="100" class="auto-place-input" />
+                <button id="confirmAutoPlaceBtn" class="shadcn-btn shadcn-btn-primary auto-place-ok">Ok</button>
+              </div>
+            </div>
+
+            <div id="antennaDataStatus" class="status antenna-data-status"></div>
+            <p class="helper-text helper-text-small">
+              <span class="material-icons mi-hint">lightbulb</span> Data is sent automatically in real-time when antenna positions change.
+            </p>
+            <div id="apList" class="list"></div>
+            <p class="helper-text">
+              <span class="material-icons mi-hint">lightbulb</span> Toggle add mode, then click on canvas to place Antenna
+            </p>
+          </div>
+        </div>
+
+        <!-- Walls -->
+        <div class="section-content" data-section="walls">
+          <div class="card">
+            <h3 class="card-title">
+              Walls & Obstacles
+              
+            </h3>
+            <div class="form-group form-group-spacing">
+              <label class="shadcn-label">Select an Element
+              <span class="help-icon" id="wallsHelpIcon" title="Show hints">
+                <span class="material-icons" style="font-size:14px">help_outline</span>
+              </span>
+            </label>
+              <select id="elementType" class="shadcn-select">
+                <option value="">-- Select --</option>
+                <option value="wall">Wall</option>
+                <option value="door">Door</option>
+                <option value="doubleDoor">Double Door</option>
+                <option value="window">Window</option>
+                <option value="floorPlane">Floor / Plane</option>
+              </select>
+            </div>
+            <div id="wallTypeContainer" class="form-group wall-type-container">
+              <label class="shadcn-label">Wall Type</label>
+              <select id="wallType" class="shadcn-select">
+                <option value="drywall">Drywall (3 dB) - Blue</option>
+                <option value="brick">Brick (8 dB) - Brown</option>
+                <option value="concrete">Concrete (~16 dB) - Gray</option>
+                <option value="metal">Metal (20 dB) - Dark Gray</option>
+                <option value="glass">Glass (2 dB) - Light Blue</option>
+                <option value="wood">Wood (5 dB) - Tan</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+            <div id="customWallInput" class="form-group custom-wall-input">
+              <label>Custom Loss (dB)</label>
+              <input type="number" id="customWallLoss" value="15" step="1" min="0" />
+            </div>
+            <button id="addWall" class="shadcn-btn shadcn-btn-primary" style="display:none;">
+              <span class="material-icons">add</span> Add Wall to Canvas
+            </button>
+            <label class="checkbox-label">
+              <input type="checkbox" id="snapToGridToggle" checked />
+              <span>Snap to Grid (Assisted Drawing)</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="manualWallControlToggle" />
+              <span>Manual Wall Control</span>
+            </label>
+            <div id="wallList" class="list"></div>
+            <div id="floorPlaneAttenuationContainer" class="form-group floor-plane-attenuation-container">
+              <label>Attenuation (dB)</label>
+              <input type="number" id="floorPlaneAttenuation" value="3" step="0.5" min="0" max="20" />
+            </div>
+            <div id="floorPlaneHeightContainer" class="form-group floor-plane-height-container">
+              <label>Height (m)</label>
+              <input type="number" id="floorPlaneHeight" value="0" step="0.1" min="0" />
+            </div>
+            <div id="floorPlaneTypeContainer" class="form-group floor-plane-type-container">
+              <label class="shadcn-label">Plane Type</label>
+              <select id="floorPlaneType" class="shadcn-select">
+                <option value="horizontal">Horizontal</option>
+                <option value="inclined">Inclined</option>
+              </select>
+            </div>
+            <div id="floorPlaneInclinationContainer" class="form-group floor-plane-inclination-container">
+              <label>Inclination Angle (degrees)</label>
+              <input type="number" id="floorPlaneInclination" value="0" step="1" min="-90" max="90" />
+            </div>
+            <div id="floorPlaneInclinationDirectionContainer" class="form-group floor-plane-direction-container">
+              <label>Inclination Direction (degrees)</label>
+              <input type="number" id="floorPlaneInclinationDirection" value="0" step="1" min="0" max="360" />
+              <p class="floor-plane-direction-hint">
+                0° = North, 90° = East, 180° = South, 270° = West
+              </p>
+            </div>
+            <div id="floorPlaneList" class="list floor-plane-list"></div>
+          </div>
+        </div>
+
+        <!-- XD Configuration -->
+        <div class="section-content" data-section="xd">
+          <div class="card">
+            <h3 class="card-title">XD Floorplan Processing</h3>
+            <div class="form-group">
+              <div class="upload-zone" id="xdUploadZone">
+                <input type="file" id="xdImageLoader" accept="image/*" class="upload-zone-input" />
+                <span class="material-icons upload-zone-icon">image</span>
+                <div class="upload-zone-text"><strong>Click to upload</strong> or drag &amp; drop</div>
+                <div class="upload-zone-hint">PNG, JPG, SVG up to 20 MB</div>
+              </div>
+              <button id="deleteXdImageBtn" class="delete-icon-btn upload-zone-delete" title="Delete image">
+                <span class="material-icons mi-inline">delete</span> Remove image
+              </button>
+            </div>
+
+
+            <div class="xd-container-margin">
+              <label class="checkbox-label assisted-drawing-checkbox">
+                <input type="checkbox" id="xdAdvancedToggle" />
+                <span>Show Advanced Parameters</span>
+              </label>
+            </div>
+
+            <div id="xdAdvancedContainer" class="xd-advanced-container">
+              <div class="form-group xd-form-group-spacing">
+                <label>Confidence</label>
+                <input type="number" id="xdConfidence" value="0.25" step="0.05" min="0" max="1" />
+              </div>
+              <div class="form-group">
+                <label>Split Parts</label>
+                <input type="number" id="xdSplitParts" value="1" step="1" min="1" max="100" />
+              </div>
+
+              <div class="form-group xd-form-group-spacing-12">
+                <label>Wall Removal Threshold</label>
+                <input type="number" id="xdWallRemovalThreshold" value="0.3" step="0.05" min="0" max="1" />
+              </div>
+
+              <div class="form-group xd-form-group-spacing-12">
+                <label>Gap Fill Size</label>
+                <input type="number" id="xdGapFillSize" value="5" step="1" min="0" max="100" />
+              </div>
+
+              <div class="form-group xd-form-group-spacing-12">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="xdEnableSahi" />
+                  <span>Enable SAHI</span>
+                </label>
+              </div>
+
+              <div class="xd-sahi-options">
+                <div class="form-group">
+                  <label>Slice Size</label>
+                  <input type="number" id="xdSahiSliceSize" value="512" step="64" />
+                </div>
+                <div class="form-group xd-sahi-spacing">
+                  <label>Overlap Ratio</label>
+                  <input type="number" id="xdSahiOverlapRatio" value="0.2" step="0.05" />
+                </div>
+                <div class="form-group xd-sahi-spacing">
+                  <label>NMS Threshold</label>
+                  <input type="number" id="xdSahiNmsThreshold" value="0.4" step="0.05" />
+                </div>
+              </div>
+            </div>
+
+            <button id="generateDxfBtn" class="shadcn-btn shadcn-btn-primary generate-dxf-btn">
+              <span class="material-icons">auto_awesome</span> Generate Floorplan
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Canvas Area -->
+    <div class="canvas-container">
+      <div class="canvas-header">
+        <div class="canvas-header-title-group">
+          <img src="../assets/Omega_logo_light.png" alt="Omega Logo Light" class="aion-rom-logo aion-rom-logo-light" onerror="this.style.display='none'" />
+          <img src="../assets/Omega_logo_dark.png" alt="Omega Logo Dark" class="aion-rom-logo aion-rom-logo-dark" onerror="this.style.display='none'" />
+          <div class="aion-rom-title-stack">
+            <div class="aion-rom-title">AION ROM</div>
+            <p class="subtitle">Advanced RF Coverage Analysis</p>
+          </div>
+        </div>
+        <div class="canvas-stats">
+          <div class="stat-group-column">
+            <div class="canvas-stats-row">
+              <div class="stat-item canvas-stats-flex">
+                <button id="undoBtn" class="undo-btn" title="Undo (Ctrl+Z)">
+                  <span class="material-icons btn-icon">undo</span>
+                  Undo
+                </button>
+                <button id="redoBtn" class="redo-btn" title="Redo (Ctrl+Y)">
+                  <span class="material-icons btn-icon">redo</span>
+                  Redo
+                </button>
+                <button id="restartBtn" class="restart-btn" title="Reset app to default state">
+                  <span class="material-icons btn-icon">restart_alt</span>
+                  Restart
+                </button>
+              </div>
+              <div class="stat-item view-toggle-container">
+                <span class="view-toggle-label">2D</span>
+                <label class="view-toggle-switch">
+                  <input type="checkbox" id="viewModeToggle" />
+                  <span class="view-toggle-slider"></span>
+                </label>
+                <span class="view-toggle-label">3D</span>
+              </div>
+              <div class="stat-item view-toggle-container">
+                <button class="dark-mode-toggle-btn" id="darkModeToggle" aria-label="Toggle dark mode"
+                  title="Toggle dark mode">
+                  <!-- <svg class="toggle-icon sun-icon" width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" stroke-width="2"/><path d="M12 1v2m0 18v2m11-11h-2M3 12H1m16.36-7.36-1.42 1.42M7.05 16.95l-1.42 1.42m12.73 0-1.42-1.42M7.05 7.05 5.63 5.63" stroke-width="2" stroke-linecap="round"/></svg>
+                  <svg class="toggle-icon moon-icon" width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> -->
+                  <span class="toggle-icon sun-icon"><span class="material-icons">light_mode</span></span>
+                  <span class="toggle-icon moon-icon"><span class="material-icons">dark_mode</span></span>
+                </button>
+              </div>
+              <!-- <div class="stat-item">
+                <span>ANTs:</span>
+                <span class="stat-value" id="apCount">2</span>
+              </div> -->
+              <!-- <div class="stat-item">
+                <span>Walls:</span>
+                <span class="stat-value" id="wallCount">4</span>
+              </div> -->
+              <!-- version badge moved to lower-right of canvas -->
+            </div>
+            <div class="canvas-stats-row stats-bottom-row">
+              <div class="stat-kpi">
+                <span class="stat-label">BL APs:</span>
+                <span class="stat-number" id="apCount">0</span>
+              </div>
+              <div class="stat-kpi">
+                <span class="stat-label">Active APs:</span>
+                <span class="stat-number" id="activeAntennaCount">0</span>
+              </div>
+              <div class="stat-kpi">
+                <span class="stat-label">Compliance %:</span>
+                <span class="stat-number" id="compliancePercent">0</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="canvas-wrapper">
+        <canvas id="plot"></canvas>
+        <!-- Default watermark text — visible behind canvas content -->
+        <!-- <div class="canvas-watermark" id="canvasWatermark">
+          <span>Canvas Rendering Area</span>
+        </div> -->
+        <div class="ap-tooltip" id="apTooltip"></div>
+      </div>
+      <div class="legend">
+        <div class="legend-title" id="modeName">RSSI</div>
+        <div class="legend-bar" id="legendBar"></div>
+        <div class="legend-range">
+          <span id="legendMin">-100</span>
+          <span id="legendUnit">dBm</span>
+          <span id="legendMax">-30</span>
+        </div>
+        <div class="legend-categories hidden-file-input" id="catLegend"></div>
+      </div>
+      <div class="canvas-footer" id="canvasFooter">
+        <span class="footer-badge" id="footerBadge">READY</span>
+        <span class="footer-message" id="footerMessage">Waiting for adding antenna ...</span>
+        <span class="version-pill" id="modelBadge">V2.8</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Premium Alert Modal -->
+  <div id="customAlertOverlay" class="alert-overlay">
+    <div class="alert-modal">
+      <!-- <span class="alert-header" id="customAlertHeader">ALERT</span> -->
+      <div class="alert-message" id="customAlertMessage">Message here...</div>
+      <button class="alert-btn" id="customAlertBtn">OK</button>
+    </div>
+  </div>
+
+  <!-- Backend Message Modal -->
+  <div id="backendMessageOverlay" class="alert-overlay">
+    <div class="alert-modal">
+      <div class="alert-message" id="backendMessageText">Backend message here...</div>
+      <div class="alert-buttons" id="backendMessageButtons">
+        <button class="alert-btn secondary" id="backendMessageCancel" class="alert-buttons-hidden">Cancel</button>
+        <button class="alert-btn primary" id="backendMessageAccept" class="alert-buttons-hidden">Accept</button>
+        <button class="alert-btn primary" id="backendMessageGotIt" class="alert-buttons-hidden">Ok</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AP Detail Sidebar -->
+  <div class="ap-detail-sidebar" id="apDetailSidebar">
+    <div class="sidebar-header">
+      <h1 id="apDetailTitle">Antenna Details</h1>
+      <button id="closeApDetailSidebar" class="close-btn"><span class="material-icons">close</span></button>
+    </div>
+    <div class="sidebar-content" id="apDetailContent">
+      <!-- Content will be generated by JS -->
+    </div>
+  </div>
+
+  <!-- Walls & Obstacles Help Modal -->
+  <div class="help-modal help-modal-hidden" id="wallsHelpModal">
+    <div class="help-modal-content">
+      <div class="help-modal-header">
+        <h4>Walls & Obstacles - Help</h4>
+        <button class="help-modal-close" id="closeWallsHelp"><span class="material-icons">close</span></button>
+      </div>
+      <div class="help-modal-body">
+        <p class="helper-text">
+          <span class="material-icons mi-hint">lightbulb</span> <strong>Walls:</strong> Select wall type, then toggle add mode,
+          click start → click end points. Walls will snap to
+          horizontal/vertical and auto-join at intersections.
+        </p>
+        <p class="helper-text">
+          <span class="material-icons mi-hint">lightbulb</span> <strong>Doors/Windows:</strong> Select door/window type, toggle
+          add mode, then draw on an existing wall (click start → click end
+          points). The door/window must be aligned with the wall.
+        </p>
+        <p class="helper-text">
+          <span class="material-icons mi-hint">lightbulb</span> <strong>Floor / Plane:</strong> Select floor/plane, set height,
+          choose type (horizontal/inclined), set attenuation, then toggle add
+          mode and click and drag to draw a rectangle.
+        </p>
+        <p class="helper-text">
+          <span class="material-icons mi-hint">keyboard</span> Press <strong>ESC</strong> key to cancel drawing while in drawing
+          mode.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="loading-spinner-container">
+      <div class="loading-pulse"></div>
+      <div class="loading-spinner"></div>
+    </div>
+    <div id="loadingText" class="loading-text">Finalizing Baseline...</div>
+    <div id="loadingSubtext" class="loading-subtext">This may take a moment while we process the antenna configurations.
+    </div>
+  </div>
+
+<!-- Pre-monolith modules (no dependency on state/draw/canvas) -->
+<script src="system/Config.js"></script>
+<script src="propagation/PropagationModel25DN.js"></script>
+<script src="system/NotificationSystem.js"></script>
+<script src="propagation/RadioCalculations.js"></script>
+<script src="io/DataExportSystem.js"></script>
+<script src="system/GeometryUtils.js"></script>
+<script src="system/ColorSystem.js"></script>
+<script src="antennas/AntennaPatterns.js"></script>
+
+<!-- Sidebar initialization -->
+<script src="app.js"></script>
+
+<!-- Main application script -->
+<script src="ui/CoordinateSystem.js"></script>
+<script src="IPSStudioV2.6_clean.js"></script>
+
+<!-- Post-monolith modules (depend on state, draw, canvas, etc.) -->
+<script src="ui/WallManager.js"></script>
+<script src="ui/FloorPlaneManager.js"></script>
+<!-- <script src="propagation/SignalCalculations.js"></script> -->
+<script src="antennas/sendAntennaConfigurations.js"></script>
+<script src="optimization/pollOptimizationData.js"></script>
+<!-- <script src="systems/CSVCoverageSystem.js"></script> -->
+<script src="system/SystemSate.js"></script>
+<script src="ui/CanvasInteraction.js"></script>
+<script src="ui/UIRenderers.js"></script>
+<script src="io/ProjectIO.js"></script>
+<script src="antennas/AntennaPlacement.js"></script>
+<script src="ui/ThreeJSRenderer.js"></script>
+<script src="ui/HeatmapEngine.js"></script>
+<script src="ui/ContourRenderer.js"></script>
+
+<script>
+(function () {
+  var zones = document.querySelectorAll(".upload-zone");
+  zones.forEach(function (zone) {
+    zone.addEventListener("dragenter", function (e) {
+      e.preventDefault();
+      zone.classList.add("drag-over");
+    });
+    zone.addEventListener("dragover", function (e) {
+      e.preventDefault();
+      zone.classList.add("drag-over");
+    });
+    zone.addEventListener("dragleave", function () {
+      zone.classList.remove("drag-over");
+    });
+    zone.addEventListener("drop", function () {
+      zone.classList.remove("drag-over");
+    });
+  });
+})();
+</script>
+
+</body>
+
+</html>

@@ -7,12 +7,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>AION ROM</title>
     <!-- SheetJS library for Excel export -->
-    <script src="xlsx.full.min.js"></script>
+    <script src="../assets/xlsx.full.min.js"></script>
     <!-- Three.js library for GPU-accelerated 3D rendering -->
-    <script src="three.min.js"></script>
+    <script src="../assets/three.min.js"></script>
     
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="../assets/style.css">
 </head>
 
 <body>
@@ -466,8 +466,8 @@
     <div class="canvas-container">
       <div class="canvas-header">
         <div class="canvas-header-title-group">
-          <img src="Omega_logo_light.png" alt="Omega Logo Light" class="aion-rom-logo aion-rom-logo-light" onerror="this.style.display='none'" />
-          <img src="Omega_logo_dark.png" alt="Omega Logo Dark" class="aion-rom-logo aion-rom-logo-dark" onerror="this.style.display='none'" />
+          <img src="../assets/Omega_logo_light.png" alt="Omega Logo Light" class="aion-rom-logo aion-rom-logo-light" onerror="this.style.display='none'" />
+          <img src="../assets/Omega_logo_dark.png" alt="Omega Logo Dark" class="aion-rom-logo aion-rom-logo-dark" onerror="this.style.display='none'" />
           <div class="aion-rom-title-stack">
             <div class="aion-rom-title">AION ROM</div>
             <p class="subtitle">Advanced RF Coverage Analysis</p>
@@ -640,37 +640,37 @@
   </div>
 
 <!-- Pre-monolith modules (no dependency on state/draw/canvas) -->
-<script src="Config.js"></script>
-<script src="PropagationModel25DN.js"></script>
-<script src="NotificationSystem.js"></script>
-<script src="RadioCalculations.js"></script>
-<script src="DataExportSystem.js"></script>
-<script src="GeometryUtils.js"></script>
-<script src="ColorSystem.js"></script>
-<script src="AntennaPatterns.js"></script>
+<script src="system/Config.js"></script>
+<script src="propagation/PropagationModel25DN.js"></script>
+<script src="system/NotificationSystem.js"></script>
+<script src="propagation/RadioCalculations.js"></script>
+<script src="io/DataExportSystem.js"></script>
+<script src="system/GeometryUtils.js"></script>
+<script src="system/ColorSystem.js"></script>
+<script src="antennas/AntennaPatterns.js"></script>
 
 <!-- Sidebar initialization -->
 <script src="app.js"></script>
 
 <!-- Main application script -->
-<script src="CoordinateSystem.js"></script>
+<script src="ui/CoordinateSystem.js"></script>
 <script src="IPSStudioV2.6_clean.js"></script>
 
 <!-- Post-monolith modules (depend on state, draw, canvas, etc.) -->
-<script src="WallManager.js"></script>
-<script src="FloorPlaneManager.js"></script>
-<!-- <script src="SignalCalculations.js"></script> -->
-<script src="sendAntennaConfigurations.js"></script>
-<script src="pollOptimizationData.js"></script>
+<script src="ui/WallManager.js"></script>
+<script src="ui/FloorPlaneManager.js"></script>
+<!-- <script src="propagation/SignalCalculations.js"></script> -->
+<script src="antennas/sendAntennaConfigurations.js"></script>
+<script src="optimization/pollOptimizationData.js"></script>
 <!-- <script src="systems/CSVCoverageSystem.js"></script> -->
-<script src="SystemSate.js"></script>
-<script src="CanvasInteraction.js"></script>
-<script src="UIRenderers.js"></script>
-<script src="ProjectIO.js"></script>
-<script src="AntennaPlacement.js"></script>
-<script src="ThreeJSRenderer.js"></script>
-<script src="HeatmapEngine.js"></script>
-<script src="ContourRenderer.js"></script>
+<script src="system/SystemSate.js"></script>
+<script src="ui/CanvasInteraction.js"></script>
+<script src="ui/UIRenderers.js"></script>
+<script src="io/ProjectIO.js"></script>
+<script src="antennas/AntennaPlacement.js"></script>
+<script src="ui/ThreeJSRenderer.js"></script>
+<script src="ui/HeatmapEngine.js"></script>
+<script src="ui/ContourRenderer.js"></script>
 
 <script>
 
