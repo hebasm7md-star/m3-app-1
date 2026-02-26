@@ -7,7 +7,7 @@ components:
 - components:
   - layout_properties: {}
     name: timer_1
-    properties: {interval: 0.1}
+    properties: {interval: 0.05}
     type: Timer
   layout_properties: {slot: nav-right}
   name: navbar_links

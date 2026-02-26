@@ -335,7 +335,7 @@ class Combined(CombinedTemplate):
     new_compliance = result.get("new_compliance", [])
     status         = result.get("state", "idle")
     message        = result.get("message", "")
-
+    
     def _advance_cursors():
       self.last_action_idx = result.get("last_action_idx", self.last_action_idx)
       self.last_rsrp_idx = result.get("last_rsrp_idx", self.last_rsrp_idx)
@@ -355,6 +355,7 @@ class Combined(CombinedTemplate):
     if status == "finished":
       if new_actions or new_bsrv_rsrp or new_compliance:
         print(f"[DEBUG] Sending final batch: {len(new_actions)} action(s), {len(new_bsrv_rsrp)} rsrp, {len(new_compliance)} compliance")
+        print("[BACK] compliance: ",new_compliance)
       self._send_to_iframe("optimization_update",
                            new_action_configs=new_actions,
                            new_bsrv_rsrp=new_bsrv_rsrp,
