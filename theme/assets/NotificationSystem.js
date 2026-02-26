@@ -300,8 +300,16 @@ var NotificationSystem = (function() {
     error: 'error',
     warning: 'warning',
     info: 'info',
-    delete: 'delete'
+    delete: 'delete',
+    'refresh': 'refresh'
   };
+
+  function resolveIcon(name) {
+    if (!name) return 'info';
+    if (MATERIAL_ICONS[name]) return MATERIAL_ICONS[name];
+    if (/[^\x20-\x7E]/.test(name)) return 'delete';
+    return name;
+  }
 
   function createToast(msg, type) {
     initContainer();
@@ -361,7 +369,9 @@ var NotificationSystem = (function() {
 
       if (isBullet) {
         if (!inList) { html += '<ul style="margin:8px 0;padding-left:20px;">'; inList = true; }
-        html += '<li>' + escapeHtml(trimmed.replace(/^[-•]\s*/, '')) + '</li>';
+        var bulletText = escapeHtml(trimmed.replace(/^[-•]\s*/, ''));
+        bulletText = bulletText.replace(/^([A-Za-z][A-Za-z0-9 ]*:)/, '<strong>$1</strong>');
+        html += '<li>' + bulletText + '</li>';
       } else {
         if (inList) { html += '</ul>'; inList = false; }
         if (trimmed === '') {
@@ -383,33 +393,34 @@ var NotificationSystem = (function() {
     var isDanger = buttons.some(function(b) { return b.danger; });
     modal.className = 'notif-modal' + (isDanger ? ' notif-modal-danger' : '');
 
+    var dark = isDarkMode();
     var iconColors = {
       check_circle: '#10b981',
       error: '#ef4444',
       warning: '#f59e0b',
-      info: '#6366f1',
+      info: dark ? '#f1f5f9' : '#1e293b',
       delete: '#ef4444'
     };
 
     var titleIcon = '';
     var extraClass = '';
     if (options.icon) {
-      var matIcon = MATERIAL_ICONS[options.icon] || options.icon;
-      var iconColor = iconColors[matIcon] || (isDanger ? '#ef4444' : '#6366f1');
+      var matIcon = resolveIcon(options.icon);
+      var iconColor = iconColors[matIcon] || (isDanger ? '#ef4444' : (dark ? '#f1f5f9' : '#1e293b'));
       var extraStyle = 'background:transparent;';
-      if (isDanger && options.icon === 'delete') {
-        iconColor = '#ef4444'; // Red for trash icon
+      if (isDanger && matIcon === 'delete') {
+        iconColor = '#ef4444';
         extraClass = ' notif-modal-icon-delete';
-      } else if (isDanger && options.icon === 'refresh') {
-        iconColor = '#6366f1'; // Make it blueish for restart
+      } else if (isDanger && matIcon === 'refresh') {
+        iconColor = '#6366f1';
       }
 
       titleIcon = '<span class="notif-modal-icon-container' + extraClass + '" style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:6px;' + extraStyle + 'margin-right:10px;flex-shrink:0">' +
         '<span class="material-icons" style="font-size:22px;color:' + iconColor + '">' + matIcon + '</span></span>';
     } else {
       var defaultIcon = isDanger ? 'warning' : 'info';
-      var matIcon = MATERIAL_ICONS[defaultIcon] || defaultIcon;
-      var iconColor = iconColors[matIcon] || (isDanger ? '#ef4444' : '#6366f1');
+      var matIcon = resolveIcon(defaultIcon);
+      var iconColor = iconColors[matIcon] || (isDanger ? '#ef4444' : (dark ? '#f1f5f9' : '#1e293b'));
       var extraStyle = 'background:transparent;';
       titleIcon = '<span class="notif-modal-icon-container" style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:6px;' + extraStyle + 'margin-right:10px;flex-shrink:0">' +
         '<span class="material-icons" style="font-size:22px;color:' + iconColor + '">' + matIcon + '</span></span>';
