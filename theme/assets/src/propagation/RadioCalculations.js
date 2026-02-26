@@ -124,18 +124,89 @@ var RadioCalculations = (function () {
     return rate;
   }
 
+  function getValueAt(x, y) {
+    // If backend optimization grid is present and we're viewing RSSI, try to use it
+    if (_state && _state.optimizationRsrpGrid && _state.view === "rssi" && typeof window.getBackendRsrpAt === 'function') {
+      var bval = window.getBackendRsrpAt(x, y);
+      if (bval !== null && bval !== undefined) {
+        return bval;
+      }
+    }
+
+    var bestN = bestApAt(x, y);
+
+    // Filter by selected or viewed AP
+    var selectedAP = null;
+    var viewedAP = null;
+    if (_state && _state.aps) {
+      for (var i = 0; i < _state.aps.length; i++) {
+        if (_state.aps[i].id === _state.selectedApId) {
+          selectedAP = _state.aps[i];
+          break;
+        }
+      }
+      if (_state.viewedApId) {
+        for (var j = 0; j < _state.aps.length; j++) {
+          if (_state.aps[j].id === _state.viewedApId) {
+            viewedAP = _state.aps[j];
+            break;
+          }
+        }
+      }
+    }
+
+    var useOnlySelected = _state && _state.highlight && selectedAP && selectedAP.enabled !== false;
+    var useViewed = viewedAP && !useOnlySelected && viewedAP.enabled !== false;
+    var apToUse = useOnlySelected ? selectedAP : useViewed ? viewedAP : null;
+
+    if (apToUse && _propModel && _modelLoss) {
+      bestN.ap = apToUse;
+      bestN.rssiDbm = _propModel.rssi(
+        apToUse.tx,
+        _propModel.getAngleDependentGain(apToUse, {x: x, y: y}),
+        _modelLoss(apToUse.x, apToUse.y, x, y)
+      );
+    }
+
+    var value;
+    var viewMode = _state ? _state.view : "rssi";
+
+    if (viewMode === "rssi") {
+      value = bestN.rssiDbm;
+    } else if (viewMode === "snr") {
+      value = bestN.rssiDbm - (_state ? _state.noise : 0);
+    } else if (viewMode === "sinr") {
+      var IdbmSinr = cciAt(x, y, bestN.ap);
+      value = sinrAt(bestN.rssiDbm, IdbmSinr);
+    } else if (viewMode === "cci") {
+      value = countInterferingAntennas(x, y, bestN.ap);
+    } else if (viewMode === "thr") {
+      var Idbm2 = cciAt(x, y, bestN.ap);
+      var sinrVal = sinrAt(bestN.rssiDbm, Idbm2);
+      value = throughputFromSinr(sinrVal);
+    } else {
+      value = bestN.rssiDbm;
+    }
+    return value;
+  }
+
   // ── Public API ──
   return {
     init: function (deps) {
       _state                  = deps.state;
       _modelLoss              = deps.modelLoss;
       _propModel              = deps.propModel;
+
+      // Expose globally for components that expect it to be on window
+      window.getValueAt = getValueAt;
+
       // console.log('RadioCalculations initialized.');
     },
 
     // Expose all calculation functions
     rssiFrom:                 rssiFrom,
     bestApAt:                 bestApAt,
+    getValueAt:               getValueAt,
     cciAt:                    cciAt,
     snrAt:                    snrAt,
     sinrAt:                   sinrAt,

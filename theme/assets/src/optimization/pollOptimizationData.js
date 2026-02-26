@@ -112,6 +112,36 @@ var OptimizationSystem = (function () {
 
   // ── Backend RSRP Grid ─────────────────────────────────────────────────
 
+  function getBackendRsrpAt(x, y) {
+    if (!state.optimizationRsrpGrid) return null;
+    var bgrid = state.optimizationRsrpGrid;
+
+    var bx = x / bgrid.dx;
+    var by = y / bgrid.dy;
+
+    var gx0 = Math.max(0, Math.min(bgrid.cols - 1, Math.floor(bx - 0.5)));
+    var gx1 = Math.max(0, Math.min(bgrid.cols - 1, gx0 + 1));
+    var gy0 = Math.max(0, Math.min(bgrid.rows - 1, Math.floor(by - 0.5)));
+    var gy1 = Math.max(0, Math.min(bgrid.rows - 1, gy0 + 1));
+
+    var tx = (bx - 0.5) - gx0;
+    var ty = (by - 0.5) - gy0;
+
+    var v00 = bgrid.data[gy0 * bgrid.cols + gx0];
+    var v10 = bgrid.data[gy0 * bgrid.cols + gx1];
+    var v01 = bgrid.data[gy1 * bgrid.cols + gx0];
+    var v11 = bgrid.data[gy1 * bgrid.cols + gx1];
+
+    var v0 = v00 * (1 - tx) + v10 * tx;
+    var v1 = v01 * (1 - tx) + v11 * tx;
+    var bval = v0 * (1 - ty) + v1 * ty;
+
+    if (!isNaN(bval) && bval !== 0) {
+      return bval;
+    }
+    return null;
+  }
+
   function buildBackendRsrpGrid(rsrpValues) {
     var totalBins = rsrpValues.length;
     if (totalBins === 0) return;
@@ -132,10 +162,13 @@ var OptimizationSystem = (function () {
     var gridData = new Float32Array(totalBins);
     var dataMin = Infinity, dataMax = -Infinity;
     for (var i = 0; i < totalBins; i++) {
-      gridData[i] = Number(rsrpValues[i]);
-      if (!isNaN(gridData[i])) {
-        if (gridData[i] < dataMin) dataMin = gridData[i];
-        if (gridData[i] > dataMax) dataMax = gridData[i];
+      var val = Number(rsrpValues[i]);
+      gridData[i] = val;
+      // Filter out invalid/extreme values (like 0 for obstacles, or -200 for no coverage)
+      // so the legend range remains realistic for RSSI.
+      if (!isNaN(val) && val !== 0 && val >= -140 && val < 0) {
+        if (val < dataMin) dataMin = val;
+        if (val > dataMax) dataMax = val;
       }
     }
 
@@ -145,16 +178,25 @@ var OptimizationSystem = (function () {
     };
 
     if (dataMin !== Infinity && dataMax !== -Infinity) {
-      state.minVal = Math.floor(dataMin);
-      state.maxVal = Math.ceil(dataMax);
+      // Save these values so changing view mode back to RSSI restores them
+      if (state.viewMinMax && state.viewMinMax["rssi"]) {
+        state.viewMinMax["rssi"].min = Math.floor(dataMin);
+        state.viewMinMax["rssi"].max = Math.ceil(dataMax);
+      }
 
-      var el;
-      el = document.getElementById("legendMin"); if (el) el.textContent = state.minVal;
-      el = document.getElementById("legendMax"); if (el) el.textContent = state.maxVal;
-      el = document.getElementById("minVal");    if (el) el.value = state.minVal;
-      el = document.getElementById("maxVal");    if (el) el.value = state.maxVal;
+      // Only update the active UI min/max if we are actually viewing RSSI
+      if (state.view === "rssi") {
+        state.minVal = Math.floor(dataMin);
+        state.maxVal = Math.ceil(dataMax);
 
-      if (typeof updateLegendBar === 'function') updateLegendBar();
+        var el;
+        el = document.getElementById("legendMin"); if (el) el.textContent = state.minVal;
+        el = document.getElementById("legendMax"); if (el) el.textContent = state.maxVal;
+        el = document.getElementById("minVal");    if (el) el.value = state.minVal;
+        el = document.getElementById("maxVal");    if (el) el.value = state.maxVal;
+
+        if (typeof updateLegendBar === 'function') updateLegendBar();
+      }
     }
 
     console.log("[BackendRSRP] Grid:", cols, "x", rows,
@@ -359,12 +401,14 @@ var OptimizationSystem = (function () {
   window.stopOptimizationPolling = stopOptimizationPolling;
   window.handleOptimizationUpdate = handleOptimizationUpdate;
   window.updateSingleAntennaFromAction = updateSingleAntennaFromAction;
+  window.getBackendRsrpAt = getBackendRsrpAt;
 
   return {
     startOptimizationPolling: startOptimizationPolling,
     stopOptimizationPolling: stopOptimizationPolling,
     handleOptimizationUpdate: handleOptimizationUpdate,
     updateSingleAntennaFromAction: updateSingleAntennaFromAction,
-    getFriendlyActionMessage: getFriendlyActionMessage
+    getFriendlyActionMessage: getFriendlyActionMessage,
+    getBackendRsrpAt: getBackendRsrpAt
   };
 })();
