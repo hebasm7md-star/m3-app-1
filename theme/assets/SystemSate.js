@@ -190,7 +190,7 @@
       restartBtn._listenerAttached = true;
       restartBtn.addEventListener("click", function () {
         NotificationSystem.confirm(
-          "All unsaved progress will be lost.\nAre you sure you want to restart?",
+          "All unsaved progress will be lost. Are you sure you want to restart?",
           "Restart Application",
           function (confirmed) {
             if (confirmed) {

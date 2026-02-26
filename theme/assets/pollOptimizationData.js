@@ -1,62 +1,90 @@
-// 04-OPTIMIZATION-SYSTEM.js - Handles AI antenna optimization polling and updates
-// Depends on: global state, draw(), renderAPs(), renderApDetails(), NotificationSystem, logAntennaPositionChange
+// OptimizationSystem — Handles AI antenna optimization polling and updates
+// Depends on: global state, draw(), renderAPs(), NotificationSystem,
+//             logAntennaPositionChange, generateHeatmapAsync, updateLegendBar, DataExportSystem
 
 var OptimizationSystem = (function () {
 
   var optimizationPollingInterval = null;
 
-  // Helper to generate a professional message for optimization actions
+  var ACTION_MESSAGES = {
+    Sectorization:  'Optimizing sector configuration...',
+    CIO:            'Adjusting CIO handover parameters...',
+    Turnning_ON_OFF:'Toggle antenna status (ON/OFF)...',
+    PCI:            'Reassigning PCI collision...',
+    pattern_change: 'Changing antenna pattern...',
+    power:          'Tuning transmission power levels...',
+    tilt:           'Adjusting Remote Electrical Tilt (RET)...',
+    azimuth:        'Rotating horizontal orientation (Azimuth)...',
+    location:       'Optimizing physical location coordinates...'
+  };
+
   function getFriendlyActionMessage(action) {
     if (!action) return "Analyzing network state...";
-
-    const type = action.action_type;
-    const id = action.antenna_id || "System";
-
-    switch (type) {
-      case 'Sectorization': return `${id}: Optimizing sector configuration...`;
-      case 'CIO': return `${id}: Adjusting CIO handover parameters...`;
-      case 'Turnning_ON_OFF': return `${id}: Toggle antenna status (ON/OFF)...`;
-      case 'PCI': return `${id}: Reassigining PCI collision...`;
-      case 'pattern_change': return `${id}: Changing antenna pattern...`;
-      case 'power': return `${id}: Tuning transmission power levels ...`;
-      case 'tilt': return `${id}: Adjusting Remote Electrical Tilt (RET)...`;
-      case 'azimuth': return `${id}: Rotating horizontal orientation (Azimuth)...`;
-      case 'location': return `${id}: Optimizing physical location coordinates...`;
-      default:
-        // Fallback for technical action descriptions
-        if (action.action_desc) return `${id}: ${action.action_desc}`;
-        return `${id}: Optimization parameter updated successfully.`;
-    }
+    var id = action.antenna_id || "System";
+    var msg = ACTION_MESSAGES[action.action_type] || action.action_desc;
+    return id + ": " + (msg || "Optimization parameter updated successfully.");
   }
 
-  // Start polling for optimization updates
+  // ── Polling ────────────────────────────────────────────────────────────
+
   function startOptimizationPolling() {
-    if (optimizationPollingInterval) {
-      clearInterval(optimizationPollingInterval);
-    }
-
-    // Poll every 500ms for new antennas
+    if (optimizationPollingInterval) clearInterval(optimizationPollingInterval);
     optimizationPollingInterval = setInterval(function () {
-      window.parent.postMessage(
-        {
-          type: "poll_optimization_update",
-          lastIndex: window.optimizationLastIndex || 0,
-        },
-        "*"
-      );
+      window.parent.postMessage({
+        type: "poll_optimization_update",
+        lastIndex: window.optimizationLastIndex || 0
+      }, "*");
     }, 500);
-
-    console.log("[startOptimizationPolling] Started optimization polling");
+    console.log("[OptimizationSystem] Polling started");
   }
 
-  // Stop polling for optimization updates
   function stopOptimizationPolling() {
     if (optimizationPollingInterval) {
       clearInterval(optimizationPollingInterval);
       optimizationPollingInterval = null;
     }
-    console.log("Stopped optimization polling");
+    console.log("[OptimizationSystem] Polling stopped");
   }
+
+  // ── Helpers ────────────────────────────────────────────────────────────
+
+  function setFooter(badge, msg, badgeText, msgText, addClass) {
+    if (badge) {
+      badge.textContent = badgeText;
+      badge.classList.remove('active', 'manual', 'optimizing');
+      if (addClass) badge.classList.add(addClass);
+    }
+    if (msg && msgText) msg.textContent = msgText;
+  }
+
+  function setButtonLocked(btn, locked) {
+    if (!btn) return;
+    btn.disabled = locked;
+    btn.style.opacity = locked ? '0.5' : '1';
+  }
+
+  function refreshHeatmap() {
+    if (!state.showVisualization) return;
+    state.cachedHeatmap = null;
+    state.heatmapUpdatePending = false;
+    if (typeof generateHeatmapAsync === 'function') generateHeatmapAsync(null, true);
+    if (typeof draw === 'function') draw();
+  }
+
+  function handleTerminalStatus(status, data, footerBadge, footerMessage) {
+    if (status !== 'finished' && status !== 'error') return;
+    stopOptimizationPolling();
+    if (status === 'finished') {
+      setFooter(footerBadge, footerMessage, 'COMPLETED', "Optimization process successfully completed.");
+      if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportBackendRsrpGrid) {
+        DataExportSystem.exportBackendRsrpGrid();
+      }
+    } else {
+      setFooter(footerBadge, footerMessage, 'ERROR', "Error: " + (data.error || "Optimization failed."));
+    }
+  }
+
+  // ── Backend RSRP Grid ─────────────────────────────────────────────────
 
   function buildBackendRsrpGrid(rsrpValues) {
     var totalBins = rsrpValues.length;
@@ -71,7 +99,7 @@ var OptimizationSystem = (function () {
       rows = Math.round(totalBins / cols);
     }
     if (cols * rows !== totalBins) {
-      console.warn("[BackendRSRP] Grid dimensions mismatch:", cols, "x", rows, "!=", totalBins);
+      console.warn("[BackendRSRP] Grid mismatch:", cols, "x", rows, "!=", totalBins);
       return;
     }
 
@@ -86,410 +114,219 @@ var OptimizationSystem = (function () {
     }
 
     state.optimizationRsrpGrid = {
-      data: gridData,
-      cols: cols,
-      rows: rows,
-      dx: state.w / cols,
-      dy: state.h / rows
+      data: gridData, cols: cols, rows: rows,
+      dx: state.w / cols, dy: state.h / rows
     };
 
     if (dataMin !== Infinity && dataMax !== -Infinity) {
       state.minVal = Math.floor(dataMin);
       state.maxVal = Math.ceil(dataMax);
 
-      var legendMinEl = document.getElementById("legendMin");
-      var legendMaxEl = document.getElementById("legendMax");
-      if (legendMinEl) legendMinEl.textContent = state.minVal;
-      if (legendMaxEl) legendMaxEl.textContent = state.maxVal;
-
-      var minInput = document.getElementById("minVal");
-      var maxInput = document.getElementById("maxVal");
-      if (minInput) minInput.value = state.minVal;
-      if (maxInput) maxInput.value = state.maxVal;
+      var el;
+      el = document.getElementById("legendMin"); if (el) el.textContent = state.minVal;
+      el = document.getElementById("legendMax"); if (el) el.textContent = state.maxVal;
+      el = document.getElementById("minVal");    if (el) el.value = state.minVal;
+      el = document.getElementById("maxVal");    if (el) el.value = state.maxVal;
 
       if (typeof updateLegendBar === 'function') updateLegendBar();
-
-      state.cachedHeatmap = null;
-      if (typeof generateHeatmapAsync === 'function') {
-        generateHeatmapAsync(null, true);
-      }
     }
 
-    var blBins = Math.round(state.w) * Math.round(state.h);
-    console.log("[BackendRSRP] Received bins:", totalBins, "| BL bins (w*h):", blBins, "| Grid:", cols, "x", rows, "| dx:", (state.w / cols).toFixed(3), "dy:", (state.h / rows).toFixed(3), "| RSRP range:", dataMin.toFixed(1), "to", dataMax.toFixed(1));
+    console.log("[BackendRSRP] Grid:", cols, "x", rows,
+                "| dx:", (state.w / cols).toFixed(3), "dy:", (state.h / rows).toFixed(3),
+                "| RSRP:", dataMin.toFixed(1), "to", dataMax.toFixed(1));
   }
 
-  // Handle a single optimization update (one or more antennas)
+  // ── Main Update Handler ───────────────────────────────────────────────
+
   function handleOptimizationUpdate(data) {
     try {
       var newActions = data.new_action_configs || [];
       var newRsrp = data.new_bsrv_rsrp || [];
-      var newCompliancePercent = data.new_compliance || [];
+      var newCompliance = data.new_compliance || [];
       var status = data.status;
       var message = data.message;
 
-      // Store backend RSRP grid (use latest step)
+      // RSRP grid
+      var rsrpUpdated = false;
       if (Array.isArray(newRsrp) && newRsrp.length > 0) {
         var latestRsrp = newRsrp[newRsrp.length - 1];
         if (latestRsrp && latestRsrp.length > 0) {
           buildBackendRsrpGrid(latestRsrp);
+          rsrpUpdated = true;
         }
       }
 
-      // Store backend compliance (use latest step), skip frontend recalculation
-      if (Array.isArray(newCompliancePercent) && newCompliancePercent.length > 0) {
-        var latestCompliance = newCompliancePercent[newCompliancePercent.length - 1];
-        if (latestCompliance !== undefined && latestCompliance !== null) {
-          state.optimizationCompliancePercent = Math.round(Number(latestCompliance));
-          var compliancePercentEl = document.getElementById("compliancePercent");
-          if (compliancePercentEl) {
-            compliancePercentEl.textContent = state.optimizationCompliancePercent;
-          }
+      // Compliance
+      if (Array.isArray(newCompliance) && newCompliance.length > 0) {
+        var latest = newCompliance[newCompliance.length - 1];
+        if (latest !== undefined && latest !== null) {
+          state.optimizationCompliancePercent = Math.round(Number(latest));
+          var el = document.getElementById("compliancePercent");
+          if (el) el.textContent = state.optimizationCompliancePercent;
         }
       }
 
-      // Update loading message if visible
+      // Loading overlay
       var overlay = document.getElementById('loadingOverlay');
-      var loadingText = document.getElementById('loadingText');
-      var loadingSubtext = document.getElementById('loadingSubtext');
-
       if (overlay && overlay.style.display !== 'none') {
         if (message) {
-          if (loadingSubtext) loadingSubtext.textContent = message;
-          if (loadingText) loadingText.textContent = status === 'error' ? 'Optimization Failed' : 'Finalizing Baseline Data...';
+          var sub = document.getElementById('loadingSubtext');
+          var txt = document.getElementById('loadingText');
+          if (sub) sub.textContent = message;
+          if (txt) txt.textContent = status === 'error' ? 'Optimization Failed' : 'Finalizing Baseline Data...';
         }
-
-        // Hide overlay when baseline is done and optimization is actually running or completed
         if (status !== 'starting' && status !== 'idle' || status === 'error') {
           overlay.style.opacity = '0';
-          setTimeout(function () {
-            overlay.style.display = 'none';
-            overlay.style.opacity = '1';
-          }, 400);
+          setTimeout(function () { overlay.style.display = 'none'; overlay.style.opacity = '1'; }, 400);
         }
       }
 
-      // Standardize button management based on status
+      // Button states
       var optimizeBtn = document.getElementById("optimizeBtn");
       var addAPBtn = document.getElementById("addAP");
       if (status === 'starting' || status === 'running') {
-        if (optimizeBtn && !optimizeBtn.disabled) {
-          optimizeBtn.disabled = true;
-          optimizeBtn.style.opacity = '0.5';
-          optimizeBtn.style.cursor = 'not-allowed';
-          optimizeBtn.textContent = 'Running...';
-        }
-        if (addAPBtn && !addAPBtn.disabled) {
-          addAPBtn.disabled = true;
-          addAPBtn.style.opacity = '0.5';
-          addAPBtn.style.pointerEvents = 'none';
-        }
+        setButtonLocked(optimizeBtn, true);
+        if (optimizeBtn) { optimizeBtn.style.cursor = 'not-allowed'; optimizeBtn.textContent = 'Running...'; }
+        setButtonLocked(addAPBtn, true);
+        if (addAPBtn) addAPBtn.style.pointerEvents = 'none';
         state.isOptimizing = true;
       } else if (status === 'finished' || status === 'error' || status === 'idle') {
-        if (optimizeBtn && optimizeBtn.disabled) {
-          optimizeBtn.disabled = false;
-          optimizeBtn.style.opacity = '1';
-          optimizeBtn.style.cursor = 'pointer';
-          optimizeBtn.textContent = 'Optimize';
-        }
-        if (addAPBtn && addAPBtn.disabled) {
-          addAPBtn.disabled = false;
-          addAPBtn.style.opacity = '1';
-          addAPBtn.style.pointerEvents = 'auto';
-        }
+        setButtonLocked(optimizeBtn, false);
+        if (optimizeBtn) { optimizeBtn.style.cursor = 'pointer'; optimizeBtn.textContent = 'Optimize'; }
+        setButtonLocked(addAPBtn, false);
+        if (addAPBtn) addAPBtn.style.pointerEvents = 'auto';
         state.isOptimizing = false;
       }
 
-      // Update footer status
+      // Footer status
       var footerBadge = document.getElementById('footerBadge');
       var footerMessage = document.getElementById('footerMessage');
 
       if (status === 'starting') {
-        if (footerBadge) {
-          footerBadge.textContent = 'STARTING';
-          footerBadge.classList.remove('active', 'manual');
-          footerBadge.classList.add('optimizing');
-        }
-        if (footerMessage && message) {
-          footerMessage.textContent = message;
-        }
+        setFooter(footerBadge, footerMessage, 'STARTING', message, 'optimizing');
       } else if (status === 'running') {
-        if (footerBadge) {
-          footerBadge.textContent = 'OPTIMIZING';
-          footerBadge.classList.remove('active', 'manual');
-          footerBadge.classList.add('optimizing');
-        }
-        if (footerMessage) {
-          footerMessage.textContent = message || 'Running...';
-        }
+        setFooter(footerBadge, footerMessage, 'OPTIMIZING', message || 'Running...', 'optimizing');
       } else if (status === 'finished') {
-        if (footerBadge) {
-          footerBadge.textContent = 'COMPLETED';
-          footerBadge.classList.remove('active', 'manual', 'optimizing');
-        }
-        if (footerMessage) {
-          footerMessage.textContent = message || 'Completed';
-        }
+        setFooter(footerBadge, footerMessage, 'COMPLETED', message || 'Completed');
       } else if (status === 'error') {
-        if (footerBadge) {
-          footerBadge.textContent = 'ERROR';
-          footerBadge.classList.remove('active', 'manual', 'optimizing');
-        }
-        if (footerMessage) {
-          footerMessage.textContent = message || 'Error occurred';
-        }
+        setFooter(footerBadge, footerMessage, 'ERROR', message || 'Error occurred');
       } else {
-        if (footerBadge) {
-          footerBadge.textContent = 'READY';
-          footerBadge.classList.remove('active', 'manual', 'optimizing');
-        }
-        if (footerMessage) {
-          footerMessage.textContent = message || 'Ready';
-        }
+        setFooter(footerBadge, footerMessage, 'READY', message || 'Ready');
       }
 
+      // No actions — refresh heatmap if RSRP arrived, handle terminal status, exit
       if (!Array.isArray(newActions) || newActions.length === 0) {
-        if (status === "error" || status === 'finished') {
-          stopOptimizationPolling();
-          if (footerBadge) {
-            footerBadge.textContent = status === 'finished' ? 'COMPLETED' : 'ERROR';
-            footerBadge.classList.remove('active', 'manual', 'optimizing');
-          }
-          if (status === 'finished') {
-            if (footerMessage) footerMessage.textContent = "Optimization process successfully completed.";
-            if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportBackendRsrpGrid) {
-              DataExportSystem.exportBackendRsrpGrid();
-            }
-          } else {
-            if (footerMessage) footerMessage.textContent = "Error: " + (data.error || "Optimization failed.");
-          }
-        }
+        if (rsrpUpdated) refreshHeatmap();
+        handleTerminalStatus(status, data, footerBadge, footerMessage);
         return;
       }
 
-      // Update footer with the latest action
-      if (newActions.length > 0 && footerMessage) {
-        const latestAction = newActions[newActions.length - 1];
-        footerMessage.textContent = getFriendlyActionMessage(latestAction);
+      // Show latest action in footer
+      if (footerMessage) {
+        footerMessage.textContent = getFriendlyActionMessage(newActions[newActions.length - 1]);
       }
 
-      // Update last index - server always returns last_index (single source of truth)
       if (data.last_index !== undefined) {
         window.optimizationLastIndex = data.last_index;
       }
 
-      var changesMade = false;
-
-      // Update bounding box if provided
       if (data.optimization_bounds) {
         window.optimizationBounds = data.optimization_bounds;
-        var p1 = window.optimizationBounds.p1;
-        var p2 = window.optimizationBounds.p2;
-        var centerX = (p1.x + p2.x) / 2;
-        var centerY = (p1.y + p2.y) / 2;
-
-        console.log("Optimization bounds updated:", window.optimizationBounds);
-
-        // Map backend coordinate center to canvas coordinates
-        // Assuming bounds are already in valid format, but need scaling
-        // We'll trust the coordinates from backend and use our standard projection if needed
-        // For now, we just rely on updateSingleAntennaFromAction mapping
-
-        // Optionally zoom or pan to area (not implemented to avoid jarring UI)
       }
 
-      // Process new actions sequentially
+      // Apply antenna updates
+      var changesMade = false;
       for (var i = 0; i < newActions.length; i++) {
-        var actionConfig = newActions[i];
-        if (actionConfig) {
-          updateSingleAntennaFromAction(actionConfig);
+        if (newActions[i]) {
+          updateSingleAntennaFromAction(newActions[i]);
           changesMade = true;
         }
       }
 
-      // If changes were made, refresh the view
-      if (changesMade) {
-        if (window.saveState) window.saveState();
-        if (window.renderAPs) window.renderAPs();
-
-        var canvas = document.getElementById("plot");
-        if (canvas && typeof window.draw === 'function') {
-          // Re-generate heatmap and redraw
-          if (state.showVisualization) {
-            state.cachedHeatmap = null;
-            state.heatmapUpdatePending = false;
-            if (typeof window.generateHeatmapAsync === 'function') window.generateHeatmapAsync(null, true);
-          }
-          window.draw();
+      if (changesMade || rsrpUpdated) {
+        if (changesMade) {
+          if (window.saveState) window.saveState();
+          if (window.renderAPs) window.renderAPs();
         }
+        refreshHeatmap();
       }
 
-      // If optimization is marked as finished by backend, stop polling
-      if (status === "error" || status === 'finished') {
-        stopOptimizationPolling();
-
-        if (status === 'finished') {
-          if (footerBadge) {
-            footerBadge.textContent = 'COMPLETED';
-            footerBadge.classList.remove('active', 'manual', 'optimizing');
-          }
-          if (footerMessage) {
-            footerMessage.textContent = "Optimization process successfully completed.";
-          }
-          if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportBackendRsrpGrid) {
-            DataExportSystem.exportBackendRsrpGrid();
-          }
-        } else {
-          if (footerBadge) {
-            footerBadge.textContent = 'ERROR';
-            footerBadge.classList.remove('active', 'manual', 'optimizing');
-          }
-          if (footerMessage) {
-            footerMessage.textContent = "Error: " + (data.error || "Optimization failed.");
-          }
-        }
-      }
+      handleTerminalStatus(status, data, footerBadge, footerMessage);
     } catch (error) {
       console.error("Error handling optimization update:", error);
       stopOptimizationPolling();
     }
   }
 
-  // Update a single antenna from an action config
+  // ── Antenna Update ────────────────────────────────────────────────────
+
+  function pickField(obj, keys) {
+    for (var i = 0; i < keys.length; i++) {
+      if (obj[keys[i]] !== undefined && obj[keys[i]] !== null) return obj[keys[i]];
+    }
+    return undefined;
+  }
+
   function updateSingleAntennaFromAction(action) {
     try {
       var antennaId = action.antenna_id || action.id;
-      // Use backend field names robustly (supports 0 values)
-      var rawX = (action.X_antenna !== undefined && action.X_antenna !== null) ? action.X_antenna :
-        ((action.X !== undefined && action.X !== null) ? action.X : action.x);
-      var rawY = (action.Y_antenna !== undefined && action.Y_antenna !== null) ? action.Y_antenna :
-        ((action.Y !== undefined && action.Y !== null) ? action.Y : action.y);
-      var backendX = Number(rawX);
-      var backendY = Number(rawY);
-      // Use backend field name: is_turnning_on (supports both string and boolean)
-      var enabledRaw = (action.is_turnning_on !== undefined && action.is_turnning_on !== null) ? action.is_turnning_on :
-        ((action.on !== undefined && action.on !== null) ? action.on : action.enabled);
-      var enabled =
-        enabledRaw === "True" ||
-        enabledRaw === true ||
-        enabledRaw === "true" ||
-        enabledRaw === 1 ||
-        enabledRaw === "1";
+      var backendX = Number(pickField(action, ['X_antenna', 'X', 'x']));
+      var backendY = Number(pickField(action, ['Y_antenna', 'Y', 'y']));
+
+      var enabledRaw = pickField(action, ['is_turnning_on', 'on', 'enabled']);
+      var enabled = enabledRaw === "True" || enabledRaw === true ||
+        enabledRaw === "true" || enabledRaw === 1 || enabledRaw === "1";
 
       if (!antennaId || !Number.isFinite(backendX) || !Number.isFinite(backendY)) {
         console.warn("Invalid action config:", action);
         return;
       }
 
-      // Direct mapping (optimization coordinates are already in canvas/world coordinates)
       var canvasX = Math.max(0, Math.min(state.w, backendX));
       var canvasY = Math.max(0, Math.min(state.h, backendY));
-      // console.log("[HTML] ACTION->", antennaId, "raw:", rawX, rawY, "mapped:", canvasX, canvasY, "enabled:", enabled);
 
-      // Find existing antenna by ID
-      var existingAntenna = null;
+      var existing = null;
       for (var j = 0; j < state.aps.length; j++) {
-        if (state.aps[j].id === antennaId) {
-          existingAntenna = state.aps[j];
-          break;
-        }
+        if (state.aps[j].id === antennaId) { existing = state.aps[j]; break; }
       }
 
-      if (existingAntenna) {
-        // Update existing antenna position and status
-        var oldX = existingAntenna.x;
-        var oldY = existingAntenna.y;
+      if (existing) {
+        var oldX = existing.x, oldY = existing.y;
+        existing.x = canvasX;
+        existing.y = canvasY;
+        existing.enabled = enabled;
 
-        existingAntenna.x = canvasX;
-        existingAntenna.y = canvasY;
-        // Z coordinate is preserved - do not update it
-        existingAntenna.enabled = enabled;
-
-        // Log position change
-        // Skip logging for backend updates - only log user-initiated changes
-        var threshold = 0.01;
-        if (
-          Math.abs(oldX - existingAntenna.x) > threshold ||
-          Math.abs(oldY - existingAntenna.y) > threshold
-        ) {
-          // Pass false to indicate this is a backend update, not a user change
+        if (Math.abs(oldX - canvasX) > 0.01 || Math.abs(oldY - canvasY) > 0.01) {
           if (typeof window.logAntennaPositionChange === 'function') {
-            window.logAntennaPositionChange(
-              antennaId,
-              antennaId,
-              oldX,
-              oldY,
-              existingAntenna.x,
-              existingAntenna.y,
-              false
-            );
+            window.logAntennaPositionChange(antennaId, antennaId, oldX, oldY, canvasX, canvasY, false);
           }
         }
-
-        // console.log("Updated antenna:",
-        //   antennaId,"Backend:",
-        //   backendX,
-        //   backendY,
-        //   "Canvas:",
-        //   canvasX.toFixed(2),
-        //   canvasY.toFixed(2),
-        //   "Enabled:",
-        //   enabled
-        // );
       } else {
-        // Create new antenna if it doesn't exist
-        var defaultPattern = typeof window.getDefaultAntennaPattern === 'function' ? window.getDefaultAntennaPattern() : null;
-        var newAntenna = {
-          id: antennaId,
-          x: canvasX,
-          y: canvasY,
-          z: 0, // Z is set to 0 for new antennas
+        var defaultPattern = typeof window.getDefaultAntennaPattern === 'function'
+          ? window.getDefaultAntennaPattern() : null;
+        var ap = {
+          id: antennaId, x: canvasX, y: canvasY, z: 0,
           tx: action.power !== undefined ? action.power : 15,
-          gt: 5,
-          ch: 1,
+          gt: 5, ch: 1,
           azimuth: action.azimuth !== undefined ? action.azimuth : 0,
           tilt: action.tilt !== undefined ? action.tilt : 0,
           enabled: enabled,
-          antennaPatternFile: null,
-          antennaPatternFileName: null,
+          antennaPatternFile: null, antennaPatternFileName: null
         };
+        if (defaultPattern) ap.antennaPattern = defaultPattern;
+        state.aps.push(ap);
 
-        if (defaultPattern) {
-          newAntenna.antennaPattern = defaultPattern;
-        }
-
-        state.aps.push(newAntenna);
-        // Pass false to indicate this is a backend update, not a user change
         if (typeof window.logAntennaPositionChange === 'function') {
-          window.logAntennaPositionChange(
-            antennaId,
-            antennaId,
-            0,
-            0,
-            newAntenna.x,
-            newAntenna.y,
-            false
-          );
+          window.logAntennaPositionChange(antennaId, antennaId, 0, 0, canvasX, canvasY, false);
         }
-        // console.log(
-        //   "Created new antenna:",
-        //   antennaId,
-        //   "Backend:",
-        //   backendX,
-        //   backendY,
-        //   "Canvas:",
-        //   canvasX.toFixed(2),
-        //   canvasY.toFixed(2),
-        //   "Enabled:",
-        //   enabled
-        // );
       }
     } catch (error) {
       console.error("Error updating single antenna:", error);
     }
   }
 
-  // Expose public API
+  // ── Public API ────────────────────────────────────────────────────────
+
   window.getFriendlyActionMessage = getFriendlyActionMessage;
   window.startOptimizationPolling = startOptimizationPolling;
   window.stopOptimizationPolling = stopOptimizationPolling;
