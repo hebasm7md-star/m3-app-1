@@ -1,3 +1,16 @@
+/**
+ * PropagationModel25D.js
+ * 2.5D Propagation Model - Standalone Module
+ * 
+ * This module contains all RSSI calculation logic extracted from the HTML.
+ * Can be used in Node.js or browser.
+ * 
+ * Usage:
+ *   import { PropagationModel25D } from './PropagationModel25D.js';
+ *   // or
+ *   const { PropagationModel25D } = require('./PropagationModel25D.js');
+ */
+
 class PropagationModel25D {
   /**
      * Initialize the propagation model
@@ -243,7 +256,7 @@ class PropagationModel25D {
      * @param {Object} pattern - Pattern object {horizontalData, verticalData, _maxValue}
      * @param {number} horizontalAngleDeg - Horizontal angle in degrees
      * @param {number} verticalAngleDeg - Vertical angle in degrees
-     * @returns {number} Gain in dBi (absolute gain value from pattern)
+     * @returns {number} Gain in dBi
      */
   getGainFromPattern(pattern, horizontalAngleDeg, verticalAngleDeg) {
     if (!pattern || !pattern.horizontalData || pattern.horizontalData.length === 0) {
@@ -258,26 +271,22 @@ class PropagationModel25D {
 
     // If vertical data exists and elevation is significant
     if (pattern.verticalData && pattern.verticalData.length > 0 && Math.abs(verticalAngleDeg) > 0.1) {
-      // Map elevation-relative-to-boresight to MSI vertical pattern angle
-      // MSI convention: 0° = boresight, 90° = up, 180° = back, 270° = down
-      // verticalAngleDeg: positive = RX below boresight, negative = RX above boresight
-      // Below boresight (positive) → toward 270°/down → pattern angle = 360 - deg
-      // Above boresight (negative) → toward 90°/up   → pattern angle = |deg|
-      let vAngle = ((-verticalAngleDeg % 360) + 360) % 360;
+      // Convert elevation to pattern angle (0-180 range)
+      let vAngle = 90 + verticalAngleDeg;
+      vAngle = Math.max(0, Math.min(180, vAngle));
 
       // Interpolate vertical gain
       const vGain = this.interpolateGain(pattern.verticalData, vAngle);
 
-      // Combine horizontal and vertical patterns using geometric mean
-      // This properly models 3D antenna patterns where both planes contribute
+      // Combine using geometric mean (3D patterns)
       const hGainLinear = Math.pow(10, hGain / 10);
       const vGainLinear = Math.pow(10, vGain / 10);
       const combinedGainLinear = Math.sqrt(
-        Math.max(1e-10, hGainLinear) * Math.max(1e-10, vGainLinear)
+        Math.max(0, hGainLinear) * Math.max(0, vGainLinear)
       );
 
-      // Convert back to dB
-      return 10 * this.log10(combinedGainLinear);
+      return (hGain + vGain) / 2.0;
+
     }
 
     return hGain;
@@ -305,10 +314,8 @@ class PropagationModel25D {
 
     const angleToPoint = Math.atan2(rxY - txY, rxX - txX);
     const apAzimuth = ap.azimuth || ap.heading || 0;
-    // Convert azimuth (0°=North/Up, CW) to math angle (0°=East/Right, CCW)
-    // Same conversion as the canvas drawing code: (azimuth - 90)
-    const apAngle = ((apAzimuth - 90) * Math.PI) / 180;
-    let angleDiff = angleToPoint - apAngle;
+    const apAngle = ((apAzimuth + 90) * Math.PI) / 180;
+    const angleDiff = angleToPoint - apAngle;
     const angleDiffDeg = ((angleDiff * 180 / Math.PI) + 360) % 360;
 
 
@@ -349,34 +356,18 @@ class PropagationModel25D {
       const gainDbi = this.getGainFromPattern(pattern, angleDiffDeg, elevationAngleDeg);
 
       const peakGainDbi = pattern._maxValue !== undefined ? pattern._maxValue : 
-        (pattern.gain !== undefined ? pattern.gain : (ap.gt || ap.gain || 8.0));
+        (ap.gt || ap.gain || 8.0);
 
       const exaggeratedDbDown = gainDbi * this.shapeFactor;
 
       const finalGain = peakGainDbi + exaggeratedDbDown;
 
-      console.log(`[Frontend] getAngleDependentGain -> peakGainDbi: ${peakGainDbi}, exaggeratedDbDown: ${exaggeratedDbDown}, finalGain: ${finalGain}`);
-
       return finalGain;
     }
 
-    // Fallback to simple parabolic approximation
-    // Rotate by 180 degrees when no pattern is assigned (dummy pattern)
-    if (!pattern) {
-      angleDiff += Math.PI; // Rotate by 180 degrees
-    }
-    // Normalize angleDiff to [-π, π]
-    while (angleDiff <= -Math.PI) angleDiff += 2 * Math.PI;
-    while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
-
-    // Simple parabolic approximation of a main lobe for a directional antenna.
-    // This assumes a 60-degree 3dB beamwidth.
-    const beamwidth_rad = (60 * Math.PI) / 180;
-    let attenuation = 12 * Math.pow(angleDiff / beamwidth_rad, 2);
-    // Cap attenuation at a 25dB front-to-back ratio
-    attenuation = -Math.min(attenuation, 25);
-
-    return (ap.gt || ap.gain || 0) + attenuation;
+    console.log("No pattern found, using fallback");
+    // Fallback code...
+    return (ap.gt || ap.gain || 0);
   }
 
   /**
@@ -485,3 +476,4 @@ if (typeof module !== 'undefined' && module.exports) {
 if (typeof window !== 'undefined') {
   window.PropagationModel25D = PropagationModel25D;
 }
+
