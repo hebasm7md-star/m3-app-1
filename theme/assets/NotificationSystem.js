@@ -12,7 +12,7 @@ var NotificationSystem = (function() {
 
   function isDarkMode() {
     return document.documentElement.classList.contains('dark-mode') ||
-      document.body.classList.contains('dark-mode');
+           document.body.classList.contains('dark-mode');
   }
 
   function escapeHtml(str) {

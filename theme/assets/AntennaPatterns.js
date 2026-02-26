@@ -38,54 +38,54 @@
       "Delete Pattern", 
       function (confirmed) {
         if (confirmed) {
-          for (var i = 0; i < state.aps.length; i++) {
-            if (state.aps[i].antennaPattern === pattern) {
-              state.aps[i].antennaPattern = null;
-              state.aps[i].antennaPatternFileName = null;
-            }
+        for (var i = 0; i < state.aps.length; i++) {
+          if (state.aps[i].antennaPattern === pattern) {
+            state.aps[i].antennaPattern = null;
+            state.aps[i].antennaPatternFileName = null;
           }
-
-          state.antennaPatterns.splice(patternIndex, 1);
-
-          if (state.defaultAntennaPatternIndex === patternIndex) {
-            state.defaultAntennaPatternIndex = -1;
-          } else if (state.defaultAntennaPatternIndex > patternIndex) {
-            state.defaultAntennaPatternIndex--;
-          }
-
-          if (state.antennaPatterns.length === 0) {
-            state.defaultAntennaPatternIndex = -1;
-            for (var i = 0; i < state.aps.length; i++) {
-              state.aps[i].antennaPattern = null;
-              state.aps[i].antennaPatternFileName = null;
-            }
-          } else if (state.defaultAntennaPatternIndex === -1 && state.antennaPatterns.length > 0) {
-            state.defaultAntennaPatternIndex = 0;
-          }
-
-          updateAntennaPatternsList();
-
-          if (state.antennaPatterns.length === 0) {
-            for (var j = 0; j < state.aps.length; j++) {
-              if (state.aps[j].antennaPattern !== null) {
-                state.aps[j].antennaPattern = null;
-                state.aps[j].antennaPatternFileName = null;
-              }
-            }
-          }
-
-          if (state.heatmapUpdateRequestId !== null) {
-            cancelAnimationFrame(state.heatmapUpdateRequestId);
-            state.heatmapUpdateRequestId = null;
-          }
-          state.heatmapUpdatePending = false;
-          state.cachedHeatmap = null;
-
-          if (typeof draw === "function") draw();
-
-          NotificationSystem.success("Pattern deleted successfully!");
         }
-      }, {danger: true, confirmLabel: 'Delete', icon: 'delete', isHtml: true});
+
+        state.antennaPatterns.splice(patternIndex, 1);
+
+        if (state.defaultAntennaPatternIndex === patternIndex) {
+          state.defaultAntennaPatternIndex = -1;
+        } else if (state.defaultAntennaPatternIndex > patternIndex) {
+          state.defaultAntennaPatternIndex--;
+        }
+
+        if (state.antennaPatterns.length === 0) {
+          state.defaultAntennaPatternIndex = -1;
+          for (var i = 0; i < state.aps.length; i++) {
+            state.aps[i].antennaPattern = null;
+            state.aps[i].antennaPatternFileName = null;
+          }
+        } else if (state.defaultAntennaPatternIndex === -1 && state.antennaPatterns.length > 0) {
+          state.defaultAntennaPatternIndex = 0;
+        }
+
+        updateAntennaPatternsList();
+
+        if (state.antennaPatterns.length === 0) {
+          for (var j = 0; j < state.aps.length; j++) {
+            if (state.aps[j].antennaPattern !== null) {
+              state.aps[j].antennaPattern = null;
+              state.aps[j].antennaPatternFileName = null;
+            }
+          }
+        }
+
+        if (state.heatmapUpdateRequestId !== null) {
+          cancelAnimationFrame(state.heatmapUpdateRequestId);
+          state.heatmapUpdateRequestId = null;
+        }
+        state.heatmapUpdatePending = false;
+        state.cachedHeatmap = null;
+
+        if (typeof draw === "function") draw();
+
+        NotificationSystem.success("Pattern deleted successfully!");
+      }
+    }, {danger: true, confirmLabel: 'Delete', icon: 'delete', isHtml: true});
   }
 
   function updateAntennaPatternsList() {
@@ -299,7 +299,7 @@
               for (var i = 0; i < state.antennaPatterns.length; i++) {
                 var existingPattern = state.antennaPatterns[i];
                 if (existingPattern.name === pattern.name &&
-                    existingPattern.frequency === pattern.frequency) {
+                  existingPattern.frequency === pattern.frequency) {
                   patternExists = true;
                   existingPatternIndex = i;
                   break;

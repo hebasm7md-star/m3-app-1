@@ -101,7 +101,8 @@
     }
 
     // Try to use Web Worker first (if available and not dragging)
-    if (state.heatmapWorker && !state.isDraggingAntenna) {
+    // Skip worker when backend RSRP grid is active — worker has no access to it
+    if (state.heatmapWorker && !state.isDraggingAntenna && !state.optimizationRsrpGrid) {
       state.heatmapUpdatePending = true;
 
       var resolutionMultiplier = useLowRes === true ? 1 : 1.5;
@@ -124,12 +125,12 @@
           if (ap.antennaPattern) {
             // Verify pattern has required data arrays
             var hasHorizontalData = ap.antennaPattern.horizontalData && 
-              Array.isArray(ap.antennaPattern.horizontalData) && 
-              ap.antennaPattern.horizontalData.length > 0;
+                                    Array.isArray(ap.antennaPattern.horizontalData) && 
+                                    ap.antennaPattern.horizontalData.length > 0;
             var hasVerticalData = ap.antennaPattern.verticalData && 
-              Array.isArray(ap.antennaPattern.verticalData) && 
-              ap.antennaPattern.verticalData.length > 0;
-
+                                  Array.isArray(ap.antennaPattern.verticalData) && 
+                                  ap.antennaPattern.verticalData.length > 0;
+            
             // Only include pattern if it has valid data
             if (hasHorizontalData || hasVerticalData) {
               patternData = {
@@ -139,7 +140,7 @@
               };
             }
           }
-
+          
           return {
             id: ap.id,
             x: ap.x,
@@ -166,19 +167,19 @@
         highlight: state.highlight,
         defaultPattern:
           state.defaultAntennaPatternIndex >= 0 &&
-          state.antennaPatterns[state.defaultAntennaPatternIndex]
-          ? {
-            horizontalData:
-              state.antennaPatterns[state.defaultAntennaPatternIndex]
-              .horizontalData,
-            verticalData:
-              state.antennaPatterns[state.defaultAntennaPatternIndex]
-              .verticalData,
-            _maxValue:
-              state.antennaPatterns[state.defaultAntennaPatternIndex]
-              ._maxValue,
-          }
-          : null,
+            state.antennaPatterns[state.defaultAntennaPatternIndex]
+            ? {
+              horizontalData:
+                state.antennaPatterns[state.defaultAntennaPatternIndex]
+                  .horizontalData,
+              verticalData:
+                state.antennaPatterns[state.defaultAntennaPatternIndex]
+                  .verticalData,
+              _maxValue:
+                state.antennaPatterns[state.defaultAntennaPatternIndex]
+                  ._maxValue,
+            }
+            : null,
         apColorMap: state.apColorMap,
         freq: state.freq || 2400,
         N: state.N || 2.5,
@@ -261,27 +262,27 @@
               // Backend data is row-major (y outer, x inner): data[y_idx * cols + x_idx]
               if (state.optimizationRsrpGrid && state.view === "rssi") {
                 var bgrid = state.optimizationRsrpGrid;
-
+                
                 var bx = x / bgrid.dx;
                 var by = y / bgrid.dy;
-
+                
                 var gx0 = Math.max(0, Math.min(bgrid.cols - 1, Math.floor(bx - 0.5)));
                 var gx1 = Math.max(0, Math.min(bgrid.cols - 1, gx0 + 1));
                 var gy0 = Math.max(0, Math.min(bgrid.rows - 1, Math.floor(by - 0.5)));
                 var gy1 = Math.max(0, Math.min(bgrid.rows - 1, gy0 + 1));
-
+                
                 var tx = (bx - 0.5) - gx0;
                 var ty = (by - 0.5) - gy0;
-
+                
                 var v00 = bgrid.data[gy0 * bgrid.cols + gx0];
                 var v10 = bgrid.data[gy0 * bgrid.cols + gx1];
                 var v01 = bgrid.data[gy1 * bgrid.cols + gx0];
                 var v11 = bgrid.data[gy1 * bgrid.cols + gx1];
-
+                
                 var v0 = v00 * (1 - tx) + v10 * tx;
                 var v1 = v01 * (1 - tx) + v11 * tx;
                 var bval = v0 * (1 - ty) + v1 * ty;
-
+                
                 if (!isNaN(bval)) {
                   var bcolor = colorNumeric(bval);
                   img.data[idx] = bcolor[0];

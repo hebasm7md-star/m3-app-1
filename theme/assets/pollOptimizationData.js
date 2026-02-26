@@ -51,7 +51,7 @@ var OptimizationSystem = (function () {
   function setFooter(badge, msg, badgeText, msgText, addClass) {
     if (badge) {
       badge.textContent = badgeText;
-      badge.classList.remove('active', 'manual', 'optimizing');
+      badge.classList.remove('active', 'manual', 'optimizing', 'completed');
       if (addClass) badge.classList.add(addClass);
     }
     if (msg && msgText) msg.textContent = msgText;
@@ -75,7 +75,7 @@ var OptimizationSystem = (function () {
     if (status !== 'finished' && status !== 'error') return;
     stopOptimizationPolling();
     if (status === 'finished') {
-      setFooter(footerBadge, footerMessage, 'COMPLETED', "Optimization process successfully completed.");
+      setFooter(footerBadge, footerMessage, 'COMPLETED', "Optimization process successfully completed.", 'completed');
       if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportBackendRsrpGrid) {
         DataExportSystem.exportBackendRsrpGrid();
       }
@@ -132,8 +132,8 @@ var OptimizationSystem = (function () {
     }
 
     console.log("[BackendRSRP] Grid:", cols, "x", rows,
-                "| dx:", (state.w / cols).toFixed(3), "dy:", (state.h / rows).toFixed(3),
-                "| RSRP:", dataMin.toFixed(1), "to", dataMax.toFixed(1));
+      "| dx:", (state.w / cols).toFixed(3), "dy:", (state.h / rows).toFixed(3),
+      "| RSRP:", dataMin.toFixed(1), "to", dataMax.toFixed(1));
   }
 
   // ── Main Update Handler ───────────────────────────────────────────────
@@ -207,7 +207,7 @@ var OptimizationSystem = (function () {
       } else if (status === 'running') {
         setFooter(footerBadge, footerMessage, 'OPTIMIZING', message || 'Running...', 'optimizing');
       } else if (status === 'finished') {
-        setFooter(footerBadge, footerMessage, 'COMPLETED', message || 'Completed');
+        setFooter(footerBadge, footerMessage, 'COMPLETED', message || 'Completed', 'completed');
       } else if (status === 'error') {
         setFooter(footerBadge, footerMessage, 'ERROR', message || 'Error occurred');
       } else {
@@ -275,7 +275,7 @@ var OptimizationSystem = (function () {
 
       var enabledRaw = pickField(action, ['is_turnning_on', 'on', 'enabled']);
       var enabled = enabledRaw === "True" || enabledRaw === true ||
-        enabledRaw === "true" || enabledRaw === 1 || enabledRaw === "1";
+                    enabledRaw === "true" || enabledRaw === 1 || enabledRaw === "1";
 
       if (!antennaId || !Number.isFinite(backendX) || !Number.isFinite(backendY)) {
         console.warn("Invalid action config:", action);

@@ -207,7 +207,7 @@ var DataExportSystem = (function () {
       NotificationSystem.toast(' Detailed coverage data exported (' + count + ' points)', 'success');
       console.log('Detailed coverage exported:', { points: count, filename: finalFileName });
     },
-    // HEBA : this function used only for dubugging the rsrp grid from the backend
+// HEBA : this function used only for dubugging the rsrp grid from the backend
     exportBackendRsrpGrid: function (fileName) {
       if (!_state) {
         console.error('DataExportSystem not initialized.');

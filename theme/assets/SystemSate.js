@@ -28,7 +28,7 @@
       floorPlanes: state.floorPlanes,
       groundPlane: state.groundPlane,
     };
-
+    
     var stateStr = JSON.stringify(stateObj);
 
     if (undoStack.length > 0) {
@@ -44,10 +44,10 @@
     if (undoStack.length > MAX_UNDO) {
       undoStack.shift();
     }
-
+    
     // Clear redo stack on new action
     redoStack = [];
-
+    
     updateUndoButton();
     updateRedoButton();
   }
@@ -62,22 +62,22 @@
       floorPlanes: JSON.parse(JSON.stringify(state.floorPlanes)),
       groundPlane: JSON.parse(JSON.stringify(state.groundPlane)),
     };
-
+    
     // Duplicate check for redoStack
     var currentStr = JSON.stringify(currentState);
     var pushToRedo = true;
     if (redoStack.length > 0) {
-      var lastRedoStr = JSON.stringify(redoStack[redoStack.length - 1]);
-      if (currentStr === lastRedoStr) {
-        pushToRedo = false;
-      }
+        var lastRedoStr = JSON.stringify(redoStack[redoStack.length - 1]);
+        if (currentStr === lastRedoStr) {
+            pushToRedo = false;
+        }
     }
-
+    
     if (pushToRedo) {
-      redoStack.push(currentState);
-      if (redoStack.length > MAX_UNDO) {
-        redoStack.shift();
-      }
+        redoStack.push(currentState);
+        if (redoStack.length > MAX_UNDO) {
+          redoStack.shift();
+        }
     }
 
     var prev = undoStack.pop();
@@ -94,22 +94,22 @@
       floorPlanes: JSON.parse(JSON.stringify(state.floorPlanes)),
       groundPlane: JSON.parse(JSON.stringify(state.groundPlane)),
     };
-
+    
     // Duplicate check for undoStack
     var currentStr = JSON.stringify(currentState);
     var pushToUndo = true;
     if (undoStack.length > 0) {
-      var lastUndoStr = JSON.stringify(undoStack[undoStack.length - 1]);
-      if (currentStr === lastUndoStr) {
-        pushToUndo = false;
-      }
+        var lastUndoStr = JSON.stringify(undoStack[undoStack.length - 1]);
+        if (currentStr === lastUndoStr) {
+            pushToUndo = false;
+        }
     }
-
+    
     if (pushToUndo) {
-      undoStack.push(currentState);
-      if (undoStack.length > MAX_UNDO) {
-        undoStack.shift();
-      }
+        undoStack.push(currentState);
+        if (undoStack.length > MAX_UNDO) {
+          undoStack.shift();
+        }
     }
 
     var next = redoStack.pop();
@@ -131,7 +131,7 @@
         initHeatmapWorker();
       }
     }
-
+    
     if (typeof invalidateHeatmapCache === "function") {
       invalidateHeatmapCache();
     }
@@ -141,7 +141,7 @@
     state.selectedWallIds = [];
     state.selectedWallId = null;
     state.selectedApForDetail = null;
-
+    
     var apDetailSidebar = document.getElementById("apDetailSidebar");
     if (apDetailSidebar) apDetailSidebar.classList.remove("visible");
 
