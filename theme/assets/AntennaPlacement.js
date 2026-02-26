@@ -802,7 +802,7 @@
       : state.view === "thr"
       ? "Throughput"
       : "Signal";
-    console.log("Placing " + count + " antenna(s) in grid pattern...");
+    // console.log("Placing " + count + " antenna(s) in grid pattern...");
 
     saveState(); // Save state BEFORE mutating state.aps (fixes auto-placement undo issue)
 

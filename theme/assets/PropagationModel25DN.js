@@ -27,6 +27,7 @@ class PropagationModel25D {
     this.shapeFactor = config.shapeFactor || 3.0;
     this.referenceOffset = config.referenceOffset || 0.0;
     this.minDistance = 0.5;  // Minimum distance in meters
+    this._p25dLogged = false;
   }
 
   /**
@@ -429,7 +430,10 @@ class PropagationModel25D {
 
     const totalLoss = baseLoss + wallAttenuation + groundAttenuation + floorPlaneAttenuation + this.verticalFactor;
 
-    console.log(`[Frontend] p25dLoss -> d=${d.toFixed(2)}m, baseLoss=${baseLoss.toFixed(2)}, walls=${wallAttenuation.toFixed(2)}, ground=${groundAttenuation.toFixed(2)}, floor=${floorPlaneAttenuation.toFixed(2)}, verticalFactor=${this.verticalFactor.toFixed(2)}, totalLoss=${totalLoss.toFixed(2)}`);
+    if (!this._p25dLogged) {
+      console.log(`[Frontend] p25dLoss -> d=${d.toFixed(2)}m, baseLoss=${baseLoss.toFixed(2)}, walls=${wallAttenuation.toFixed(2)}, ground=${groundAttenuation.toFixed(2)}, floor=${floorPlaneAttenuation.toFixed(2)}, verticalFactor=${this.verticalFactor.toFixed(2)}, totalLoss=${totalLoss.toFixed(2)}`);
+      this._p25dLogged = true;
+    }
 
     return totalLoss;
   }
