@@ -185,7 +185,8 @@
         var gainStr = line.substring(5).trim();
         var parsedGain = parseFloat(gainStr);
         if (!isNaN(parsedGain)) {
-          pattern.gain = /dBd/i.test(gainStr) ? parsedGain + 2.15 : parsedGain;
+          // If the unit is dB or dBd (not dBi), convert to dBi by adding 2.15
+          pattern.gain = /db(?!i)/i.test(gainStr) ? parsedGain + 2.15 : parsedGain;
         }
       } else if (line.startsWith("HORIZONTAL")) {
         currentSection = "horizontal";

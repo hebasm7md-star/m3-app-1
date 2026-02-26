@@ -256,7 +256,7 @@ class PropagationModel25D {
      * @param {Object} pattern - Pattern object {horizontalData, verticalData, _maxValue}
      * @param {number} horizontalAngleDeg - Horizontal angle in degrees
      * @param {number} verticalAngleDeg - Vertical angle in degrees
-     * @returns {number} Gain in dBi
+     * @returns {number} Gain in dBi (absolute gain value from pattern)
      */
   getGainFromPattern(pattern, horizontalAngleDeg, verticalAngleDeg) {
     if (!pattern || !pattern.horizontalData || pattern.horizontalData.length === 0) {
@@ -271,22 +271,26 @@ class PropagationModel25D {
 
     // If vertical data exists and elevation is significant
     if (pattern.verticalData && pattern.verticalData.length > 0 && Math.abs(verticalAngleDeg) > 0.1) {
-      // Convert elevation to pattern angle (0-180 range)
-      let vAngle = 90 + verticalAngleDeg;
-      vAngle = Math.max(0, Math.min(180, vAngle));
+      // Map elevation-relative-to-boresight to MSI vertical pattern angle
+      // MSI convention: 0° = boresight, 90° = up, 180° = back, 270° = down
+      // verticalAngleDeg: positive = RX below boresight, negative = RX above boresight
+      // Below boresight (positive) → toward 270°/down → pattern angle = 360 - deg
+      // Above boresight (negative) → toward 90°/up   → pattern angle = |deg|
+      let vAngle = ((-verticalAngleDeg % 360) + 360) % 360;
 
       // Interpolate vertical gain
       const vGain = this.interpolateGain(pattern.verticalData, vAngle);
 
-      // Combine using geometric mean (3D patterns)
+      // Combine horizontal and vertical patterns using geometric mean
+      // This properly models 3D antenna patterns where both planes contribute
       const hGainLinear = Math.pow(10, hGain / 10);
       const vGainLinear = Math.pow(10, vGain / 10);
       const combinedGainLinear = Math.sqrt(
-        Math.max(0, hGainLinear) * Math.max(0, vGainLinear)
+        Math.max(1e-10, hGainLinear) * Math.max(1e-10, vGainLinear)
       );
 
-      return (hGain + vGain) / 2.0;
-
+      // Convert back to dB
+      return 10 * this.log10(combinedGainLinear);
     }
 
     return hGain;
@@ -314,8 +318,10 @@ class PropagationModel25D {
 
     const angleToPoint = Math.atan2(rxY - txY, rxX - txX);
     const apAzimuth = ap.azimuth || ap.heading || 0;
-    const apAngle = ((apAzimuth + 90) * Math.PI) / 180;
-    const angleDiff = angleToPoint - apAngle;
+    // Convert azimuth (0°=North/Up, CW) to math angle (0°=East/Right, CCW)
+    // Same conversion as the canvas drawing code: (azimuth - 90)
+    const apAngle = ((apAzimuth - 90) * Math.PI) / 180;
+    let angleDiff = angleToPoint - apAngle;
     const angleDiffDeg = ((angleDiff * 180 / Math.PI) + 360) % 360;
 
 
@@ -356,18 +362,37 @@ class PropagationModel25D {
       const gainDbi = this.getGainFromPattern(pattern, angleDiffDeg, elevationAngleDeg);
 
       const peakGainDbi = pattern._maxValue !== undefined ? pattern._maxValue : 
-        (ap.gt || ap.gain || 8.0);
+        (pattern.gain !== undefined ? pattern.gain : (ap.gt || ap.gain || 8.0));
 
-      const exaggeratedDbDown = gainDbi * this.shapeFactor;
+      // In JS, getGainFromPattern actually returns the relative negative gain (dbDown)
+      // because the parser forces all MSI values to negative.
+      const dbDown = gainDbi;
+      const exaggeratedDbDown = dbDown * this.shapeFactor;
 
       const finalGain = peakGainDbi + exaggeratedDbDown;
+
+      console.log(`[Frontend] getAngleDependentGain -> peakGainDbi: ${peakGainDbi}, dbDown: ${dbDown}, exaggeratedDbDown: ${exaggeratedDbDown}, finalGain: ${finalGain}`);
 
       return finalGain;
     }
 
-    console.log("No pattern found, using fallback");
-    // Fallback code...
-    return (ap.gt || ap.gain || 0);
+    // Fallback to simple parabolic approximation
+    // Rotate by 180 degrees when no pattern is assigned (dummy pattern)
+    if (!pattern) {
+      angleDiff += Math.PI; // Rotate by 180 degrees
+    }
+    // Normalize angleDiff to [-π, π]
+    while (angleDiff <= -Math.PI) angleDiff += 2 * Math.PI;
+    while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+
+    // Simple parabolic approximation of a main lobe for a directional antenna.
+    // This assumes a 60-degree 3dB beamwidth.
+    const beamwidth_rad = (60 * Math.PI) / 180;
+    let attenuation = 12 * Math.pow(angleDiff / beamwidth_rad, 2);
+    // Cap attenuation at a 25dB front-to-back ratio
+    attenuation = -Math.min(attenuation, 25);
+
+    return (ap.gt || ap.gain || 0) + attenuation;
   }
 
   /**
@@ -396,14 +421,17 @@ class PropagationModel25D {
 
     // Base loss
     const baseLoss = refLoss1m + distanceLoss;
-    console.log(`Base FSPL loss from AP to RX at (${rxPos.x}, ${rxPos.y}): ${baseLoss.toFixed(2)} dB`);
 
     // Environmental losses
     const wallAttenuation = this.wallsLoss(txPos, rxPos, walls, elementTypes);
     const groundAttenuation = this.groundPlaneLoss(txPos, rxPos, groundPlaneConfig);
     const floorPlaneAttenuation = this.floorPlanesLoss(txPos, rxPos, floorPlanes);
 
-    return baseLoss + wallAttenuation + groundAttenuation + floorPlaneAttenuation + this.verticalFactor;
+    const totalLoss = baseLoss + wallAttenuation + groundAttenuation + floorPlaneAttenuation + this.verticalFactor;
+
+    console.log(`[Frontend] p25dLoss -> d=${d.toFixed(2)}m, baseLoss=${baseLoss.toFixed(2)}, walls=${wallAttenuation.toFixed(2)}, ground=${groundAttenuation.toFixed(2)}, floor=${floorPlaneAttenuation.toFixed(2)}, verticalFactor=${this.verticalFactor.toFixed(2)}, totalLoss=${totalLoss.toFixed(2)}`);
+
+    return totalLoss;
   }
 
   /**
@@ -431,10 +459,15 @@ class PropagationModel25D {
   calculateRSSI(ap, rxPos, walls = [], floorPlanes = [], groundPlaneConfig = null, elementTypes = null, patterns = null) {
     const txPos = { x: ap.x, y: ap.y };
     const loss = this.p25dLoss(txPos, rxPos, walls, floorPlanes, groundPlaneConfig, elementTypes);
-    console.log(`Calculated path loss from AP at (${ap.x}, ${ap.y}) to RX at (${rxPos.x}, ${rxPos.y}): ${loss.toFixed(2)} dB`);
     const gain = this.getAngleDependentGain(ap, rxPos, patterns);
-    console.log(`Calculated angle-dependent gain from AP at (${ap.x}, ${ap.y}) to RX at (${rxPos.x}, ${rxPos.y}): ${gain.toFixed(2)} dB`);
-    return this.rssi(ap.tx, gain, loss);
+
+    const tx = ap.tx;
+    const offset = this.referenceOffset;
+    const finalRssi = this.rssi(tx, gain, loss);
+
+    console.log(`[Frontend] calculateRSSI -> rx=({x: ${rxPos.x.toFixed(2)}, y: ${rxPos.y.toFixed(2)}}), tx=${tx}, gain=${gain.toFixed(2)}, loss=${loss.toFixed(2)}, offset=${offset}, finalRssi=${finalRssi.toFixed(2)}`);
+
+    return finalRssi;
   }
 
   /**
@@ -476,4 +509,3 @@ if (typeof module !== 'undefined' && module.exports) {
 if (typeof window !== 'undefined') {
   window.PropagationModel25D = PropagationModel25D;
 }
-

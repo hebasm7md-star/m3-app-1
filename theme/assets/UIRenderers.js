@@ -157,12 +157,12 @@
           }
 
           renderAPs(); // Update button states
-          
+
           // Start heatmap regeneration BEFORE draw() to minimize delay and prevent flash
           if (state.showVisualization) {
             generateHeatmapAsync(null, true); // Start with low-res for fast update
           }
-          
+
           // Draw after starting regeneration - validation will prevent using stale cache
           draw();
           return false;
@@ -371,7 +371,7 @@
                       var existingPattern = state.antennaPatterns[i];
                       // Check by name and frequency (primary check)
                       if (existingPattern.name === pattern.name &&
-                        existingPattern.frequency === pattern.frequency) {
+                          existingPattern.frequency === pattern.frequency) {
                         patternExists = true;
                         existingPatternIndex = i;
                         break;
@@ -407,7 +407,7 @@
                           window.parent.postMessage({
                             type: 'upload_antenna_pattern',
                             filename: file.name,
-                            content: event.target.result
+                            content: pattern.rawContent || event.target.result
                           }, '*');
                         }
 
@@ -576,12 +576,12 @@
           renderAPs();
           renderApDetails(); // Update right sidebar if this antenna is selected
           updateActiveAntennaStats(); // Update active antenna stats
-          
+
           // Start heatmap regeneration BEFORE draw() to minimize delay and prevent flash
           if (state.showVisualization) {
             generateHeatmapAsync(null, true); // Start with low-res for fast update
           }
-          
+
           // Draw after starting regeneration - validation will prevent using stale cache
           draw();
         };
@@ -596,7 +596,7 @@
             state.selectedApId = null;
             state.highlight = false;
           }
-          
+
           // Cancel any pending heatmap updates and invalidate cache IMMEDIATELY
           // This prevents the old cached heatmap from being rendered even for a single frame
           if (state.heatmapUpdateRequestId !== null) {
@@ -608,15 +608,15 @@
           state.cachedHeatmapAntennaCount = 0;
           state.heatmapUpdatePending = true; // Set to true to prevent using any stale cache
           state.heatmapWorkerCallback = null; // Clear any pending worker callback
-          
+
           renderAPs();
           updateActiveAntennaStats(); // Update active antenna stats
-          
+
           // Start heatmap regeneration BEFORE draw() to minimize delay
           if (state.showVisualization) {
             generateHeatmapAsync(null, true); // Start with low-res for fast update
           }
-          
+
           // Draw after starting regeneration - validation will prevent using stale cache
           draw();
         };
@@ -981,8 +981,8 @@
         var inclination = fp.inclination !== undefined ? fp.inclination : 0;
         var inclinationDir =
           fp.inclinationDirection !== undefined
-            ? fp.inclinationDirection
-            : 0;
+          ? fp.inclinationDirection
+          : 0;
 
         content.innerHTML =
           '<label style="font-size:10.5px; margin-top:4px;">Attenuation (dB):</label>' +
@@ -1000,15 +1000,15 @@
           (planeType === "inclined" ? " selected" : "") +
           ">Inclined</option></select>" +
           (planeType === "inclined"
-            ? '<label style="font-size:10.5px; margin-top:4px;">Inclination (\u00B0):</label>' +
-            '<input type="number" step="1" value="' +
-            inclination +
-            '" title="Inclination angle" style="margin-bottom:8px;">' +
-            '<label style="font-size:10.5px; margin-top:4px;">Direction (\u00B0):</label>' +
-            '<input type="number" step="1" value="' +
-            inclinationDir +
-            '" title="Inclination direction">'
-            : "");
+           ? '<label style="font-size:10.5px; margin-top:4px;">Inclination (\u00B0):</label>' +
+           '<input type="number" step="1" value="' +
+           inclination +
+           '" title="Inclination angle" style="margin-bottom:8px;">' +
+           '<label style="font-size:10.5px; margin-top:4px;">Direction (\u00B0):</label>' +
+           '<input type="number" step="1" value="' +
+           inclinationDir +
+           '" title="Inclination direction">'
+           : "");
 
         var inputs = content.getElementsByTagName("input");
         var selects = content.getElementsByTagName("select");
@@ -1150,8 +1150,8 @@
             if (state.selectedWallId === w.id) {
               state.selectedWallId =
                 state.selectedWallIds.length > 0
-                  ? state.selectedWallIds[0]
-                  : null;
+                ? state.selectedWallIds[0]
+                : null;
             }
           } else {
             // Add to selection
@@ -1222,10 +1222,10 @@
           if (!w.width) {
             w.width =
               w.elementType === "window"
-                ? 1.5
-                : w.elementType === "doubleDoor"
-                  ? 2.4
-                  : 1.2;
+              ? 1.5
+              : w.elementType === "doubleDoor"
+              ? 2.4
+              : 1.2;
           }
           var currentWidth = w.width;
           contentHTML +=
@@ -1298,10 +1298,10 @@
         // Find the loss input (last input if width exists, or first input if not)
         var lossInput =
           w.elementType === "door" ||
-            w.elementType === "doubleDoor" ||
-            w.elementType === "window"
-            ? inp[inp.length - 1]
-            : inp[0];
+          w.elementType === "doubleDoor" ||
+          w.elementType === "window"
+          ? inp[inp.length - 1]
+          : inp[0];
         if (lossInput) {
           // Prevent click from closing sidebar
           lossInput.onclick = function (e) {
@@ -1655,10 +1655,10 @@
         if (
           isNumeric &&
           (key === "tx" ||
-            key === "gt" ||
-            key === "ch" ||
-            key === "azimuth" ||
-            key === "tilt")
+           key === "gt" ||
+           key === "ch" ||
+           key === "azimuth" ||
+           key === "tilt")
         ) {
           if (input) input.addEventListener("blur", function () {
             var value = input.value.trim();
@@ -1746,12 +1746,12 @@
 
           renderAPs();
           renderApDetails();
-          
+
           // Start heatmap regeneration BEFORE draw() to minimize delay and prevent flash
           if (state.showVisualization) {
             generateHeatmapAsync(null, true); // Start with low-res for fast update
           }
-          
+
           // Draw after starting regeneration - validation will prevent using stale cache
           draw();
         });
@@ -1821,12 +1821,12 @@
 
           renderAPs(); // Update button states
           renderApDetails(); // Update the select button state
-          
+
           // Start heatmap regeneration BEFORE draw() to minimize delay and prevent flash
           if (state.showVisualization) {
             generateHeatmapAsync(null, true); // Start with low-res for fast update
           }
-          
+
           // Draw after starting regeneration - validation will prevent using stale cache
           draw();
         });
