@@ -13,7 +13,6 @@ class Combined(CombinedTemplate):
     self.last_index = 0
     self._reset_session()
 
-
     filepath = "_/theme/index.html"
     html_panel = HtmlPanel(
       html=f"""
@@ -27,7 +26,9 @@ class Combined(CombinedTemplate):
                         margin: 0; padding: 0; z-index: 1;
                     }}
                 </style>
+                <!-- <iframe src="{filepath}" id="ips-studio"></iframe> -->
                 <iframe src="{filepath}" id="ips-studio" allow="file-system-access"></iframe>
+
                 <script>
                     window.anvilIframeMessages = [];
 
@@ -304,6 +305,7 @@ class Combined(CombinedTemplate):
       print("[SUCCESS] Optimization started!")
       self._send_to_iframe("optimization_started", success=True)
       self.opt_running = True
+      self.last_index = 0
 
     elif status == "busy":
       self._send_to_iframe("optimization_started", success=False, message="Optimization already running")
@@ -329,6 +331,7 @@ class Combined(CombinedTemplate):
 
     if status == "error":
       self.opt_running = False
+      self.last_index = 0
       self._send_error("optimization_error", message or "Optimization failed")
       return
 
@@ -348,6 +351,7 @@ class Combined(CombinedTemplate):
 
     if status == "idle":
       self.opt_running = False
+      self.last_index = 0
       print("[!] Optimization is idle")
       return
 
@@ -459,6 +463,8 @@ class Combined(CombinedTemplate):
     self._reset_session()
 
   def _reset_session(self):
+    self.opt_running = False
+    self.last_index = 0
     print("Resetting backend session...")
     while True:
       try:

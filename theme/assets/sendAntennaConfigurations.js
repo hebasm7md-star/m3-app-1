@@ -2,7 +2,7 @@
 // Depends on: global state, draw(), renderAPs(), renderApDetails(), NotificationSystem, CoordinateSystem (worldToCanvasPixels)
 
 var BackendSync = (function () {
-  
+
   // Store antenna position history
   var antennaPositionHistory = [];
   var currentAntennaDataFileName = null; // Track the JSON filename for the current project
@@ -357,10 +357,10 @@ var BackendSync = (function () {
         var backendY = config.Y || config.y;
         var enabled =
           config.on !== undefined
-            ? config.on
-            : config.enabled !== undefined
-              ? config.enabled
-              : true;
+          ? config.on
+          : config.enabled !== undefined
+          ? config.enabled
+          : true;
 
         if (!antennaId) {
           console.warn("Skipping config without ID:", config);
@@ -500,23 +500,20 @@ var BackendSync = (function () {
     // Handle optimization status updates (for streaming mode)
     if (event.data && event.data.type === "optimization_update") {
       // console.log("[HTML] Received optimization_update:", {
-      //   actionCount: (event.data.new_action_configs || []).length,
-      //   state: event.data.state,
-      //   lastIndex: event.data.last_index
-      // });
+        actionCount: (event.data.new_action_configs || []).length,
+        state: event.data.state,
+        lastIndex: event.data.last_index
+      });
       if (typeof window.handleOptimizationUpdate === 'function') {
         window.handleOptimizationUpdate(event.data);
       }
     }
 
-    // Handle optimization started
+    // Handle optimization started (polling is driven by Anvil timer, not JS interval)
     if (event.data && event.data.type === "optimization_started") {
-      console.log("Optimization started, beginning polling...");
+      console.log("Optimization started");
       window.optimizationLastIndex = 0;
       window.optimizationBounds = null;
-      if (typeof window.startOptimizationPolling === 'function') {
-        window.startOptimizationPolling();
-      }
     }
 
     // Handle optimization completed
@@ -535,13 +532,13 @@ var BackendSync = (function () {
 
       if (window.renderAPs) window.renderAPs();
       if (window.renderApDetails) window.renderApDetails();
-      
+
       if (addAPBtn) {
         addAPBtn.disabled = false;
         addAPBtn.style.opacity = '1';
         addAPBtn.style.pointerEvents = 'auto';
       }
-      
+
       var footerBadge = document.getElementById('footerBadge');
       var footerMessage = document.getElementById('footerMessage');
       if (footerBadge) {
@@ -569,13 +566,13 @@ var BackendSync = (function () {
       }
       if (window.renderAPs) window.renderAPs();
       if (window.renderApDetails) window.renderApDetails();
-      
+
       if (addAPBtn) {
         addAPBtn.disabled = false;
         addAPBtn.style.opacity = '1';
         addAPBtn.style.pointerEvents = 'auto';
       }
-      
+
       var footerBadge = document.getElementById('footerBadge');
       var footerMessage = document.getElementById('footerMessage');
       if (footerBadge) {
