@@ -738,12 +738,10 @@ function draw() {
   // Update Three.js camera if in 3D mode
   var transition = state.viewModeTransition;
   if (transition > 0 && state.useThreeJS && state.threeRenderer) {
-    updateThreeJSCamera();
-    // Update pointer-events based on view mode
-    updateThreeCanvasPointerEvents();
+    if (typeof updateThreeJSCamera === 'function') updateThreeJSCamera();
+    if (typeof updateThreeCanvasPointerEvents === 'function') updateThreeCanvasPointerEvents();
   } else {
-    // Ensure pointer-events is 'none' in 2D mode
-    updateThreeCanvasPointerEvents();
+    if (typeof updateThreeCanvasPointerEvents === 'function') updateThreeCanvasPointerEvents();
   }
 
   // Continue animation if transitioning (will be called again at end of function)
@@ -2159,132 +2157,132 @@ function draw() {
             var cp1Bottom = {
               x: cp1_2d.x + (cp1Bottom_3d.x - cp1_2d.x) * transition,
               y: cp1_2d.y + (cp1Bottom_3d.y - cp1_2d.y) * transition,
-            };
-            var cp2Bottom = {
-              x: cp2_2d.x + (cp2Bottom_3d.x - cp2_2d.x) * transition,
-              y: cp2_2d.y + (cp2Bottom_3d.y - cp2_2d.y) * transition,
-            };
-            var cp3Bottom = {
-              x: cp3_2d.x + (cp3Bottom_3d.x - cp3_2d.x) * transition,
-              y: cp3_2d.y + (cp3Bottom_3d.y - cp3_2d.y) * transition,
-            };
-            var cp4Bottom = {
-              x: cp4_2d.x + (cp4Bottom_3d.x - cp4_2d.x) * transition,
-              y: cp4_2d.y + (cp4Bottom_3d.y - cp4_2d.y) * transition,
-            };
+              };
+              var cp2Bottom = {
+                x: cp2_2d.x + (cp2Bottom_3d.x - cp2_2d.x) * transition,
+                y: cp2_2d.y + (cp2Bottom_3d.y - cp2_2d.y) * transition,
+              };
+              var cp3Bottom = {
+                x: cp3_2d.x + (cp3Bottom_3d.x - cp3_2d.x) * transition,
+                y: cp3_2d.y + (cp3Bottom_3d.y - cp3_2d.y) * transition,
+              };
+              var cp4Bottom = {
+                x: cp4_2d.x + (cp4Bottom_3d.x - cp4_2d.x) * transition,
+                y: cp4_2d.y + (cp4Bottom_3d.y - cp4_2d.y) * transition,
+              };
 
-            var cp1Top = {
-              x: cp1_2d.x + (cp1Top_3d.x - cp1_2d.x) * transition,
-              y: cp1_2d.y + (cp1Top_3d.y - cp1_2d.y) * transition,
-            };
-            var cp2Top = {
-              x: cp2_2d.x + (cp2Top_3d.x - cp2_2d.x) * transition,
-              y: cp2_2d.y + (cp2Top_3d.y - cp2_2d.y) * transition,
-            };
-            var cp3Top = {
-              x: cp3_2d.x + (cp3Top_3d.x - cp3_2d.x) * transition,
-              y: cp3_2d.y + (cp3Top_3d.y - cp3_2d.y) * transition,
-            };
-            var cp4Top = {
-              x: cp4_2d.x + (cp4Top_3d.x - cp4_2d.x) * transition,
-              y: cp4_2d.y + (cp4Top_3d.y - cp4_2d.y) * transition,
-            };
+              var cp1Top = {
+                x: cp1_2d.x + (cp1Top_3d.x - cp1_2d.x) * transition,
+                y: cp1_2d.y + (cp1Top_3d.y - cp1_2d.y) * transition,
+              };
+              var cp2Top = {
+                x: cp2_2d.x + (cp2Top_3d.x - cp2_2d.x) * transition,
+                y: cp2_2d.y + (cp2Top_3d.y - cp2_2d.y) * transition,
+              };
+              var cp3Top = {
+                x: cp3_2d.x + (cp3Top_3d.x - cp3_2d.x) * transition,
+                y: cp3_2d.y + (cp3Top_3d.y - cp3_2d.y) * transition,
+              };
+              var cp4Top = {
+                x: cp4_2d.x + (cp4Top_3d.x - cp4_2d.x) * transition,
+                y: cp4_2d.y + (cp4Top_3d.y - cp4_2d.y) * transition,
+              };
 
-            // Get wall color (use first wall's color)
-            var wallColor = w1.color || "#60a5fa";
-            var rgb = hexToRgb(wallColor);
-            if (!rgb) {
-              rgb = { r: 96, g: 165, b: 250 };
-            }
-            var avgDepth =
-              (cp1Bottom_3d.depth +
-               cp2Bottom_3d.depth +
-               cp3Bottom_3d.depth +
-               cp4Bottom_3d.depth) /
-              4;
-            var lightFactor = Math.max(
-              0.4,
-              Math.min(1.0, 0.7 + avgDepth * 0.01)
-            );
-            var shadedColor =
-              "rgb(" +
-              Math.round(rgb.r * lightFactor) +
-              "," +
-              Math.round(rgb.g * lightFactor) +
-              "," +
-              Math.round(rgb.b * lightFactor) +
-              ")";
-            var darkerColor =
-              "rgb(" +
-              Math.round(rgb.r * lightFactor * 0.7) +
-              "," +
-              Math.round(rgb.g * lightFactor * 0.7) +
-              "," +
-              Math.round(rgb.b * lightFactor * 0.7) +
-              ")";
+              // Get wall color (use first wall's color)
+              var wallColor = w1.color || "#60a5fa";
+              var rgb = hexToRgb(wallColor);
+              if (!rgb) {
+                rgb = { r: 96, g: 165, b: 250 };
+              }
+              var avgDepth =
+                (cp1Bottom_3d.depth +
+                  cp2Bottom_3d.depth +
+                  cp3Bottom_3d.depth +
+                  cp4Bottom_3d.depth) /
+                4;
+              var lightFactor = Math.max(
+                0.4,
+                Math.min(1.0, 0.7 + avgDepth * 0.01)
+              );
+              var shadedColor =
+                "rgb(" +
+                Math.round(rgb.r * lightFactor) +
+                "," +
+                Math.round(rgb.g * lightFactor) +
+                "," +
+                Math.round(rgb.b * lightFactor) +
+                ")";
+              var darkerColor =
+                "rgb(" +
+                Math.round(rgb.r * lightFactor * 0.7) +
+                "," +
+                Math.round(rgb.g * lightFactor * 0.7) +
+                "," +
+                Math.round(rgb.b * lightFactor * 0.7) +
+                ")";
 
-            ctx.save();
-            ctx.globalAlpha = 1.0;
-            ctx.globalCompositeOperation = "source-over";
+              ctx.save();
+              ctx.globalAlpha = 1.0;
+              ctx.globalCompositeOperation = "source-over";
 
-            // Draw corner block faces
-            // Top face
-            ctx.beginPath();
-            ctx.moveTo(cp1Top.x, cp1Top.y);
-            ctx.lineTo(cp2Top.x, cp2Top.y);
-            ctx.lineTo(cp4Top.x, cp4Top.y);
-            ctx.lineTo(cp3Top.x, cp3Top.y);
-            ctx.closePath();
-            ctx.fillStyle = darkerColor;
-            ctx.fill();
+              // Draw corner block faces
+              // Top face
+              ctx.beginPath();
+              ctx.moveTo(cp1Top.x, cp1Top.y);
+              ctx.lineTo(cp2Top.x, cp2Top.y);
+              ctx.lineTo(cp4Top.x, cp4Top.y);
+              ctx.lineTo(cp3Top.x, cp3Top.y);
+              ctx.closePath();
+              ctx.fillStyle = darkerColor;
+              ctx.fill();
 
-            // Bottom face
-            ctx.beginPath();
-            ctx.moveTo(cp1Bottom.x, cp1Bottom.y);
-            ctx.lineTo(cp3Bottom.x, cp3Bottom.y);
-            ctx.lineTo(cp4Bottom.x, cp4Bottom.y);
-            ctx.lineTo(cp2Bottom.x, cp2Bottom.y);
-            ctx.closePath();
-            ctx.fillStyle = darkerColor;
-            ctx.fill();
+              // Bottom face
+              ctx.beginPath();
+              ctx.moveTo(cp1Bottom.x, cp1Bottom.y);
+              ctx.lineTo(cp3Bottom.x, cp3Bottom.y);
+              ctx.lineTo(cp4Bottom.x, cp4Bottom.y);
+              ctx.lineTo(cp2Bottom.x, cp2Bottom.y);
+              ctx.closePath();
+              ctx.fillStyle = darkerColor;
+              ctx.fill();
 
-            // Side faces
-            ctx.fillStyle = shadedColor;
-            // Face 1: cp1-cp2
-            ctx.beginPath();
-            ctx.moveTo(cp1Bottom.x, cp1Bottom.y);
-            ctx.lineTo(cp1Top.x, cp1Top.y);
-            ctx.lineTo(cp2Top.x, cp2Top.y);
-            ctx.lineTo(cp2Bottom.x, cp2Bottom.y);
-            ctx.closePath();
-            ctx.fill();
+              // Side faces
+              ctx.fillStyle = shadedColor;
+              // Face 1: cp1-cp2
+              ctx.beginPath();
+              ctx.moveTo(cp1Bottom.x, cp1Bottom.y);
+              ctx.lineTo(cp1Top.x, cp1Top.y);
+              ctx.lineTo(cp2Top.x, cp2Top.y);
+              ctx.lineTo(cp2Bottom.x, cp2Bottom.y);
+              ctx.closePath();
+              ctx.fill();
 
-            // Face 2: cp2-cp4
-            ctx.beginPath();
-            ctx.moveTo(cp2Bottom.x, cp2Bottom.y);
-            ctx.lineTo(cp2Top.x, cp2Top.y);
-            ctx.lineTo(cp4Top.x, cp4Top.y);
-            ctx.lineTo(cp4Bottom.x, cp4Bottom.y);
-            ctx.closePath();
-            ctx.fill();
+              // Face 2: cp2-cp4
+              ctx.beginPath();
+              ctx.moveTo(cp2Bottom.x, cp2Bottom.y);
+              ctx.lineTo(cp2Top.x, cp2Top.y);
+              ctx.lineTo(cp4Top.x, cp4Top.y);
+              ctx.lineTo(cp4Bottom.x, cp4Bottom.y);
+              ctx.closePath();
+              ctx.fill();
 
-            // Face 3: cp4-cp3
-            ctx.beginPath();
-            ctx.moveTo(cp4Bottom.x, cp4Bottom.y);
-            ctx.lineTo(cp4Top.x, cp4Top.y);
-            ctx.lineTo(cp3Top.x, cp3Top.y);
-            ctx.lineTo(cp3Bottom.x, cp3Bottom.y);
-            ctx.closePath();
-            ctx.fill();
+              // Face 3: cp4-cp3
+              ctx.beginPath();
+              ctx.moveTo(cp4Bottom.x, cp4Bottom.y);
+              ctx.lineTo(cp4Top.x, cp4Top.y);
+              ctx.lineTo(cp3Top.x, cp3Top.y);
+              ctx.lineTo(cp3Bottom.x, cp3Bottom.y);
+              ctx.closePath();
+              ctx.fill();
 
-            // Face 4: cp3-cp1
-            ctx.beginPath();
-            ctx.moveTo(cp3Bottom.x, cp3Bottom.y);
-            ctx.lineTo(cp3Top.x, cp3Top.y);
-            ctx.lineTo(cp1Top.x, cp1Top.y);
-            ctx.lineTo(cp1Bottom.x, cp1Bottom.y);
-            ctx.closePath();
-            ctx.fill();
+              // Face 4: cp3-cp1
+              ctx.beginPath();
+              ctx.moveTo(cp3Bottom.x, cp3Bottom.y);
+              ctx.lineTo(cp3Top.x, cp3Top.y);
+              ctx.lineTo(cp1Top.x, cp1Top.y);
+              ctx.lineTo(cp1Bottom.x, cp1Bottom.y);
+              ctx.closePath();
+              ctx.fill();
 
               ctx.restore();
             }

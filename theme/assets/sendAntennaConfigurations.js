@@ -499,7 +499,7 @@ var BackendSync = (function () {
 
     // Handle optimization status updates (for streaming mode)
     if (event.data && event.data.type === "optimization_update") {
-      // console.log("[HTML] Received optimization_update:", {
+      console.log("[HTML] Received optimization_update:", {
         actionCount: (event.data.new_action_configs || []).length,
         state: event.data.state,
         lastIndex: event.data.last_index

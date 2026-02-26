@@ -28,8 +28,11 @@
     state.cachedHeatmapAntennaCount = 0;
     state.heatmapUpdatePending = true;
     state.heatmapWorkerCallback = null;
-    state.optimizationRsrpGrid = null;
-    state.compliancePercentFromBackend = null;
+    /* TRIAL: keep backend RSRP grid alive during optimization */
+    if (!state.isOptimizing) {
+      state.optimizationRsrpGrid = null;
+      state.compliancePercentFromBackend = null;
+    }
     if (state.showVisualization) {
       generateHeatmapAsync(null, true); // low-res first for fast feedback
     }
@@ -76,9 +79,8 @@
       state.heatmapWorker.onerror = function (error) {
         console.error("Heatmap worker error:", error);
         state.heatmapUpdatePending = false;
-        state.heatmapWorker = null; // Disable worker for future calls
-        // Fallback to synchronous generation
-        generateHeatmapSync();
+        state.heatmapWorker = null;
+        generateHeatmapAsync(null, true);
       };
     } catch (error) {
       console.warn(
@@ -290,28 +292,15 @@
                 }
               }
 
-              // Check if CSV coverage data is available and view is RSSI
-              // if (
-              //   state.csvCoverageData &&
-              //   state.csvCoverageGrid &&
-              //   state.view === "rssi"
-              // ) {
-              //   var csvValue = interpolateRsrpFromCsv(x, y);
-              //   if (csvValue !== null && !isNaN(csvValue)) {
-              //     var col = colorNumeric(csvValue);
-              //     img.data[idx] = col[0];
-              //     img.data[idx + 1] = col[1];
-              //     img.data[idx + 2] = col[2];
-              //     img.data[idx + 3] = col[3];
-              //     continue;
-              //   } else {
-              //     img.data[idx] = 0;
-              //     img.data[idx + 1] = 0;
-              //     img.data[idx + 2] = 0;
-              //     img.data[idx + 3] = 0;
-              //     continue;
-              //   }
-              // }
+              /* TRIAL: during optimization, all RSRP comes from backend only —
+                 skip frontend propagation calc entirely */
+              if (state.isOptimizing) {
+                img.data[idx] = 0;
+                img.data[idx + 1] = 0;
+                img.data[idx + 2] = 0;
+                img.data[idx + 3] = 0;
+                continue;
+              }
 
               if (state.view === "best") {
                 var best = (typeof bestApAt === 'function' ? bestApAt : RadioCalculations.bestApAt)(x, y);
