@@ -88,7 +88,8 @@ var OptimizationSystem = (function () {
       dy: state.h / rows
     };
 
-    // console.log("[BackendRSRP] Grid built:", cols, "x", rows, "from", totalBins, "bins");
+    var blBins = Math.round(state.w) * Math.round(state.h);
+    console.log("[BackendRSRP] Received bins:", totalBins, "| BL bins (w*h):", blBins, "| Grid:", cols, "x", rows, "| dx:", (state.w / cols).toFixed(3), "dy:", (state.h / rows).toFixed(3));
   }
 
   // Handle a single optimization update (one or more antennas)

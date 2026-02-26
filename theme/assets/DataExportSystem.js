@@ -171,6 +171,8 @@ var DataExportSystem = (function () {
 
       for (var y = 0; y <= _state.h + 1e-9; y += spacing) {
         for (var x = 0; x <= _state.w + 1e-9; x += spacing) {
+          // var xx = (x + 0.5) * grid.dx;
+          // var yy = (y + 0.5) * grid.dy;
           var xx = Math.round(x * 1000) / 1000;
           var yy = Math.round(y * 1000) / 1000;
 
@@ -218,11 +220,11 @@ var DataExportSystem = (function () {
       }
 
       var csvRows = ['X,Y,rsrp'];
-      for (var r = 0; r < grid.rows; r++) {
-        for (var c = 0; c < grid.cols; c++) {
-          var x = (c + 0.5) * grid.dx;
-          var y = (r + 0.5) * grid.dy;
-          var rsrp = grid.data[r * grid.cols + c];
+      for (var y = 0; y < grid.rows; y++) {
+        for (var x = 0; x < grid.cols; x++) {
+          // var x = (c + 0.5) * grid.dx;
+          // var y = (r + 0.5) * grid.dy;
+          var rsrp = grid.data[y * grid.cols + x];
           csvRows.push(x.toFixed(3) + ',' + y.toFixed(3) + ',' + rsrp.toFixed(2));
         }
       }
