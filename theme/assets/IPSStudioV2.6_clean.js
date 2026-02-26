@@ -2412,125 +2412,125 @@ function draw() {
           var frontP1_3d = projectToCanvas3D(
             w.p1.x + depthOffsetX,
             w.p1.y + depthOffsetY,
-            elementBottomZ
-          );
-          var frontP2_3d = projectToCanvas3D(
-            w.p2.x + depthOffsetX,
-            w.p2.y + depthOffsetY,
-            elementBottomZ
-          );
-          frontDepth = Math.min(frontP1_3d.depth, frontP2_3d.depth);
-          backDepth = Math.max(p1Bottom_3d.depth, p2Bottom_3d.depth);
-        } else {
-          // Default - use center depth
-          frontDepth =
-            (p1Bottom_3d.depth +
-             p2Bottom_3d.depth +
-             p1Top_3d.depth +
-             p2Top_3d.depth) /
-            4;
-          backDepth = frontDepth;
+              elementBottomZ
+            );
+            var frontP2_3d = projectToCanvas3D(
+              w.p2.x + depthOffsetX,
+              w.p2.y + depthOffsetY,
+              elementBottomZ
+            );
+            frontDepth = Math.min(frontP1_3d.depth, frontP2_3d.depth);
+            backDepth = Math.max(p1Bottom_3d.depth, p2Bottom_3d.depth);
+          } else {
+            // Default - use center depth
+            frontDepth =
+              (p1Bottom_3d.depth +
+                p2Bottom_3d.depth +
+                p1Top_3d.depth +
+                p2Top_3d.depth) /
+              4;
+            backDepth = frontDepth;
+          }
+
+          // Use minimum depth (closest to camera) for sorting - elements closer to camera render last (on top)
+          // We want to render back to front, so sort by minimum depth (front face)
+          var sortDepth = frontDepth;
+
+          // Determine render priority: doors and windows should render on top of walls
+          // Priority: walls = 0, doors/windows = 1 (higher priority = render later/on top)
+          var priority = 0;
+          if (
+            elementType === "door" ||
+            elementType === "doubleDoor" ||
+            elementType === "window"
+          ) {
+            priority = 1;
+            // Small depth bias to help with sorting within priority group
+            // The priority system ensures doors/windows render after walls regardless
+            sortDepth = frontDepth - 0.01;
+          }
+
+          // Add all elements to the same array for proper depth sorting
+          elementsToRender.push({
+            wall: w,
+            depth: sortDepth,
+            frontDepth: frontDepth,
+            backDepth: backDepth,
+            priority: priority,
+            elementType: elementType,
+          });
         }
-
-        // Use minimum depth (closest to camera) for sorting - elements closer to camera render last (on top)
-        // We want to render back to front, so sort by minimum depth (front face)
-        var sortDepth = frontDepth;
-
-        // Determine render priority: doors and windows should render on top of walls
-        // Priority: walls = 0, doors/windows = 1 (higher priority = render later/on top)
-        var priority = 0;
-        if (
-          elementType === "door" ||
-          elementType === "doubleDoor" ||
-          elementType === "window"
-        ) {
-          priority = 1;
-          // Small depth bias to help with sorting within priority group
-          // The priority system ensures doors/windows render after walls regardless
-          sortDepth = frontDepth - 0.01;
-        }
-
-        // Add all elements to the same array for proper depth sorting
-        elementsToRender.push({
-          wall: w,
-          depth: sortDepth,
-          frontDepth: frontDepth,
-          backDepth: backDepth,
-          priority: priority,
-          elementType: elementType,
+        // Sort by depth (back to front - render farthest first, closest last)
+        // Use frontDepth for proper sorting - smaller depth = closer to camera = render later
+        elementsToRender.sort(function (a, b) {
+          // First, sort by priority (doors/windows after walls)
+          if (a.priority !== b.priority) {
+            return a.priority - b.priority; // Lower priority (walls) render first
+          }
+          // Then sort by front depth (closest point to camera)
+          if (Math.abs(a.frontDepth - b.frontDepth) > 0.01) {
+            return b.frontDepth - a.frontDepth; // Farther first
+          }
+          // Secondary sort by back depth if front depths are similar
+          return b.backDepth - a.backDepth;
         });
-      }
-      // Sort by depth (back to front - render farthest first, closest last)
-      // Use frontDepth for proper sorting - smaller depth = closer to camera = render later
-      elementsToRender.sort(function (a, b) {
-        // First, sort by priority (doors/windows after walls)
-        if (a.priority !== b.priority) {
-          return a.priority - b.priority; // Lower priority (walls) render first
-        }
-        // Then sort by front depth (closest point to camera)
-        if (Math.abs(a.frontDepth - b.frontDepth) > 0.01) {
-          return b.frontDepth - a.frontDepth; // Farther first
-        }
-        // Secondary sort by back depth if front depths are similar
-        return b.backDepth - a.backDepth;
-      });
-    } else {
-      // 2D view - no sorting needed
-      for (i = 0; i < state.walls.length; i++) {
-        elementsToRender.push({ wall: state.walls[i], depth: 0 });
-      }
-    }
-
-    // Render all elements in depth order (back to front)
-    // Reset rendering state
-    ctx.globalAlpha = 1.0;
-    ctx.globalCompositeOperation = "source-over";
-
-    for (i = 0; i < elementsToRender.length; i++) {
-      ctx.save(); // Save context state for each element
-      var w = elementsToRender[i].wall;
-      var isSelected =
-        w.id === state.selectedWallId ||
-        state.selectedWallIds.indexOf(w.id) !== -1;
-      var elementType = w.elementType || "wall";
-      var wallColor = w.color || "#60a5fa";
-
-      // Determine correct height and bottom Z for each element type
-      var elementHeight = 2.5;
-      var elementBottomZ = 0.01;
-
-      if (elementType === "door" || elementType === "doubleDoor") {
-        elementHeight = 2.1; // Door height
-        elementBottomZ = 0.01; // Doors start at floor
-      } else if (elementType === "window") {
-        elementHeight = 1.2; // Window height
-        elementBottomZ = 0.9; // Window sill height
       } else {
-        elementHeight = w.height || 2.5;
-        elementBottomZ = 0.01;
+        // 2D view - no sorting needed
+        for (i = 0; i < state.walls.length; i++) {
+          elementsToRender.push({ wall: state.walls[i], depth: 0 });
+        }
       }
 
-      if (transition > 0) {
-        // Handle polylines (walls with points array) - for doors/windows, use first and last points
-        var renderP1, renderP2;
-        if (w.points && w.points.length >= 2) {
-          renderP1 = w.points[0];
-          renderP2 = w.points[w.points.length - 1];
-        } else if (w.p1 && w.p2) {
-          renderP1 = w.p1;
-          renderP2 = w.p2;
+      // Render all elements in depth order (back to front)
+      // Reset rendering state
+      ctx.globalAlpha = 1.0;
+      ctx.globalCompositeOperation = "source-over";
+
+      for (i = 0; i < elementsToRender.length; i++) {
+        ctx.save(); // Save context state for each element
+        var w = elementsToRender[i].wall;
+        var isSelected =
+          w.id === state.selectedWallId ||
+          state.selectedWallIds.indexOf(w.id) !== -1;
+        var elementType = w.elementType || "wall";
+        var wallColor = w.color || "#60a5fa";
+
+        // Determine correct height and bottom Z for each element type
+        var elementHeight = 2.5;
+        var elementBottomZ = 0.01;
+
+        if (elementType === "door" || elementType === "doubleDoor") {
+          elementHeight = 2.1; // Door height
+          elementBottomZ = 0.01; // Doors start at floor
+        } else if (elementType === "window") {
+          elementHeight = 1.2; // Window height
+          elementBottomZ = 0.9; // Window sill height
         } else {
-          continue; // Skip invalid walls
+          elementHeight = w.height || 2.5;
+          elementBottomZ = 0.01;
         }
 
-        // Interpolate between 2D and 3D
-        // Walls start at z=0.01 (same as floor plane) and go up to wallHeight
-        // This ensures walls align with the floor plane surface
-        var p1_2d = { x: mx(renderP1.x), y: my(renderP1.y) };
-        var p2_2d = { x: mx(renderP2.x), y: my(renderP2.y) };
+        if (transition > 0) {
+          // Handle polylines (walls with points array) - for doors/windows, use first and last points
+          var renderP1, renderP2;
+          if (w.points && w.points.length >= 2) {
+            renderP1 = w.points[0];
+            renderP2 = w.points[w.points.length - 1];
+          } else if (w.p1 && w.p2) {
+            renderP1 = w.p1;
+            renderP2 = w.p2;
+          } else {
+            continue; // Skip invalid walls
+          }
 
-        var p1Bottom_3d = projectToCanvas3D(
-          renderP1.x,
+          // Interpolate between 2D and 3D
+          // Walls start at z=0.01 (same as floor plane) and go up to wallHeight
+          // This ensures walls align with the floor plane surface
+          var p1_2d = { x: mx(renderP1.x), y: my(renderP1.y) };
+          var p2_2d = { x: mx(renderP2.x), y: my(renderP2.y) };
+
+          var p1Bottom_3d = projectToCanvas3D(
+            renderP1.x,
             renderP1.y,
             elementBottomZ
           );
@@ -4404,26 +4404,40 @@ function draw() {
 
           // Force user to enter gain if missing or 0
           if (!pattern.gain || pattern.gain === 0) {
-            var gainInput = prompt("The uploaded pattern has 0 gain or no gain specified.\nPlease enter the antenna gain in dBi to continue:");
-            if (gainInput === null || gainInput.trim() === "" || isNaN(parseFloat(gainInput))) {
-              alert("Valid gain in dBi is required. Upload cancelled.");
-              e.target.value = '';
-              return;
-            }
-            pattern.gain = parseFloat(gainInput);
-            pattern._maxValue = pattern.gain; // Update peak gain
-            
-            // Patch the file content so the backend parser also sees the new gain
-            if (/^GAIN/im.test(contentToSend)) {
-              contentToSend = contentToSend.replace(/^GAIN.*/im, "GAIN " + pattern.gain + " dBi");
-            } else {
-              contentToSend = "GAIN " + pattern.gain + " dBi\n" + contentToSend;
-            }
+            NotificationSystem.prompt(
+              "The uploaded pattern has 0 gain or no gain specified.\nPlease enter the antenna gain in dBi to continue:",
+              "Missing Antenna Gain",
+              function(gainInput) {
+                if (gainInput === null || gainInput.trim() === "" || isNaN(parseFloat(gainInput))) {
+                  NotificationSystem.error("Valid gain in dBi is required. Upload cancelled.");
+                  e.target.value = '';
+                  return;
+                }
+                pattern.gain = parseFloat(gainInput);
+                pattern._maxValue = pattern.gain; // Update peak gain
+                
+                // Patch the file content so the backend parser also sees the new gain
+                if (/^GAIN/im.test(contentToSend)) {
+                  contentToSend = contentToSend.replace(/^GAIN.*/im, "GAIN " + pattern.gain + " dBi");
+                } else {
+                  contentToSend = "GAIN " + pattern.gain + " dBi\n" + contentToSend;
+                }
+                
+                // Continue with the upload process
+                continueUpload(pattern, file, contentToSend);
+              },
+              { inputType: 'number', inputPlaceholder: 'e.g. 8.5', confirmLabel: 'Continue' }
+            );
+            return; // Stop here, continueUpload will be called from the callback
+          } else {
+            // Continue immediately if gain is present
+            continueUpload(pattern, file, contentToSend);
           }
-
-          // Store file info in pattern
-          pattern.fileName = file.name;
-          pattern.uploadTime = new Date().toISOString();
+          
+          function continueUpload(pattern, file, contentToSend) {
+            // Store file info in pattern
+            pattern.fileName = file.name;
+            pattern.uploadTime = new Date().toISOString();
 
           // Check if pattern already exists (by name, frequency, and filename)
           var patternExists = false;
@@ -4521,6 +4535,7 @@ function draw() {
               console.log("User cancelled antenna pattern upload.");
             }
           });
+          } // End of continueUpload function
         } catch (err) {
           console.error("Error parsing antenna pattern:", err);
           NotificationSystem.error("Failed to parse pattern file.\n" + err.message);

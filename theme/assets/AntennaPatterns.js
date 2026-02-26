@@ -26,62 +26,66 @@
       }
     }
 
-    var message = "Pattern: " + patternName;
+    var message = "<div style='font-size: 14px; margin-bottom: 16px;'><span style='font-weight: 600;' class='theme-text-strong'>Pattern:</span> <span class='theme-text'>" + patternName + "</span></div>";
     if (usedByAntennas.length > 0) {
-      message += "\nUsed by " + usedByAntennas.length + " antenna(s): " + usedByAntennas.join(", ");
-      message += "\nThese antennas will lose their pattern assignment.";
+      message += "<div style='font-size: 13.5px; margin-bottom: 8px;' class='theme-text-strong'>Used by " + usedByAntennas.length + " antenna(s):</div>";
+      message += "<div style='font-size: 13px; margin-bottom: 16px; padding: 8px; background: rgba(0,0,0,0.03); border-radius: 6px;' class='theme-text'>" + usedByAntennas.join(", ") + "</div>";
+      message += "<div style='font-size: 13.5px; color: #ef4444; font-weight: 500;'>These antennas will lose their pattern assignment.</div>";
     }
 
-    NotificationSystem.confirm(message, "Delete Pattern", function (confirmed) {
-      if (confirmed) {
-        for (var i = 0; i < state.aps.length; i++) {
-          if (state.aps[i].antennaPattern === pattern) {
-            state.aps[i].antennaPattern = null;
-            state.aps[i].antennaPatternFileName = null;
-          }
-        }
-
-        state.antennaPatterns.splice(patternIndex, 1);
-
-        if (state.defaultAntennaPatternIndex === patternIndex) {
-          state.defaultAntennaPatternIndex = -1;
-        } else if (state.defaultAntennaPatternIndex > patternIndex) {
-          state.defaultAntennaPatternIndex--;
-        }
-
-        if (state.antennaPatterns.length === 0) {
-          state.defaultAntennaPatternIndex = -1;
+    NotificationSystem.confirm(
+      message, 
+      "Delete Pattern", 
+      function (confirmed) {
+        if (confirmed) {
           for (var i = 0; i < state.aps.length; i++) {
-            state.aps[i].antennaPattern = null;
-            state.aps[i].antennaPatternFileName = null;
-          }
-        } else if (state.defaultAntennaPatternIndex === -1 && state.antennaPatterns.length > 0) {
-          state.defaultAntennaPatternIndex = 0;
-        }
-
-        updateAntennaPatternsList();
-
-        if (state.antennaPatterns.length === 0) {
-          for (var j = 0; j < state.aps.length; j++) {
-            if (state.aps[j].antennaPattern !== null) {
-              state.aps[j].antennaPattern = null;
-              state.aps[j].antennaPatternFileName = null;
+            if (state.aps[i].antennaPattern === pattern) {
+              state.aps[i].antennaPattern = null;
+              state.aps[i].antennaPatternFileName = null;
             }
           }
+
+          state.antennaPatterns.splice(patternIndex, 1);
+
+          if (state.defaultAntennaPatternIndex === patternIndex) {
+            state.defaultAntennaPatternIndex = -1;
+          } else if (state.defaultAntennaPatternIndex > patternIndex) {
+            state.defaultAntennaPatternIndex--;
+          }
+
+          if (state.antennaPatterns.length === 0) {
+            state.defaultAntennaPatternIndex = -1;
+            for (var i = 0; i < state.aps.length; i++) {
+              state.aps[i].antennaPattern = null;
+              state.aps[i].antennaPatternFileName = null;
+            }
+          } else if (state.defaultAntennaPatternIndex === -1 && state.antennaPatterns.length > 0) {
+            state.defaultAntennaPatternIndex = 0;
+          }
+
+          updateAntennaPatternsList();
+
+          if (state.antennaPatterns.length === 0) {
+            for (var j = 0; j < state.aps.length; j++) {
+              if (state.aps[j].antennaPattern !== null) {
+                state.aps[j].antennaPattern = null;
+                state.aps[j].antennaPatternFileName = null;
+              }
+            }
+          }
+
+          if (state.heatmapUpdateRequestId !== null) {
+            cancelAnimationFrame(state.heatmapUpdateRequestId);
+            state.heatmapUpdateRequestId = null;
+          }
+          state.heatmapUpdatePending = false;
+          state.cachedHeatmap = null;
+
+          if (typeof draw === "function") draw();
+
+          NotificationSystem.success("Pattern deleted successfully!");
         }
-
-        if (state.heatmapUpdateRequestId !== null) {
-          cancelAnimationFrame(state.heatmapUpdateRequestId);
-          state.heatmapUpdateRequestId = null;
-        }
-        state.heatmapUpdatePending = false;
-        state.cachedHeatmap = null;
-
-        if (typeof draw === "function") draw();
-
-        NotificationSystem.success("Pattern deleted successfully!");
-      }
-    }, {danger: true, confirmLabel: 'Delete', icon: '\u{1F5D1}\u{FE0F}'});
+      }, {danger: true, confirmLabel: 'Delete', icon: 'delete', isHtml: true});
   }
 
   function updateAntennaPatternsList() {

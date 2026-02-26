@@ -1,100 +1,250 @@
+//
+// UndoSystem.js
+// Handles application state undo/redo functionality (currently undo only).
+// Provides saveState, restoreState, and manages the undo button UI.
+//
+// All functions are exposed on window for global access.
+//
+// Depends on: global state, $, draw, renderAPs, renderWalls, updateStats,
+//             updateWallList, updateApList, updateFloorPlaneList,
+//             NotificationSystem, initHeatmapWorker, invalidateHeatmapCache
+//
+// Called by:
+//   Every operation that changes geometry calls saveState()
+//   Keyboard handler (Ctrl+Z) and undo button call restoreState()
+//
+
 (function () {
   "use strict";
 
-  function rssiFrom(ap, x, y) {
-    return rssi(
-      ap.tx,
-      getAngleDependentGain(ap, x, y),
-      modelLoss(ap.x, ap.y, x, y)
-    );
-  }
+  var undoStack = [];
+  var redoStack = [];
+  var MAX_UNDO = 50;
 
-  function bestApAt(x, y) {
-    var i,
-      best = -1e9,
-      ap = null;
-    for (i = 0; i < state.aps.length; i++) {
-      var a = state.aps[i];
-      if (a.enabled === false) continue;
-      var pr = rssi(
-        a.tx,
-        getAngleDependentGain(a, x, y),
-        modelLoss(a.x, a.y, x, y)
-      );
-      if (pr > best) {
-        best = pr;
-        ap = a;
+  function saveState() {
+    var stateObj = {
+      walls: state.walls,
+      aps: state.aps,
+      floorPlanes: state.floorPlanes,
+      groundPlane: state.groundPlane,
+    };
+
+    var stateStr = JSON.stringify(stateObj);
+
+    if (undoStack.length > 0) {
+      var lastStr = JSON.stringify(undoStack[undoStack.length - 1]);
+      if (stateStr === lastStr) {
+        return; // Avoid saving identical states (fixes "requires two clicks" issue)
       }
     }
-    return { ap: ap, rssiDbm: best };
-  }
 
-  function cciAt(x, y, servingAp) {
-    var i,
-      sumLin = 0;
-    for (i = 0; i < state.aps.length; i++) {
-      var ap = state.aps[i];
-      if (ap.enabled === false) continue;
-      if (ap === servingAp) continue;
-      if (ap.ch !== servingAp.ch) continue;
-      var p = rssiFrom(ap, x, y);
-      sumLin += dbmToLin(p);
+    var stateSnapshot = JSON.parse(stateStr);
+
+    undoStack.push(stateSnapshot);
+    if (undoStack.length > MAX_UNDO) {
+      undoStack.shift();
     }
-    if (sumLin <= 0) return -200;
-    return linToDbm(sumLin);
+
+    // Clear redo stack on new action
+    redoStack = [];
+
+    updateUndoButton();
+    updateRedoButton();
   }
 
-  function countInterferingAntennas(x, y, servingAp) {
-    if (!servingAp) return 0;
-    var count = 0;
-    var servingChannel = servingAp.ch;
-    for (var i = 0; i < state.aps.length; i++) {
-      var ap = state.aps[i];
-      if (ap.enabled === false) continue;
-      if (ap === servingAp) continue;
-      if (ap.ch !== servingChannel) continue;
-      var power = rssiFrom(ap, x, y);
-      if (power > -85) {
-        count++;
+  function restoreState() {
+    if (undoStack.length === 0) return;
+
+    // Save current state to redo stack before undoing
+    var currentState = {
+      walls: JSON.parse(JSON.stringify(state.walls)),
+      aps: JSON.parse(JSON.stringify(state.aps)),
+      floorPlanes: JSON.parse(JSON.stringify(state.floorPlanes)),
+      groundPlane: JSON.parse(JSON.stringify(state.groundPlane)),
+    };
+
+    // Duplicate check for redoStack
+    var currentStr = JSON.stringify(currentState);
+    var pushToRedo = true;
+    if (redoStack.length > 0) {
+      var lastRedoStr = JSON.stringify(redoStack[redoStack.length - 1]);
+      if (currentStr === lastRedoStr) {
+        pushToRedo = false;
       }
     }
-    return count;
-  }
 
-  function snrAt(rssiDbm) {
-    return rssiDbm - state.noise;
-  }
-
-  function sinrAt(rssiDbm, cciDbm) {
-    var I = cciDbm < -150 ? 0 : dbmToLin(cciDbm);
-    var N = dbmToLin(state.noise);
-    var sinrLin = dbmToLin(rssiDbm) / Math.max(I + N, 1e-12);
-    return 10 * log10(sinrLin);
-  }
-
-  function throughputFromSinr(sinr) {
-    var T = [
-      { t: -5, r: 0 },
-      { t: 0, r: 6.5 },
-      { t: 5, r: 13 },
-      { t: 10, r: 26 },
-      { t: 15, r: 39 },
-      { t: 20, r: 58.5 },
-      { t: 25, r: 72.2 },
-    ];
-    var i,
-      rate = 0;
-    for (i = 0; i < T.length; i++) {
-      if (sinr >= T[i].t) rate = T[i].r;
+    if (pushToRedo) {
+      redoStack.push(currentState);
+      if (redoStack.length > MAX_UNDO) {
+        redoStack.shift();
+      }
     }
-    return rate;
+
+    var prev = undoStack.pop();
+    applyState(prev);
   }
 
-  window.rssiFrom = rssiFrom;
-  window.bestApAt = bestApAt;
-  window.cciAt = cciAt;
-  window.countInterferingAntennas = countInterferingAntennas;
-  window.snrAt = snrAt;
-  window.sinrAt = sinrAt;
-  window.throughputFromSinr = throughputFromSinr;
+  function redoState() {
+    if (redoStack.length === 0) return;
+
+    // Save current state to undo stack before redoing
+    var currentState = {
+      walls: JSON.parse(JSON.stringify(state.walls)),
+      aps: JSON.parse(JSON.stringify(state.aps)),
+      floorPlanes: JSON.parse(JSON.stringify(state.floorPlanes)),
+      groundPlane: JSON.parse(JSON.stringify(state.groundPlane)),
+    };
+
+    // Duplicate check for undoStack
+    var currentStr = JSON.stringify(currentState);
+    var pushToUndo = true;
+    if (undoStack.length > 0) {
+      var lastUndoStr = JSON.stringify(undoStack[undoStack.length - 1]);
+      if (currentStr === lastUndoStr) {
+        pushToUndo = false;
+      }
+    }
+
+    if (pushToUndo) {
+      undoStack.push(currentState);
+      if (undoStack.length > MAX_UNDO) {
+        undoStack.shift();
+      }
+    }
+
+    var next = redoStack.pop();
+    applyState(next);
+  }
+
+  function applyState(newState) {
+    state.walls = newState.walls;
+    state.aps = newState.aps;
+    state.floorPlanes = newState.floorPlanes;
+    state.groundPlane = newState.groundPlane;
+
+    if (state.heatmapWorker) {
+      try {
+        state.heatmapWorker.terminate();
+      } catch (e) { }
+      state.heatmapWorker = null;
+      if (typeof initHeatmapWorker === "function") {
+        initHeatmapWorker();
+      }
+    }
+
+    if (typeof invalidateHeatmapCache === "function") {
+      invalidateHeatmapCache();
+    }
+
+    state.selectedApId = null;
+    state.highlight = false;
+    state.selectedWallIds = [];
+    state.selectedWallId = null;
+    state.selectedApForDetail = null;
+
+    var apDetailSidebar = document.getElementById("apDetailSidebar");
+    if (apDetailSidebar) apDetailSidebar.classList.remove("visible");
+
+    updateUndoButton();
+    updateRedoButton();
+
+    if (typeof renderAPs === "function") renderAPs();
+    if (typeof renderWalls === "function") renderWalls();
+
+    if (typeof draw === "function") draw();
+    if (typeof updateStats === "function") updateStats();
+
+    if (typeof updateWallList === "function") updateWallList();
+    if (typeof updateApList === "function") updateApList();
+    if (typeof updateFloorPlaneList === "function") updateFloorPlaneList();
+  }
+
+  function updateUndoButton() {
+    var btn = document.getElementById("undoBtn");
+    if (btn) {
+      btn.disabled = undoStack.length === 0;
+      btn.style.opacity = undoStack.length === 0 ? "0.5" : "1";
+    }
+  }
+
+  function updateRedoButton() {
+    var btn = document.getElementById("redoBtn");
+    if (btn) {
+      btn.disabled = redoStack.length === 0;
+      btn.style.opacity = redoStack.length === 0 ? "0.5" : "1";
+    }
+  }
+
+  function _initUndoUI() {
+    updateUndoButton();
+    updateRedoButton();
+
+    var btn = document.getElementById("undoBtn");
+    if (btn) btn.addEventListener("click", restoreState, false);
+
+    var redoBtn = document.getElementById("redoBtn");
+    if (redoBtn) redoBtn.addEventListener("click", redoState, false);
+
+    var restartBtn = document.getElementById("restartBtn");
+    if (restartBtn) {
+      restartBtn.addEventListener("click", function () {
+        if (typeof NotificationSystem !== "undefined" && NotificationSystem.confirm) {
+          NotificationSystem.confirm(
+            "All unsaved progress will be lost. <br/> Are you sure you want to restart?",
+            "Restart Application",
+            function (confirmed) {
+              if (confirmed) {
+                if (window.parent && window.parent !== window) {
+                  window.parent.postMessage({ type: "restart_backend_session" }, "*");
+                }
+                location.reload();
+              }
+            },
+            { danger: true, confirmLabel: "Restart", icon: "refresh", isHtml: true }
+          );
+        } else {
+          if (confirm("All unsaved progress will be lost. Are you sure you want to restart?")) {
+            if (window.parent && window.parent !== window) {
+              window.parent.postMessage({ type: "restart_backend_session" }, "*");
+            }
+            location.reload();
+          }
+        }
+      }, false);
+    }
+
+    var closeApBtn = document.getElementById("closeApDetailSidebar");
+    if (closeApBtn) {
+      closeApBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        var sidebar = document.getElementById("apDetailSidebar");
+        if (sidebar) sidebar.classList.remove("visible");
+        state.selectedApForDetail = null;
+      }, false);
+    }
+
+    document.addEventListener("keydown", function (e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        restoreState();
+      }
+      // Redo: Ctrl+Y OR Ctrl+Shift+Z
+      if ((e.ctrlKey || e.metaKey) && (e.key === "y" || (e.shiftKey && e.key === "Z"))) {
+        e.preventDefault();
+        redoState();
+      }
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", _initUndoUI);
+  } else {
+    _initUndoUI();
+  }
+
+  window.saveState = saveState;
+  window.restoreState = restoreState;
+  window.redoState = redoState;
+  window.updateUndoButton = updateUndoButton;
+  window.updateRedoButton = updateRedoButton;
 })();

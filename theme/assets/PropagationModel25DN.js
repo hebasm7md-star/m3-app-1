@@ -320,7 +320,7 @@ class PropagationModel25D {
     const apAzimuth = ap.azimuth || ap.heading || 0;
     // Convert azimuth (0°=North/Up, CW) to math angle (0°=East/Right, CCW)
     // Same conversion as the canvas drawing code: (azimuth - 90)
-    const apAngle = ((apAzimuth - 90) * Math.PI) / 180;
+    const apAngle = ((-apAzimuth - 90) * Math.PI) / 180;
     let angleDiff = angleToPoint - apAngle;
     const angleDiffDeg = ((angleDiff * 180 / Math.PI) + 360) % 360;
 
