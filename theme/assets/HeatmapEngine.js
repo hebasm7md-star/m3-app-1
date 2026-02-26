@@ -9,7 +9,7 @@
 // Depends on: global state, canvas/ctx, draw(), getValueAt() (monolith),
 //             colorNumeric/colorForAP/colorForChannel/colorForCount (ColorSystem),
 //             rssiFrom/bestApAt/cciAt/sinrAt/countInterferingAntennas (SignalCalc),
-//             modelLoss (PropagationModel), getAngleDependentGain (monolith)
+//             modelLoss, _propModel (PropagationModel)
 //
 // Called by:
 //   invalidateHeatmapCache — event handlers for model/view/AP/wall changes
@@ -307,9 +307,9 @@
                 var best = (typeof bestApAt === 'function' ? bestApAt : RadioCalculations.bestApAt)(x, y);
                 if (useOnlySelected) {
                   best.ap = selectedAP;
-                  best.rssiDbm = rssi(
+                  best.rssiDbm = _propModel.rssi(
                     selectedAP.tx,
-                    getAngleDependentGain(selectedAP, x, y),
+                    _propModel.getAngleDependentGain(selectedAP, {x: x, y: y}),
                     modelLoss(selectedAP.x, selectedAP.y, x, y)
                   );
                 }
@@ -326,9 +326,9 @@
                 var best2 = (typeof bestApAt === 'function' ? bestApAt : RadioCalculations.bestApAt)(x, y);
                 if (useOnlySelected) {
                   best2.ap = selectedAP;
-                  best2.rssiDbm = rssi(
+                  best2.rssiDbm = _propModel.rssi(
                     selectedAP.tx,
-                    getAngleDependentGain(selectedAP, x, y),
+                    _propModel.getAngleDependentGain(selectedAP, {x: x, y: y}),
                     modelLoss(selectedAP.x, selectedAP.y, x, y)
                   );
                 }
@@ -344,9 +344,9 @@
               var bestN = (typeof bestApAt === 'function' ? bestApAt : RadioCalculations.bestApAt)(x, y);
               if (useOnlySelected) {
                 bestN.ap = selectedAP;
-                bestN.rssiDbm = rssi(
+                bestN.rssiDbm = _propModel.rssi(
                   selectedAP.tx,
-                  getAngleDependentGain(selectedAP, x, y),
+                  _propModel.getAngleDependentGain(selectedAP, {x: x, y: y}),
                   modelLoss(selectedAP.x, selectedAP.y, x, y)
                 );
               }

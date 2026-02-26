@@ -6,10 +6,10 @@
 //           throughputFromSinr, countInterferingAntennas
 //
 // IMPORTANT: Call RadioCalculations.init({...}) from IPSStudioV2.6.js
-// after state, modelLoss, getAngleDependentGain, and _propModel are ready.
+// after state, modelLoss, and _propModel are ready.
 //
 // Usage:
-//   RadioCalculations.init({ state, modelLoss, getAngleDependentGain, propModel });
+//   RadioCalculations.init({ state, modelLoss, propModel });
 //   var rsrp = RadioCalculations.rssiFrom(ap, x, y);
 //   var best = RadioCalculations.bestApAt(x, y);
 // 
@@ -20,7 +20,6 @@ var RadioCalculations = (function () {
   // ── Dependencies (injected via init) ──
   var _state = null;
   var _modelLoss = null;
-  var _getAngleDependentGain = null;
   var _propModel = null;
 
   // ── Pure math helpers ──
@@ -39,7 +38,7 @@ var RadioCalculations = (function () {
   function rssiFrom(ap, x, y) {
     return _propModel.rssi(
       ap.tx,
-      _getAngleDependentGain(ap, x, y),
+      _propModel.getAngleDependentGain(ap, {x: x, y: y}),
       _modelLoss(ap.x, ap.y, x, y)
     );
   }
@@ -53,7 +52,7 @@ var RadioCalculations = (function () {
       if (a.enabled === false) continue;
       var pr = _propModel.rssi(
         a.tx,
-        _getAngleDependentGain(a, x, y),
+        _propModel.getAngleDependentGain(a, {x: x, y: y}),
         _modelLoss(a.x, a.y, x, y)
       );
       if (pr > best) {
@@ -130,7 +129,6 @@ var RadioCalculations = (function () {
     init: function (deps) {
       _state                  = deps.state;
       _modelLoss              = deps.modelLoss;
-      _getAngleDependentGain  = deps.getAngleDependentGain;
       _propModel              = deps.propModel;
       // console.log('RadioCalculations initialized.');
     },

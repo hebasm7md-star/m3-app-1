@@ -382,19 +382,19 @@
 
   // Unproject screen coordinates back to world coordinates at a given height
   // Uses a simpler approach: projects two nearby points and interpolates
-  function unprojectFromCanvas3D(screenX, screenY, targetHeight) {
-    // Use the inverse of the 2D mapping as a starting point
-    var worldX = invx(screenX);
-    var worldY = invy(screenY);
+  // function unprojectFromCanvas3D(screenX, screenY, targetHeight) {
+  //   // Use the inverse of the 2D mapping as a starting point
+  //   var worldX = invx(screenX);
+  //   var worldY = invy(screenY);
 
-    // In 3D view, we need to account for perspective
-    // For dragging, we can use a simpler approach: track the delta in screen space
-    // and convert it proportionally to world space
-    // But for now, use the 2D inverse mapping which should be close enough
-    // The main issue is axis inversion, which we'll handle in the drag handler
+  //   // In 3D view, we need to account for perspective
+  //   // For dragging, we can use a simpler approach: track the delta in screen space
+  //   // and convert it proportionally to world space
+  //   // But for now, use the 2D inverse mapping which should be close enough
+  //   // The main issue is axis inversion, which we'll handle in the drag handler
 
-    return { x: worldX, y: worldY };
-  }
+  //   return { x: worldX, y: worldY };
+  // }
 
   /* AI COMMENT — state, elementTypes, wallTypes moved to Config.js */
 
@@ -492,29 +492,14 @@
 
 
   // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Initialize standalone modules with dependencies ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
-  function getAngleDependentGain(ap, x, y) {
-    var effectiveAp = ap;
-    if (!ap.antennaPattern && state.antennaPatterns.length > 0) {
-      effectiveAp = Object.assign({}, ap, { antennaPattern: getDefaultAntennaPattern() });
-    }
-    return _propModel.getAngleDependentGain(effectiveAp, { x: x, y: y });
-  }
-
-  function rssi(tx, gt, L) {
-    return _propModel.rssi(tx, gt, L);
-  }
-
   // ── Init RadioCalculations & expose its API on window ──
 
   window._propModel            = _propModel;
   window.modelLoss             = modelLoss;
-  window.getAngleDependentGain = getAngleDependentGain;
-  window.rssi                  = rssi;
 
   RadioCalculations.init({
     state:                  state,
     modelLoss:              modelLoss,
-    getAngleDependentGain:  getAngleDependentGain,
     propModel:              _propModel
   });
 
@@ -885,7 +870,7 @@
               for (i = 0; i < state.aps.length; i++) {
                 var a = state.aps[i];
                 if (a.enabled === false) continue;
-                var pr = rssi(
+                var pr = _propModel.rssi(
                   a.tx,
                   getSimpleGain(a),
                   modelLoss(a.x, a.y, x, y)
@@ -1083,9 +1068,9 @@
                 var best = bestApAt(x, y);
                 if (useOnlySelected) {
                   best.ap = selectedAP;
-                  best.rssiDbm = rssi(
+                  best.rssiDbm = _propModel.rssi(
                     selectedAP.tx,
-                    getAngleDependentGain(selectedAP, x, y),
+                    _propModel.getAngleDependentGain(selectedAP, {x: x, y: y}),
                     modelLoss(selectedAP.x, selectedAP.y, x, y)
                   );
                 }
@@ -1102,9 +1087,9 @@
                 var best2 = bestApAt(x, y);
                 if (useOnlySelected) {
                   best2.ap = selectedAP;
-                  best2.rssiDbm = rssi(
+                  best2.rssiDbm = _propModel.rssi(
                     selectedAP.tx,
-                    getAngleDependentGain(selectedAP, x, y),
+                    _propModel.getAngleDependentGain(selectedAP, {x: x, y: y}),
                     modelLoss(selectedAP.x, selectedAP.y, x, y)
                   );
                 }
@@ -1120,9 +1105,9 @@
               var bestN = bestApAt(x, y);
               if (useOnlySelected) {
                 bestN.ap = selectedAP;
-                bestN.rssiDbm = rssi(
+                bestN.rssiDbm = _propModel.rssi(
                   selectedAP.tx,
-                  getAngleDependentGain(selectedAP, x, y),
+                  _propModel.getAngleDependentGain(selectedAP, {x: x, y: y}),
                   modelLoss(selectedAP.x, selectedAP.y, x, y)
                 );
               }
