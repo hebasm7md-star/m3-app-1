@@ -215,11 +215,11 @@ var OptimizationSystem = (function () {
       }
 
       // No actions — refresh heatmap if RSRP arrived, handle terminal status, exit
-      if (!Array.isArray(newActions) || newActions.length === 0) {
-        if (rsrpUpdated) refreshHeatmap();
-        handleTerminalStatus(status, data, footerBadge, footerMessage);
-        return;
-      }
+      // if (!Array.isArray(newActions) || newActions.length === 0) {
+      //   if (rsrpUpdated) refreshHeatmap();
+      //   handleTerminalStatus(status, data, footerBadge, footerMessage);
+      //   return;
+      // }
 
       // Show latest action in footer
       if (footerMessage) {
