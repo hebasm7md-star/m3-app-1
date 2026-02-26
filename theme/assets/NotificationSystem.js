@@ -438,8 +438,8 @@ var NotificationSystem = (function() {
         button.className = 'notif-btn-secondary';
       }
       button.onclick = function() {
-        dismissModal();
         try { if (btn.callback) btn.callback(); } catch(e) { console.error('Modal callback error:', e); }
+        dismissModal();
       };
       btnContainer.appendChild(button);
     });
