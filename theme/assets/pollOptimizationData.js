@@ -87,7 +87,8 @@ var OptimizationSystem = (function () {
       dx: state.w / cols,
       dy: state.h / rows
     };
-    console.log("[BackendRSRP] Grid built:", cols, "x", rows, "from", totalBins, "bins");
+
+    // console.log("[BackendRSRP] Grid built:", cols, "x", rows, "from", totalBins, "bins");
   }
 
   // Handle a single optimization update (one or more antennas)
@@ -227,6 +228,9 @@ var OptimizationSystem = (function () {
           }
           if (status === "completed" || status === 'finished') {
             if (footerMessage) footerMessage.textContent = "Optimization process successfully completed.";
+            if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportBackendRsrpGrid) {
+              DataExportSystem.exportBackendRsrpGrid();
+            }
             window.parent.postMessage(
               { type: "optimization_finished" },
               "*"
@@ -289,7 +293,7 @@ var OptimizationSystem = (function () {
       if (changesMade) {
         if (window.saveState) window.saveState();
         if (window.renderAPs) window.renderAPs();
-        
+
         var canvas = document.getElementById("plot");
         if (canvas && typeof window.draw === 'function') {
           // Re-generate heatmap and redraw
@@ -305,7 +309,7 @@ var OptimizationSystem = (function () {
       // If optimization is marked as completed by backend, stop polling
       if (status === "completed" || status === "error" || status === 'finished') {
         stopOptimizationPolling();
-        
+
         if (status === "completed" || status === 'finished') {
           if (footerBadge) {
             footerBadge.textContent = 'COMPLETED';
@@ -313,6 +317,9 @@ var OptimizationSystem = (function () {
           }
           if (footerMessage) {
             footerMessage.textContent = "Optimization process successfully completed.";
+          }
+          if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportBackendRsrpGrid) {
+            DataExportSystem.exportBackendRsrpGrid();
           }
           window.parent.postMessage(
             { type: "optimization_finished" },
@@ -370,7 +377,7 @@ var OptimizationSystem = (function () {
       // Direct mapping (optimization coordinates are already in canvas/world coordinates)
       var canvasX = Math.max(0, Math.min(state.w, backendX));
       var canvasY = Math.max(0, Math.min(state.h, backendY));
-      console.log("[HTML] ACTION->", antennaId, "raw:", rawX, rawY, "mapped:", canvasX, canvasY, "enabled:", enabled);
+      // console.log("[HTML] ACTION->", antennaId, "raw:", rawX, rawY, "mapped:", canvasX, canvasY, "enabled:", enabled);
 
       // Find existing antenna by ID
       var existingAntenna = null;
@@ -412,18 +419,16 @@ var OptimizationSystem = (function () {
           }
         }
 
-        console.log(
-          "Updated antenna:",
-          antennaId,
-          "Backend:",
-          backendX,
-          backendY,
-          "Canvas:",
-          canvasX.toFixed(2),
-          canvasY.toFixed(2),
-          "Enabled:",
-          enabled
-        );
+        // console.log("Updated antenna:",
+        //   antennaId,"Backend:",
+        //   backendX,
+        //   backendY,
+        //   "Canvas:",
+        //   canvasX.toFixed(2),
+        //   canvasY.toFixed(2),
+        //   "Enabled:",
+        //   enabled
+        // );
       } else {
         // Create new antenna if it doesn't exist
         var defaultPattern = typeof window.getDefaultAntennaPattern === 'function' ? window.getDefaultAntennaPattern() : null;
@@ -459,18 +464,18 @@ var OptimizationSystem = (function () {
             false
           );
         }
-        console.log(
-          "Created new antenna:",
-          antennaId,
-          "Backend:",
-          backendX,
-          backendY,
-          "Canvas:",
-          canvasX.toFixed(2),
-          canvasY.toFixed(2),
-          "Enabled:",
-          enabled
-        );
+        // console.log(
+        //   "Created new antenna:",
+        //   antennaId,
+        //   "Backend:",
+        //   backendX,
+        //   backendY,
+        //   "Canvas:",
+        //   canvasX.toFixed(2),
+        //   canvasY.toFixed(2),
+        //   "Enabled:",
+        //   enabled
+        // );
       }
     } catch (error) {
       console.error("Error updating single antenna:", error);
