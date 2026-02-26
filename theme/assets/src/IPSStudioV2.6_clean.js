@@ -3357,9 +3357,23 @@
         ctx.lineWidth = 2; // Same thickness as the line
         ctx.stroke();
 
-        // Draw antenna label - use current position (updated if dragging)
+        // Draw antenna label with a small dark background block
+        var labelText = ap2.id + "(ch" + ap2.ch + ")";
+        var textX = px + 8;
+        var textY = py - 8;
+        
+        // Measure text for background
+        ctx.font = "bold 12px Arial"; // Ensure font is set for measurement
+        var textWidth = ctx.measureText(labelText).width;
+        var textHeight = 14; // Approximate height for 12px font
+        
+        // Draw black background rectangle
+        ctx.fillStyle = "rgba(0, 0, 0, 0.7)"; // Semi-transparent black
+        ctx.fillRect(textX - 2, textY - textHeight + 2, textWidth + 4, textHeight + 2);
+        
+        // Draw the text
         ctx.fillStyle = "#ffffff";
-        ctx.fillText(ap2.id + "(ch" + ap2.ch + ")", px + 8, py - 8);
+        ctx.fillText(labelText, textX, textY);
         ctx.fillStyle = "#e5e7eb";
 
         // Reset alpha if antenna was disabled
