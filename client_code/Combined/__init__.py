@@ -10,7 +10,9 @@ class Combined(CombinedTemplate):
   def __init__(self, **properties):
     self.init_components(**properties)
     self.opt_running = False
-    self.last_index = 0
+    self.last_action_idx = 0
+    self.last_rsrp_idx = 0
+    self.last_compliance_idx = 0
     self._reset_session()
 
     filepath = "_/theme/index.html"
@@ -305,7 +307,9 @@ class Combined(CombinedTemplate):
       print("[SUCCESS] Optimization started!")
       self._send_to_iframe("optimization_started", success=True)
       self.opt_running = True
-      self.last_index = 0
+      self.last_action_idx = 0
+      self.last_rsrp_idx = 0
+      self.last_compliance_idx = 0
 
     elif status == "busy":
       self._send_to_iframe("optimization_started", success=False, message="Optimization already running")
@@ -321,7 +325,10 @@ class Combined(CombinedTemplate):
 
   def poll_optimization_data(self, **event_args):
     with anvil.server.no_loading_indicator:
-      result = anvil.server.call("get_live_optimization", self.last_index)
+      result = anvil.server.call("get_live_optimization",
+                                 self.last_action_idx,
+                                 self.last_rsrp_idx,
+                                 self.last_compliance_idx)
 
     new_actions    = result.get("new_action_configs", [])
     new_bsrv_rsrp  = result.get("new_bsrv_rsrp", [])
@@ -329,34 +336,46 @@ class Combined(CombinedTemplate):
     status         = result.get("state", "idle")
     message        = result.get("message", "")
 
+    def _advance_cursors():
+      self.last_action_idx = result.get("last_action_idx", self.last_action_idx)
+      self.last_rsrp_idx = result.get("last_rsrp_idx", self.last_rsrp_idx)
+      self.last_compliance_idx = result.get("last_compliance_idx", self.last_compliance_idx)
+
+    def _reset_cursors():
+      self.last_action_idx = 0
+      self.last_rsrp_idx = 0
+      self.last_compliance_idx = 0
+
     if status == "error":
       self.opt_running = False
-      self.last_index = 0
+      _reset_cursors()
       self._send_error("optimization_error", message or "Optimization failed")
       return
 
     if status == "finished":
+      if new_actions or new_bsrv_rsrp or new_compliance:
+        print(f"[DEBUG] Sending final batch: {len(new_actions)} action(s), {len(new_bsrv_rsrp)} rsrp, {len(new_compliance)} compliance")
       self._send_to_iframe("optimization_update",
                            new_action_configs=new_actions,
                            new_bsrv_rsrp=new_bsrv_rsrp,
                            new_compliance=new_compliance,
                            status=status,
                            message=message)
-      self.last_index += len(new_actions)
-      print(f"[+] OPTIMIZATION COMPLETED — last_index={self.last_index}")
+      _advance_cursors()
+      print(f"[+] OPTIMIZATION COMPLETED — actions={self.last_action_idx}, rsrp={self.last_rsrp_idx}, compliance={self.last_compliance_idx}")
       self._send_to_iframe("optimization_finished", success=True)
       self.opt_running = False
-      self.last_index = 0
+      _reset_cursors()
       return
 
     if status == "idle":
       self.opt_running = False
-      self.last_index = 0
+      _reset_cursors()
       print("[!] Optimization is idle")
       return
 
-    if new_actions:
-      print(f"[DEBUG] Sending {len(new_actions)} action(s) to HTML display")
+    if new_actions or new_bsrv_rsrp or new_compliance:
+      print(f"[DEBUG] Sending {len(new_actions)} action(s), {len(new_bsrv_rsrp)} rsrp, {len(new_compliance)} compliance to HTML display")
 
     self._send_to_iframe("optimization_update",
                          new_action_configs=new_actions,
@@ -364,7 +383,7 @@ class Combined(CombinedTemplate):
                          new_compliance=new_compliance,
                          status=status,
                          message=message)
-    self.last_index += len(new_actions)
+    _advance_cursors()
 
   # ========== DXF ==========
   def generate_dxf(self, event):
@@ -464,7 +483,9 @@ class Combined(CombinedTemplate):
 
   def _reset_session(self):
     self.opt_running = False
-    self.last_index = 0
+    self.last_action_idx = 0
+    self.last_rsrp_idx = 0
+    self.last_compliance_idx = 0
     print("Resetting backend session...")
     while True:
       try:
