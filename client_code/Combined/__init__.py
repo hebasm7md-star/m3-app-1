@@ -27,7 +27,7 @@ class Combined(CombinedTemplate):
                         margin: 0; padding: 0; z-index: 1;
                     }}
                 </style>
-                <iframe src="{filepath}" allow="file-system-access" ></iframe>
+                <iframe src="{filepath}" id="ips-studio" allow="file-system-access"></iframe>
                 <script>
                     window.anvilIframeMessages = [];
 

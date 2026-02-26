@@ -167,8 +167,9 @@
           defaultFileName.replace(/\.[^/.]+$/, "") + ".json";
       }
 
-      // Try to use File System Access API if available (allows choosing location)
-      if ("showSaveFilePicker" in window) {
+      // File System Access API only works in top-level frames, not cross-origin iframes (e.g. Anvil)
+      var canUsePicker = "showSaveFilePicker" in window && window.self === window.top;
+      if (canUsePicker) {
         var fileHandle = null;
         window
           .showSaveFilePicker({
