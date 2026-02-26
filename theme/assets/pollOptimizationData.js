@@ -65,10 +65,10 @@ var OptimizationSystem = (function () {
 
   function refreshHeatmap() {
     if (!state.showVisualization) return;
-    state.cachedHeatmap = null;
+    // state.cachedHeatmap = null;
     state.heatmapUpdatePending = false;
     if (typeof generateHeatmapAsync === 'function') generateHeatmapAsync(null, true);
-    if (typeof draw === 'function') draw();
+    // if (typeof draw === 'function') draw();
   }
 
   function handleTerminalStatus(status, data, footerBadge, footerMessage) {

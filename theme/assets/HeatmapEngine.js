@@ -24,7 +24,7 @@
       cancelAnimationFrame(state.heatmapUpdateRequestId);
       state.heatmapUpdateRequestId = null;
     }
-    state.cachedHeatmap = null;
+    // state.cachedHeatmap = null;
     state.cachedHeatmapAntennaCount = 0;
     state.heatmapUpdatePending = true;
     state.heatmapWorkerCallback = null;
@@ -32,6 +32,8 @@
     if (!state.isOptimizing) {
       state.optimizationRsrpGrid = null;
       state.compliancePercentFromBackend = null;
+      state.cachedHeatmap = null; // Only clear cache when NOT optimizing
+
     }
     if (state.showVisualization) {
       generateHeatmapAsync(null, true); // low-res first for fast feedback
