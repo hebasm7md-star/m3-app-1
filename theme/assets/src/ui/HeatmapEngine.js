@@ -127,12 +127,12 @@
           if (ap.antennaPattern) {
             // Verify pattern has required data arrays
             var hasHorizontalData = ap.antennaPattern.horizontalData && 
-                                    Array.isArray(ap.antennaPattern.horizontalData) && 
-                                    ap.antennaPattern.horizontalData.length > 0;
+              Array.isArray(ap.antennaPattern.horizontalData) && 
+              ap.antennaPattern.horizontalData.length > 0;
             var hasVerticalData = ap.antennaPattern.verticalData && 
-                                  Array.isArray(ap.antennaPattern.verticalData) && 
-                                  ap.antennaPattern.verticalData.length > 0;
-            
+              Array.isArray(ap.antennaPattern.verticalData) && 
+              ap.antennaPattern.verticalData.length > 0;
+
             // Only include pattern if it has valid data
             if (hasHorizontalData || hasVerticalData) {
               patternData = {
@@ -142,7 +142,7 @@
               };
             }
           }
-          
+
           return {
             id: ap.id,
             x: ap.x,
@@ -169,19 +169,19 @@
         highlight: state.highlight,
         defaultPattern:
           state.defaultAntennaPatternIndex >= 0 &&
-            state.antennaPatterns[state.defaultAntennaPatternIndex]
-            ? {
-              horizontalData:
-                state.antennaPatterns[state.defaultAntennaPatternIndex]
-                  .horizontalData,
-              verticalData:
-                state.antennaPatterns[state.defaultAntennaPatternIndex]
-                  .verticalData,
-              _maxValue:
-                state.antennaPatterns[state.defaultAntennaPatternIndex]
-                  ._maxValue,
-            }
-            : null,
+          state.antennaPatterns[state.defaultAntennaPatternIndex]
+          ? {
+            horizontalData:
+              state.antennaPatterns[state.defaultAntennaPatternIndex]
+              .horizontalData,
+            verticalData:
+              state.antennaPatterns[state.defaultAntennaPatternIndex]
+              .verticalData,
+            _maxValue:
+              state.antennaPatterns[state.defaultAntennaPatternIndex]
+              ._maxValue,
+          }
+          : null,
         apColorMap: state.apColorMap,
         freq: state.freq || 2400,
         N: state.N || 2.5,
@@ -264,27 +264,27 @@
               // Backend data is row-major (y outer, x inner): data[y_idx * cols + x_idx]
               if (state.optimizationRsrpGrid && state.view === "rssi") {
                 var bgrid = state.optimizationRsrpGrid;
-                
+
                 var bx = x / bgrid.dx;
                 var by = y / bgrid.dy;
-                
+
                 var gx0 = Math.max(0, Math.min(bgrid.cols - 1, Math.floor(bx - 0.5)));
                 var gx1 = Math.max(0, Math.min(bgrid.cols - 1, gx0 + 1));
                 var gy0 = Math.max(0, Math.min(bgrid.rows - 1, Math.floor(by - 0.5)));
                 var gy1 = Math.max(0, Math.min(bgrid.rows - 1, gy0 + 1));
-                
+
                 var tx = (bx - 0.5) - gx0;
                 var ty = (by - 0.5) - gy0;
-                
+
                 var v00 = bgrid.data[gy0 * bgrid.cols + gx0];
                 var v10 = bgrid.data[gy0 * bgrid.cols + gx1];
                 var v01 = bgrid.data[gy1 * bgrid.cols + gx0];
                 var v11 = bgrid.data[gy1 * bgrid.cols + gx1];
-                
+
                 var v0 = v00 * (1 - tx) + v10 * tx;
                 var v1 = v01 * (1 - tx) + v11 * tx;
                 var bval = v0 * (1 - ty) + v1 * ty;
-                
+
                 if (!isNaN(bval)) {
                   var bcolor = colorNumeric(bval);
                   img.data[idx] = bcolor[0];
@@ -528,7 +528,413 @@
                   ap = a;
                 }
               }
-            
+              return { ap: ap, rssiDbm: best };
+            }
+
+            // CCI calculation function for dragging (uses getAngleDependentGain for accuracy)
+            function cciAtSimple(x, y, servingAp) {
+              if (!servingAp) return -200;
+              var i, sumLin = 0;
+              for (i = 0; i < state.aps.length; i++) {
+                var ap = state.aps[i];
+                if (ap.enabled === false) continue;
+                if (ap === servingAp) continue;
+                if (ap.ch !== servingAp.ch) continue;
+                var p = _propModel.rssi(
+                  ap.tx,
+                  _propModel.getAngleDependentGain(ap, {x: x, y: y}),
+                  modelLoss(ap.x, ap.y, x, y)
+                );
+                sumLin += dbmToLin(p);
+              }
+              if (sumLin <= 0) return -200;
+              return linToDbm(sumLin);
+            }
+
+            for (var r = 0; r < rows; r++) {
+              var y = (r + 0.5) * dy;
+              for (var c = 0; c < cols; c++) {
+                var x = (c + 0.5) * dx;
+                var idx = 4 * (r * cols + c);
+
+                // SKIP CSV interpolation during drag - too expensive
+                // Use simplified calculations for CCI/Throughput during drag
+
+                if (isBest || isServCh) {
+                  // Best Server and Serving Channel use full bestApAt with angle-dependent gain
+                  var best = useOnlySelected ? { ap: selectedAP, rssiDbm: 0 } : bestApAt(x, y);
+                  if (useOnlySelected && selectedAP) {
+                    // Use angle-dependent gain calculation for accuracy
+                    best.rssiDbm = _propModel.rssi(
+                      selectedAP.tx,
+                      _propModel.getAngleDependentGain(selectedAP, {x: x, y: y}),
+                      modelLoss(selectedAP.x, selectedAP.y, x, y)
+                    );
+                  }
+
+                  var col;
+                  if (isBest) {
+                    col = best.ap ? colorForAP(best.ap.id) : [200, 200, 200, 230];
+                  } else {
+                    var ch = best.ap ? best.ap.ch : 0;
+                    col = colorForChannel(ch);
+                  }
+                  img.data[idx] = col[0];
+                  img.data[idx + 1] = col[1];
+                  img.data[idx + 2] = col[2];
+                  img.data[idx + 3] = col[3];
+                } else {
+                  // RSSI, SNR, CCI, or Throughput view
+                  // All views use bestApAt with angle-dependent gain for accuracy
+                  var bestN = useOnlySelected ? { ap: selectedAP, rssiDbm: 0 } : bestApAt(x, y);
+                  if (useOnlySelected && selectedAP) {
+                    bestN.rssiDbm = _propModel.rssi(
+                      selectedAP.tx,
+                      _propModel.getAngleDependentGain(selectedAP, {x: x, y: y}),
+                      modelLoss(selectedAP.x, selectedAP.y, x, y)
+                    );
+                  }
+
+                  var value;
+                  if (isSNR) {
+                    value = bestN.rssiDbm - noiseVal;
+                  } else if (isSINR) {
+                    if (!bestN.ap) {
+                      value = -Infinity;
+                    } else {
+                      var IdbmDrag = cciAtSimple(x, y, bestN.ap);
+                      value = sinrAt(bestN.rssiDbm, IdbmDrag);
+                    }
+                  } else if (isCCI) {
+                    // Count interfering antennas (power > -85, same channel as best server)
+                    value = bestN.ap ? countInterferingAntennas(x, y, bestN.ap) : 0;
+                  } else if (isThr) {
+                    if (!bestN.ap) {
+                      value = 0; // No AP, no throughput
+                    } else {
+                      var Idbm2 = cciAtSimple(x, y, bestN.ap);
+                      var sinr = sinrAt(bestN.rssiDbm, Idbm2);
+                      value = throughputFromSinr(sinr);
+                    }
+                  } else {
+                    value = bestN.rssiDbm;
+                  }
+
+                  var col;
+                  if (isCCI) {
+                    // Use discrete color map for count values
+                    col = colorForCount(value);
+                  } else {
+                    col = colorNumeric(value);
+                  }
+                  img.data[idx] = col[0];
+                  img.data[idx + 1] = col[1];
+                  img.data[idx + 2] = col[2];
+                  img.data[idx + 3] = col[3];
+                }
+              }
+            }
+
+            // Create canvas and render - use medium quality smoothing for good balance
+            off = document.createElement("canvas");
+            off.width = cols;
+            off.height = rows;
+            var offCtx = off.getContext("2d");
+            offCtx.imageSmoothingEnabled = true;
+            offCtx.imageSmoothingQuality = "medium"; // Medium quality for good balance
+            offCtx.putImageData(img, 0, 0);
+
+            // Don't cache during drag - we want real-time updates
+            // Cache will be updated when drag ends
+          }
+        } else {
+          // No antennas yet, no need to generate heatmap
+          off = null;
+        }
+      } else if (state.cachedHeatmap) {
+        // Use cached heatmap if available (when not dragging)
+        off = state.cachedHeatmap;
+        // If update is pending, it will replace the cache when done
+      } else if (!state.heatmapUpdatePending) {
+        // No cache exists and no update pending - generate synchronously for initial display
+        // This ensures the heatmap shows immediately on first load
+        // Generate if we have antennas OR CSV coverage data OR optimizationRsrpGrid
+        if (
+          state.aps.length > 0 ||
+          (state.csvCoverageData && state.csvCoverageGrid) ||
+          state.optimizationRsrpGrid
+        ) {
+          var resolutionMultiplier = 1.5; // High quality rendering
+          var baseCols = Math.max(20, Math.floor(state.w / state.res));
+          var baseRows = Math.max(14, Math.floor(state.h / state.res));
+          var cols = baseCols * resolutionMultiplier;
+          var rows = baseRows * resolutionMultiplier;
+          var dx = state.w / cols,
+            dy = state.h / rows;
+          var img = ctx.createImageData(cols, rows);
+
+          var selectedAP = null,
+            i;
+          for (i = 0; i < state.aps.length; i++) {
+            if (state.aps[i].id === state.selectedApId) {
+              selectedAP = state.aps[i];
+              break;
+            }
+          }
+          var useOnlySelected = state.highlight && selectedAP && selectedAP.enabled !== false;
+
+          for (var r = 0; r < rows; r++) {
+            var y = (r + 0.5) * dy;
+            for (var c = 0; c < cols; c++) {
+              var x = (c + 0.5) * dx;
+              var idx = 4 * (r * cols + c);
+
+              // Use backend-computed RSRP when available (from optimization)
+              if (state.optimizationRsrpGrid && state.view === "rssi") {
+                var bgrid = state.optimizationRsrpGrid;
+
+                var bx = x / bgrid.dx;
+                var by = y / bgrid.dy;
+
+                var gx0 = Math.max(0, Math.min(bgrid.cols - 1, Math.floor(bx - 0.5)));
+                var gx1 = Math.max(0, Math.min(bgrid.cols - 1, gx0 + 1));
+                var gy0 = Math.max(0, Math.min(bgrid.rows - 1, Math.floor(by - 0.5)));
+                var gy1 = Math.max(0, Math.min(bgrid.rows - 1, gy0 + 1));
+
+                var tx = (bx - 0.5) - gx0;
+                var ty = (by - 0.5) - gy0;
+
+                var v00 = bgrid.data[gy0 * bgrid.cols + gx0];
+                var v10 = bgrid.data[gy0 * bgrid.cols + gx1];
+                var v01 = bgrid.data[gy1 * bgrid.cols + gx0];
+                var v11 = bgrid.data[gy1 * bgrid.cols + gx1];
+
+                var v0 = v00 * (1 - tx) + v10 * tx;
+                var v1 = v01 * (1 - tx) + v11 * tx;
+                var bval = v0 * (1 - ty) + v1 * ty;
+
+                if (!isNaN(bval)) {
+                  var bcolor = colorNumeric(bval);
+                  img.data[idx] = bcolor[0];
+                  img.data[idx + 1] = bcolor[1];
+                  img.data[idx + 2] = bcolor[2];
+                  img.data[idx + 3] = bcolor[3];
+                  continue;
+                }
+              }
+
+              /* TRIAL: during optimization, all RSRP comes from backend only —
+                 skip frontend propagation calc entirely */
+              if (state.isOptimizing) {
+                img.data[idx] = 0;
+                img.data[idx + 1] = 0;
+                img.data[idx + 2] = 0;
+                img.data[idx + 3] = 0;
+                continue;
+              }
+
+              if (state.view === "best") {
+                var best = bestApAt(x, y);
+                if (useOnlySelected) {
+                  best.ap = selectedAP;
+                  best.rssiDbm = _propModel.rssi(
+                    selectedAP.tx,
+                    _propModel.getAngleDependentGain(selectedAP, {x: x, y: y}),
+                    modelLoss(selectedAP.x, selectedAP.y, x, y)
+                  );
+                }
+                var colAP = best.ap
+                  ? colorForAP(best.ap.id)
+                  : [200, 200, 200, 230];
+                img.data[idx] = colAP[0];
+                img.data[idx + 1] = colAP[1];
+                img.data[idx + 2] = colAP[2];
+                img.data[idx + 3] = colAP[3];
+                continue;
+              }
+              if (state.view === "servch") {
+                var best2 = bestApAt(x, y);
+                if (useOnlySelected) {
+                  best2.ap = selectedAP;
+                  best2.rssiDbm = _propModel.rssi(
+                    selectedAP.tx,
+                    _propModel.getAngleDependentGain(selectedAP, {x: x, y: y}),
+                    modelLoss(selectedAP.x, selectedAP.y, x, y)
+                  );
+                }
+                var ch = best2.ap ? best2.ap.ch : 0;
+                var colCH = colorForChannel(ch);
+                img.data[idx] = colCH[0];
+                img.data[idx + 1] = colCH[1];
+                img.data[idx + 2] = colCH[2];
+                img.data[idx + 3] = colCH[3];
+                continue;
+              }
+
+              var bestN = bestApAt(x, y);
+              if (useOnlySelected) {
+                bestN.ap = selectedAP;
+                bestN.rssiDbm = _propModel.rssi(
+                  selectedAP.tx,
+                  _propModel.getAngleDependentGain(selectedAP, {x: x, y: y}),
+                  modelLoss(selectedAP.x, selectedAP.y, x, y)
+                );
+              }
+
+              var value;
+              if (state.view === "rssi") {
+                value = bestN.rssiDbm;
+              } else if (state.view === "snr") {
+                value = bestN.rssiDbm - state.noise;
+              } else if (state.view === "sinr") {
+                var IdbmSinr = cciAt(x, y, bestN.ap);
+                value = sinrAt(bestN.rssiDbm, IdbmSinr);
+              } else if (state.view === "cci") {
+                // Count interfering antennas (power > -85, same channel as best server)
+                value = countInterferingAntennas(x, y, bestN.ap);
+              } else if (state.view === "thr") {
+                var Idbm2 = cciAt(x, y, bestN.ap);
+                var sinr = sinrAt(bestN.rssiDbm, Idbm2);
+                value = throughputFromSinr(sinr);
+              } else {
+                value = bestN.rssiDbm;
+              }
+
+              var col;
+              if (state.view === "cci") {
+                // Use discrete color map for count values
+                col = colorForCount(value);
+              } else {
+                col = colorNumeric(value);
+              }
+              img.data[idx] = col[0];
+              img.data[idx + 1] = col[1];
+              img.data[idx + 2] = col[2];
+              img.data[idx + 3] = col[3];
+            }
+          }
+
+          off = document.createElement("canvas");
+          off.width = cols;
+          off.height = rows;
+          var offCtx = off.getContext("2d");
+          offCtx.imageSmoothingEnabled = true;
+          offCtx.imageSmoothingQuality = "high";
+          offCtx.putImageData(img, 0, 0);
+
+          state.cachedHeatmap = off;
+          state.cachedHeatmapAntennaCount = state.aps.length; // Store antenna count for validation
+        } else {
+          // No antennas yet, no need to generate heatmap
+          off = null;
+        }
+      } else if (state.heatmapUpdatePending) {
+        // Update is pending - use cached heatmap ONLY if it's still valid (same antenna count)
+        // This prevents disappearing while keeping the display smooth during updates
+        // If antenna count changed (e.g., deletion), cache is invalid and we show nothing
+        if (state.cachedHeatmap && state.cachedHeatmapAntennaCount === state.aps.length) {
+          // Cache is still valid - use it to prevent disappearing
+          off = state.cachedHeatmap;
+        } else {
+          // Cache is invalid or doesn't exist - clear it and show nothing
+          if (state.cachedHeatmap && state.cachedHeatmapAntennaCount !== state.aps.length) {
+            state.cachedHeatmap = null;
+            state.cachedHeatmapAntennaCount = 0;
+          }
+          off = null;
+        }
+      } else {
+        // No update pending - use cached heatmap ONLY if it's valid
+        // Validate cached heatmap matches current antenna count
+        if (state.cachedHeatmap && state.cachedHeatmapAntennaCount === state.aps.length) {
+          off = state.cachedHeatmap;
+        } else {
+          // Cached heatmap is invalid - clear it immediately
+          if (state.cachedHeatmap && state.cachedHeatmapAntennaCount !== state.aps.length) {
+            state.cachedHeatmap = null;
+            state.cachedHeatmapAntennaCount = 0;
+          }
+          off = null;
+
+          // If no valid cache and we have antennas, trigger async generation
+          if (
+            !state.isDraggingAntenna &&
+            (state.aps.length > 0 ||
+             (state.csvCoverageData && state.csvCoverageGrid) || state.optimizationRsrpGrid)
+          ) {
+            // No cache and no update pending - fallback: trigger async generation
+            // This handles cases where sync generation didn't run (e.g., no antennas yet, or edge cases)
+            if (typeof generateHeatmapAsync === 'function') {
+              generateHeatmapAsync(null, true); // Start with low-res for fast initial display
+            }
+          }
+        }
+      }
+    }
+    return off;
+  }
+
+  function drawHeatmapOverlay(ctx, off, transition) {
+    var state = window.state;
+    var canvas = window.canvas;
+    var padFn = window.pad;
+    var pad = typeof padFn === 'function' ? padFn() : padFn;
+    var renderCoveragePlane3D = window.renderCoveragePlane3D;
+
+    // Draw heatmap only if visualization is enabled
+    // XD Tab Isolation: skip heatmap rendering in XD tab
+    if (state.showVisualization && off && state.activeSection !== 'xd') {
+      // Draw 2D heatmap only when in 2D view (transition = 0)
+      if (transition <= 0) {
+        // Ensure smoothing is enabled when drawing the heatmap
+        ctx.save();
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+
+        // Draw the heatmap with proper scaling
+        var heatmapX = pad;
+        var heatmapY = pad;
+        var heatmapWidth = canvas.width - 2 * pad;
+        var heatmapHeight = canvas.height - 2 * pad;
+
+        ctx.drawImage(
+          off,
+          heatmapX,
+          heatmapY,
+          heatmapWidth,
+          heatmapHeight
+        );
+
+        // Draw border around heatmap
+        ctx.strokeStyle = "#374151";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(
+          heatmapX,
+          heatmapY,
+          heatmapWidth,
+          heatmapHeight
+        );
+        ctx.restore();
+      } else if (!state.useThreeJS || !state.threeRenderer) {
+        // In 3D view without Three.js, render coverage pattern as a flat plane at ground level (0m)
+        if (typeof renderCoveragePlane3D === 'function') {
+          renderCoveragePlane3D(ctx, off, transition);
+        }
+      }
+      // If Three.js is active, heatmap is rendered as texture in renderThreeJSScene
+    } else if (!state.showVisualization) {
+      // Draw border even when visualization is off
+      ctx.strokeStyle = "#374151";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(
+        pad,
+        pad,
+        canvas.width - 2 * pad,
+        canvas.height - 2 * pad
+      );
+    }
+  }
+
   window.invalidateHeatmapCache = invalidateHeatmapCache;
   window.initHeatmapWorker = initHeatmapWorker;
   window.generateHeatmapAsync = generateHeatmapAsync;
