@@ -306,7 +306,7 @@ class Combined(CombinedTemplate):
                            new_action_configs=[],
                            new_bsrv_rsrp=live.get("new_bsrv_rsrp", []),
                            new_compliance=live.get("new_compliance", []),
-                           status="finished",
+                           status="finished", 
                            message="Accurate Baseline")
       self._send_to_iframe("baseline_completed", success=True, message="Accurate baseline calculated successfully")
     else:
