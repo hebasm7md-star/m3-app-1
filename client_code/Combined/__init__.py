@@ -56,6 +56,9 @@ class Combined(CombinedTemplate):
                             window.dispatchEvent(new CustomEvent('anvilFetchAntennaConfigs', {{detail: event.data}}));
                         if (event.data && event.data.type === 'start_optimization_and_poll')
                             window.dispatchEvent(new CustomEvent('anvilStartOptimizationAndPoll', {{detail: event.data}}));
+                        if (event.data && event.data.type === 'start_accurate_baseline')
+                            window.dispatchEvent(new CustomEvent('anvilStartAccurateBaseline', {{detail: event.data}}));
+                        
                         if (event.data && event.data.type === 'save_json_file') {{
                             window.anvilIframeMessages.push(event.data);
                             triggerMessageCheck();
@@ -103,6 +106,7 @@ class Combined(CombinedTemplate):
 
     self.add_component(html_panel)
     js.window.addEventListener("anvilStartOptimizationAndPoll", self.start_optimization)
+    js.window.addEventListener("anvilStartAccurateBaseline",    self.start_accurate_baseline)
     js.window.addEventListener("anvilAntennaStatusUpdate",      self.send_antenna_config)
     js.window.addEventListener("anvilAntennasBatchStatusUpdate",self.add_batch_antennas)
     js.window.addEventListener("anvilUploadAntennaPattern",     self.send_pattern_to_server)
@@ -284,6 +288,27 @@ class Combined(CombinedTemplate):
   def timer_1_tick(self, **event_args):
     if self.opt_running:
       self.poll_optimization_data(**event_args)
+    # local function , need to be outside 
+    def start_accurate_baseline(self, event):
+      if self.opt_running:
+        self._send_to_iframe("baseline_error", success=False, message="Optimization is currently running")
+        return
+
+    with anvil.server.no_loading_indicator:
+      baseline_check = anvil.server.call("check_baseline_exists")
+
+    if not baseline_check.get("exists", False):
+      self._send_error("baseline_error", "No baseline initialized! Please ensure baseline is loaded before calculating accurate baseline.")
+      return
+
+    with anvil.server.no_loading_indicator:
+      result = anvil.server.call("calculate_accurate_baseline")
+
+    status = result.get("status")
+    if status == "success":
+      self._send_to_iframe("baseline_completed", success=True, message="Accurate baseline calculated successfully")
+    else:
+      self._send_error("baseline_error", result.get("message", "Error calculating accurate baseline"))
 
   def start_optimization(self, event):
     if self.opt_running:

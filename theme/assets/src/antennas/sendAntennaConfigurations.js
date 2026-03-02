@@ -2,7 +2,7 @@
 // Depends on: global state, draw(), renderAPs(), renderApDetails(), NotificationSystem, CoordinateSystem (worldToCanvasPixels)
 
 var BackendSync = (function () {
-  
+
   // Store antenna position history
   var antennaPositionHistory = [];
   var currentAntennaDataFileName = null; // Track the JSON filename for the current project
@@ -357,10 +357,10 @@ var BackendSync = (function () {
         var backendY = config.Y || config.y;
         var enabled =
           config.on !== undefined
-            ? config.on
-            : config.enabled !== undefined
-              ? config.enabled
-              : true;
+          ? config.on
+          : config.enabled !== undefined
+          ? config.enabled
+          : true;
 
         if (!antennaId) {
           console.warn("Skipping config without ID:", config);
@@ -518,10 +518,10 @@ var BackendSync = (function () {
         calculateBaselineBtn.style.cursor = 'pointer';
         calculateBaselineBtn.innerHTML = '<span class="material-icons">analytics</span> Calculate Accurate Baseline';
       }
-      
+
       if (typeof window.NotificationSystem !== 'undefined') {
         if (event.data.type === "baseline_completed") {
-          window.NotificationSystem.show(event.data.message || "Accurate baseline calculated successfully!");
+          window.NotificationSystem.success(event.data.message || "Accurate baseline calculated successfully!");
         } else {
           window.NotificationSystem.error(event.data.message || "Failed to calculate accurate baseline.");
         }
@@ -551,13 +551,13 @@ var BackendSync = (function () {
 
       if (window.renderAPs) window.renderAPs();
       if (window.renderApDetails) window.renderApDetails();
-      
+
       if (addAPBtn) {
         addAPBtn.disabled = false;
         addAPBtn.style.opacity = '1';
         addAPBtn.style.pointerEvents = 'auto';
       }
-      
+
       var footerBadge = document.getElementById('footerBadge');
       var footerMessage = document.getElementById('footerMessage');
       if (footerBadge) {
@@ -586,13 +586,13 @@ var BackendSync = (function () {
       }
       if (window.renderAPs) window.renderAPs();
       if (window.renderApDetails) window.renderApDetails();
-      
+
       if (addAPBtn) {
         addAPBtn.disabled = false;
         addAPBtn.style.opacity = '1';
         addAPBtn.style.pointerEvents = 'auto';
       }
-      
+
       var footerBadge = document.getElementById('footerBadge');
       var footerMessage = document.getElementById('footerMessage');
       if (footerBadge) {
