@@ -703,9 +703,85 @@
     });
   }
 
+  // Get button text based on selected element type
+    function getAddButtonText(isDrawing) {
+      if (isDrawing) {
+        return "Drawing...";
+      }
+      var elementNames = {
+        wall: "Add Wall",
+        door: "Add Door",
+        doubleDoor: "Add Double Door",
+        window: "Add Window",
+        floorPlane: "Add Floor Plane",
+      };
+      return elementNames[state.selectedElementType] || "";
+    }
+  
+    function setAddAPBtnText(text) {
+      var addAPBtn = document.getElementById("addAP");
+      if (!addAPBtn) return;
+      var label = addAPBtn.querySelector("#addAPBtnLabel");
+      if (label) label.textContent = text; else addAPBtn.textContent = text;
+    }
+
+  function updateEditorButtonsUI() {
+    var state = window.state;
+    var addBtn = document.getElementById("addWall");
+    if (!state.selectedElementType) {
+      addBtn.style.display = "none";
+    } else {
+      addBtn.style.display = "";
+      if (state.addingWall || state.addingFloorPlane) {
+        if (addBtn.className.indexOf("toggled") === -1)
+          addBtn.className += " toggled";
+        var drawingText = getAddButtonText(true);
+        if (addBtn.textContent !== drawingText)
+          addBtn.textContent = drawingText;
+      } else {
+        addBtn.className = addBtn.className.replace(" toggled", "");
+        var normalText = getAddButtonText(false);
+        if (addBtn.textContent !== normalText)
+          addBtn.textContent = normalText;
+      }
+    }
+
+    var addAPBtn = document.getElementById("addAP");
+    if (state.addingAP) {
+      if (addAPBtn.className.indexOf("toggled") === -1)
+        addAPBtn.className += " toggled";
+      setAddAPBtnText("Placing...");
+    } else {
+      addAPBtn.className = addAPBtn.className.replace(" toggled", "");
+      setAddAPBtnText("Place Antenna Manually");
+    }
+
+    var addFloorPlaneBtn = document.getElementById("addFloorPlane");
+    if (addFloorPlaneBtn) {
+      if (state.addingFloorPlane) {
+        if (addFloorPlaneBtn.className.indexOf("toggled") === -1)
+          addFloorPlaneBtn.className += " toggled";
+        if (addFloorPlaneBtn.textContent !== "Drawing...")
+          addFloorPlaneBtn.textContent = "Drawing...";
+      } else {
+        addFloorPlaneBtn.className = addFloorPlaneBtn.className.replace(
+          " toggled",
+          ""
+        );
+        if (addFloorPlaneBtn.textContent !== "Add Floor Plane")
+          addFloorPlaneBtn.textContent = "Add Floor Plane";
+      }
+    }
+
+
+  }
+
   // Export functions for global access
   window.updateDeleteImageButton = updateDeleteImageButton;
   window.updateDeleteDxfButton = updateDeleteDxfButton;
   window.updateDeleteXdImageButton = updateDeleteXdImageButton;
+  window.updateEditorButtonsUI = updateEditorButtonsUI;
+  window.getAddButtonText = getAddButtonText;
+  window.setAddAPBtnText = setAddAPBtnText;
 
 })();

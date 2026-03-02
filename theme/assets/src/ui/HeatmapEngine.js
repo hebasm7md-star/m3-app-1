@@ -442,8 +442,98 @@
     });
   }
 
+  function generateHeatmapCanvas(ctx) {
+    var state = window.state;
+    var bestApAt = window.bestApAt;
+    var _propModel = window._propModel;
+    var modelLoss = window.modelLoss;
+    var dbmToLin = window.dbmToLin;
+    var linToDbm = window.linToDbm;
+    var colorForAP = window.colorForAP;
+    var colorForChannel = window.colorForChannel;
+    var sinrAt = window.sinrAt;
+    var cciAt = window.cciAt;
+    var countInterferingAntennas = window.countInterferingAntennas;
+    var throughputFromSinr = window.throughputFromSinr;
+    var colorForCount = window.colorForCount;
+    var colorNumeric = window.colorNumeric;
+    var generateHeatmapAsync = window.generateHeatmapAsync;
+
+    var off = null;
+    if (state.showVisualization) {
+      // During antenna dragging: recalculate heatmap in real-time at optimized resolution for smooth movement
+      // When not dragging: use cache if available, or generate at full resolution
+      if (state.isDraggingAntenna) {
+        // OPTIMIZATION: Balanced resolution + simplified calculations during drag for speed
+        if (state.aps.length > 0) {
+          // Use 0.75x resolution multiplier for good balance between speed and quality
+          var resolutionMultiplier = 1.6;
+          // Use normal grid step size for maximum detail during drag
+          var dragRes = state.res * 8; // Use normal grid cells for better detail
+          var baseCols = Math.max(20, Math.floor(state.w / dragRes));
+          var baseRows = Math.max(14, Math.floor(state.h / dragRes));
+          var cols = Math.floor(baseCols * resolutionMultiplier);
+          var rows = Math.floor(baseRows * resolutionMultiplier);
+          var dx = state.w / cols,
+            dy = state.h / rows;
+          var img = ctx.createImageData(cols, rows);
+
+          // Cache selectedAP lookup (only once, not per pixel)
+          var selectedAP = null,
+            i;
+          for (i = 0; i < state.aps.length; i++) {
+            if (state.aps[i].id === state.selectedApId) {
+              selectedAP = state.aps[i];
+              break;
+            }
+          }
+          var useOnlySelected = state.highlight && selectedAP && selectedAP.enabled !== false;
+
+          // Cache noise value
+          var noiseVal = state.noise;
+
+          // Simplified gain function for drag (use static gain, skip complex pattern calculations)
+          function getSimpleGain(ap) {
+            return ap.gt || 0; // Just use static gain during drag for speed
+          }
+
+          // Optimized loop - skip CSV, skip complex views during drag
+          var isRSSI = state.view === "rssi";
+          var isSNR = state.view === "snr";
+          var isSINR = state.view === "sinr";
+          var isBest = state.view === "best";
+          var isServCh = state.view === "servch";
+          var isCCI = state.view === "cci";
+          var isThr = state.view === "thr";
+
+          // Support RSSI, SNR, SINR, Best Server, Serving Channel, CCI, and Throughput during drag (with simplified calculations)
+          if (!isRSSI && !isSNR && !isSINR && !isBest && !isServCh && !isCCI && !isThr) {
+            // Fallback: don't use cached heatmap during drag (it has old positions) - set to null to prevent deformed pattern flash
+            // The heatmap will be regenerated when drag ends
+            off = null;
+          } else {
+            // Simplified best AP calculation function for dragging (uses getSimpleGain)
+            function bestApAtSimple(x, y) {
+              var i, best = -1e9, ap = null;
+              for (i = 0; i < state.aps.length; i++) {
+                var a = state.aps[i];
+                if (a.enabled === false) continue;
+                var pr = _propModel.rssi(
+                  a.tx,
+                  getSimpleGain(a),
+                  modelLoss(a.x, a.y, x, y)
+                );
+                if (pr > best) {
+                  best = pr;
+                  ap = a;
+                }
+              }
+            
   window.invalidateHeatmapCache = invalidateHeatmapCache;
   window.initHeatmapWorker = initHeatmapWorker;
   window.generateHeatmapAsync = generateHeatmapAsync;
+
+  window.generateHeatmapCanvas = generateHeatmapCanvas;
+  window.drawHeatmapOverlay = drawHeatmapOverlay;
 
 })();
