@@ -76,10 +76,10 @@
       img.onload = function () {
         window.state.backgroundImage = img;
         window.state.floorPlanImage = img; // Store as floor plan image
-
+        
         var imgAspectRatio = img.width / img.height;
         var canvasAspectRatio = window.state.w / window.state.h;
-
+        
         if (imgAspectRatio > canvasAspectRatio) {
           window.state.backgroundImageDisplayWidth = window.state.w;
           window.state.backgroundImageDisplayHeight = window.state.w / imgAspectRatio;
@@ -88,7 +88,7 @@
           window.state.backgroundImageDisplayHeight = window.state.h;
         }
         window.state.backgroundImageAspectRatio = imgAspectRatio;
-
+        
         updateDeleteImageButton();
         window.draw();
       };
@@ -139,10 +139,10 @@
         window.state.xdImageBase64 = event.target.result;
 
         window.state.backgroundImage = img;
-
+        
         var imgAspectRatio = img.width / img.height;
         var canvasAspectRatio = window.state.w / window.state.h;
-
+        
         if (imgAspectRatio > canvasAspectRatio) {
           window.state.backgroundImageDisplayWidth = window.state.w;
           window.state.backgroundImageDisplayHeight = window.state.w / imgAspectRatio;
@@ -151,7 +151,7 @@
           window.state.backgroundImageDisplayHeight = window.state.h;
         }
         window.state.backgroundImageAspectRatio = imgAspectRatio;
-
+        
         updateDeleteImageButton(); 
         updateDeleteXdImageButton();
         window.draw();
@@ -371,7 +371,7 @@
       window.state.addingWall = false;
       window.state.addingAP = false;
       window.state.addingFloorPlane = false;
-
+      
       var addAPBtn = document.getElementById("addAP");
       if (addAPBtn) {
         var label = addAPBtn.querySelector("#addAPBtnLabel");
@@ -380,10 +380,10 @@
 
       var addBtn = document.getElementById("addWall");
       if (addBtn) addBtn.textContent = "Add Wall";
-
+      
       var addFloorPlaneBtn = document.getElementById("addFloorPlane");
       if (addFloorPlaneBtn) addFloorPlaneBtn.textContent = "Add Floor Plane";
-
+      
       document.getElementById("calibrateBtn").textContent = "Cancel Calibration";
       document.getElementById("calibrateBtn").classList.add("toggled");
       document.getElementById("calibrationControls").style.display = "block";
@@ -491,7 +491,7 @@
     if (typeof window.NotificationSystem !== "undefined") {
       window.NotificationSystem.info("Calculating Accurate Baseline...");
     }
-
+    
     // Disable button to prevent spamming
     calculateBaselineBtn.disabled = true;
     calculateBaselineBtn.style.opacity = '0.5';
@@ -559,7 +559,7 @@
     var maxEl = document.getElementById("maxVal");
     if (minEl) minEl.value = window.state.minVal;
     if (maxEl) maxEl.value = window.state.maxVal;
-
+    
     if (typeof window.invalidateHeatmapCache === "function") window.invalidateHeatmapCache();
     window.draw();
   });
