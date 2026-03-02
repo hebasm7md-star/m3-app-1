@@ -509,6 +509,25 @@ var BackendSync = (function () {
       }
     }
 
+    // Handle baseline calculation
+    if (event.data && (event.data.type === "baseline_completed" || event.data.type === "baseline_error")) {
+      var calculateBaselineBtn = document.getElementById("calculateBaselineBtn");
+      if (calculateBaselineBtn) {
+        calculateBaselineBtn.disabled = false;
+        calculateBaselineBtn.style.opacity = '1';
+        calculateBaselineBtn.style.cursor = 'pointer';
+        calculateBaselineBtn.innerHTML = '<span class="material-icons">analytics</span> Calculate Accurate Baseline';
+      }
+      
+      if (typeof window.NotificationSystem !== 'undefined') {
+        if (event.data.type === "baseline_completed") {
+          window.NotificationSystem.show(event.data.message || "Accurate baseline calculated successfully!");
+        } else {
+          window.NotificationSystem.error(event.data.message || "Failed to calculate accurate baseline.");
+        }
+      }
+    }
+
     // Handle optimization started (polling is driven by Anvil timer, not JS interval)
     if (event.data && event.data.type === "optimization_started") {
       console.log("Optimization started");

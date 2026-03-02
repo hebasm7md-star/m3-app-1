@@ -480,16 +480,27 @@
       }
     }
 
-    var requestAccurateBaseline = false;
-    var accBaselineCheckbox = document.getElementById("requestAccurateBaseline");
-    if (accBaselineCheckbox) {
-      requestAccurateBaseline = accBaselineCheckbox.checked;
-    }
-
     window.parent.postMessage({
       type: "start_optimization_and_poll",
-      requestId: "optimize_" + Date.now(),
-      request_accurate_baseline: requestAccurateBaseline
+      requestId: "optimize_" + Date.now()
+    }, "*");
+  });
+
+  var calculateBaselineBtn = document.getElementById("calculateBaselineBtn");
+  if (calculateBaselineBtn) calculateBaselineBtn.addEventListener("click", function () {
+    if (typeof window.NotificationSystem !== "undefined") {
+      window.NotificationSystem.show("Calculating Accurate Baseline...");
+    }
+    
+    // Disable button to prevent spamming
+    calculateBaselineBtn.disabled = true;
+    calculateBaselineBtn.style.opacity = '0.5';
+    calculateBaselineBtn.style.cursor = 'not-allowed';
+    calculateBaselineBtn.innerHTML = '<span class="material-icons">hourglass_empty</span> Calculating...';
+
+    window.parent.postMessage({
+      type: "start_accurate_baseline",
+      requestId: "baseline_" + Date.now()
     }, "*");
   });
 
