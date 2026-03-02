@@ -304,6 +304,149 @@ var WallManager = (function () {
     });
   }
 
+  // Function to finish door/window as single segment (not polyline)
+  function finishDoorWindow() {
+    if (!state.temp || !state.temp.p1 || !state.temp.p2) {
+      state.temp = null;
+      state.wallSnapPoints = [];
+      return;
+    }
+
+    saveState();
+    var elementType = state.selectedElementType;
+    var elementDef = elementTypes[elementType];
+    var elementCount = 0;
+    for (var i = 0; i < state.walls.length; i++) {
+      if (state.walls[i].elementType === elementType) elementCount++;
+    }
+    var wallName = elementDef.name + "_" + (elementCount + 1);
+    var wallType = {
+      loss: elementDef.loss,
+      color: elementDef.color,
+      thickness: 3,
+      name: elementDef.name,
+    };
+
+    // Validate door/window is on existing wall
+    if (typeof isLineOnWall === 'function' && !isLineOnWall(state.temp.p1, state.temp.p2)) {
+      NotificationSystem.warning("Please draw the " + elementDef.name + " on an existing wall.\nIt must be aligned with a wall.");
+
+      state.temp = null;
+      state.wallSnapPoints = [];
+      renderWalls();
+      draw();
+      return;
+    }
+
+    // Create single segment wall (p1/p2, not points array)
+    var newWall = {
+      id: "wall_" + state.walls.length,
+      p1: state.temp.p1,
+      p2: state.temp.p2,
+      loss: elementDef.loss,
+      color: wallType.color,
+      thickness: wallType.thickness,
+      height: elementDef.height || 2.5,
+      material: elementDef.material,
+      shape: elementDef.shape || "wall",
+      name: wallName,
+      type: elementType,
+      elementType: elementType,
+      width: elementDef.width || null,
+    };
+
+    state.walls.push(newWall);
+    state.temp = null;
+    state.wallSnapPoints = [];
+    renderWalls();
+  }
+
+  // Function to finish polyline and create wall segments
+  function finishWallPolyline() {
+    if (!state.temp || !state.temp.points || state.temp.points.length < 2) {
+      state.temp = null;
+      state.wallSnapPoints = [];
+      return;
+    }
+
+    saveState();
+    var elementType = state.selectedElementType || "wall";
+    var elementDef = null;
+    var wallName = "";
+    var wallType = null;
+
+    if (elementType === "wall") {
+      wallType = wallTypes[state.selectedWallType] || wallTypes["custom"];
+      if (state.selectedWallType === "custom") {
+        wallType = {
+          loss: state.customWallLoss,
+          color: "#f59e0b",
+          thickness: 3,
+          name: "Custom",
+        };
+      }
+      elementDef =
+        elementTypes.wall[state.selectedWallType] ||
+        elementTypes.wall["custom"];
+      if (state.selectedWallType === "custom") {
+        elementDef = {
+          loss: state.customWallLoss,
+          material: "custom",
+          color: "#f59e0b",
+          thickness: 0.15,
+          height: 2.5,
+          name: "Custom",
+        };
+      }
+      wallName = generateWallName(state.selectedWallType);
+    } else {
+      elementDef = elementTypes[elementType];
+      var elementCount = 0;
+      for (var i = 0; i < state.walls.length; i++) {
+        if (state.walls[i].elementType === elementType) elementCount++;
+      }
+      wallName = elementDef.name + "_" + (elementCount + 1);
+      wallType = {
+        loss: elementDef.loss,
+        color: elementDef.color,
+        thickness: 3,
+        name: elementDef.name,
+      };
+    }
+
+    // Create single wall object with points array (polyline)
+    var points = state.temp.points;
+
+    // Create single wall object with points array
+    // For backward compatibility, also set p1 and p2 to first and last points
+    var newWall = {
+      id: "wall_" + state.walls.length,
+      points: points, // Store all points as polyline
+      p1: points[0], // First point for backward compatibility
+      p2: points[points.length - 1], // Last point for backward compatibility
+      loss: elementDef.loss,
+      color: wallType.color,
+      thickness: wallType.thickness,
+      height: elementDef.height || 2.5,
+      material: elementDef.material,
+      shape: elementDef.shape || "wall",
+      name: wallName,
+      type: elementType === "wall" ? state.selectedWallType : elementType,
+      elementType: elementType,
+      width: elementDef.width || null,
+    };
+
+    state.walls.push(newWall);
+
+    state.temp = null;
+    state.wallSnapPoints = [];
+    renderWalls();
+  }
+
+  // Expose for canvas interaction
+  window.finishDoorWindow = finishDoorWindow;
+  window.finishWallPolyline = finishWallPolyline;
+
   return {
     init: init
   };

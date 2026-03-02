@@ -170,7 +170,7 @@ var RadioCalculations = (function () {
 
     var value;
     var viewMode = _state ? _state.view : "rssi";
-
+    
     if (viewMode === "rssi") {
       value = bestN.rssiDbm;
     } else if (viewMode === "snr") {
@@ -196,10 +196,10 @@ var RadioCalculations = (function () {
       _state                  = deps.state;
       _modelLoss              = deps.modelLoss;
       _propModel              = deps.propModel;
-
+      
       // Expose globally for components that expect it to be on window
       window.getValueAt = getValueAt;
-
+      
       // console.log('RadioCalculations initialized.');
     },
 
