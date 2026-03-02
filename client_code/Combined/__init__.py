@@ -298,8 +298,16 @@ class Combined(CombinedTemplate):
     with anvil.server.no_loading_indicator:
       result = anvil.server.call("calculate_accurate_baseline")
     
-      status = result.get("status")
+    status = result.get("status")
     if status == "success":
+      with anvil.server.no_loading_indicator:
+        live = anvil.server.call("get_live_optimization", 0, 0, 0)
+        self._send_to_iframe("optimization_update",
+                           new_action_configs=[],
+                           new_bsrv_rsrp=live.get("new_bsrv_rsrp", []),
+                           new_compliance=live.get("new_compliance", []),
+                           status="finished",
+                           message="Accurate Baseline")
       self._send_to_iframe("baseline_completed", success=True, message="Accurate baseline calculated successfully")
     else:
       self._send_error("baseline_error", result.get("message", "Error calculating accurate baseline"))
