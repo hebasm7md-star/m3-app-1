@@ -245,6 +245,10 @@
               </div>
             </div>
             <div class="form-group form-group-spacing-top">
+              <label class="checkbox-label" style="margin-bottom: 10px;">
+                <input type="checkbox" id="requestAccurateBaseline" />
+                <span>Accurate Baseline (Sionna)</span>
+              </label>
               <input type="file" id="coverageCsvFile" accept=".csv" class="hidden-file-input" />
               <button id="optimizeBtn" class="action-btn">
                 Optimize
@@ -659,7 +663,7 @@
 <script src="ui/CoordinateSystem.js"></script>
   <script src="ui/AppUIEvents.js"></script>
   <script src="IPSStudioV2.6_clean.js"></script>
-  <script src="ui/AppOrchestrator.js"></script>
+  <script src="AppOrchestrator.js"></script>
 
 <!-- Post-monolith modules (depend on state, draw, canvas, etc.) -->
 <script src="ui/WallManager.js"></script>

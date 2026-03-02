@@ -480,9 +480,16 @@
       }
     }
 
+    var requestAccurateBaseline = false;
+    var accBaselineCheckbox = document.getElementById("requestAccurateBaseline");
+    if (accBaselineCheckbox) {
+      requestAccurateBaseline = accBaselineCheckbox.checked;
+    }
+
     window.parent.postMessage({
       type: "start_optimization_and_poll",
       requestId: "optimize_" + Date.now(),
+      request_accurate_baseline: requestAccurateBaseline
     }, "*");
   });
 
