@@ -115,27 +115,27 @@ var OptimizationSystem = (function () {
   function getBackendRsrpAt(x, y) {
     if (!state.optimizationRsrpGrid) return null;
     var bgrid = state.optimizationRsrpGrid;
-
+    
     var bx = x / bgrid.dx;
     var by = y / bgrid.dy;
-
+    
     var gx0 = Math.max(0, Math.min(bgrid.cols - 1, Math.floor(bx - 0.5)));
     var gx1 = Math.max(0, Math.min(bgrid.cols - 1, gx0 + 1));
     var gy0 = Math.max(0, Math.min(bgrid.rows - 1, Math.floor(by - 0.5)));
     var gy1 = Math.max(0, Math.min(bgrid.rows - 1, gy0 + 1));
-
+    
     var tx = (bx - 0.5) - gx0;
     var ty = (by - 0.5) - gy0;
-
+    
     var v00 = bgrid.data[gy0 * bgrid.cols + gx0];
     var v10 = bgrid.data[gy0 * bgrid.cols + gx1];
     var v01 = bgrid.data[gy1 * bgrid.cols + gx0];
     var v11 = bgrid.data[gy1 * bgrid.cols + gx1];
-
+    
     var v0 = v00 * (1 - tx) + v10 * tx;
     var v1 = v01 * (1 - tx) + v11 * tx;
     var bval = v0 * (1 - ty) + v1 * ty;
-
+    
     if (!isNaN(bval) && bval !== 0) {
       return bval;
     }
@@ -200,8 +200,8 @@ var OptimizationSystem = (function () {
     }
 
     console.log("[BackendRSRP] Grid:", cols, "x", rows,
-                "| dx:", (state.w / cols).toFixed(3), "dy:", (state.h / rows).toFixed(3),
-                "| RSRP:", dataMin.toFixed(1), "to", dataMax.toFixed(1));
+      "| dx:", (state.w / cols).toFixed(3), "dy:", (state.h / rows).toFixed(3),
+      "| RSRP:", dataMin.toFixed(1), "to", dataMax.toFixed(1));
   }
 
   // ── Main Update Handler ───────────────────────────────────────────────
@@ -343,8 +343,6 @@ var OptimizationSystem = (function () {
       var backendY = Number(pickField(action, ['Y_antenna', 'Y', 'y']));
 
       var enabledRaw = pickField(action, ['is_turnning_on', 'on', 'enabled']);
-      var enabled = enabledRaw === "True" || enabledRaw === true ||
-        enabledRaw === "true" || enabledRaw === 1 || enabledRaw === "1";
 
       if (!antennaId || !Number.isFinite(backendX) || !Number.isFinite(backendY)) {
         console.warn("Invalid action config:", action);
@@ -363,7 +361,11 @@ var OptimizationSystem = (function () {
         var oldX = existing.x, oldY = existing.y;
         existing.x = canvasX;
         existing.y = canvasY;
-        existing.enabled = enabled;
+        
+        if (enabledRaw !== undefined) {
+          existing.enabled = enabledRaw === "True" || enabledRaw === true ||
+                             enabledRaw === "true" || enabledRaw === 1 || enabledRaw === "1";
+        }
 
         if (Math.abs(oldX - canvasX) > 0.01 || Math.abs(oldY - canvasY) > 0.01) {
           if (typeof window.logAntennaPositionChange === 'function') {
@@ -373,13 +375,18 @@ var OptimizationSystem = (function () {
       } else {
         var defaultPattern = typeof window.getDefaultAntennaPattern === 'function'
           ? window.getDefaultAntennaPattern() : null;
+        var isNewEnabled = true;
+        if (enabledRaw !== undefined) {
+          isNewEnabled = enabledRaw === "True" || enabledRaw === true ||
+                         enabledRaw === "true" || enabledRaw === 1 || enabledRaw === "1";
+        }
         var ap = {
           id: antennaId, x: canvasX, y: canvasY, z: 0,
           tx: action.power !== undefined ? action.power : 15,
           gt: 5, ch: 1,
           azimuth: action.azimuth !== undefined ? action.azimuth : 0,
           tilt: action.tilt !== undefined ? action.tilt : 0,
-          enabled: enabled,
+          enabled: isNewEnabled,
           antennaPatternFile: null, antennaPatternFileName: null
         };
         if (defaultPattern) ap.antennaPattern = defaultPattern;
