@@ -489,14 +489,8 @@
   var calculateBaselineBtn = document.getElementById("calculateBaselineBtn");
   if (calculateBaselineBtn) calculateBaselineBtn.addEventListener("click", function () {
     if (typeof window.NotificationSystem !== "undefined") {
-      window.NotificationSystem.info("Calculating Accurate Baseline...");
+      window.NotificationSystem.warning("No baseline initialized or baseline error.");
     }
-    
-    // Disable button to prevent spamming
-    calculateBaselineBtn.disabled = true;
-    calculateBaselineBtn.style.opacity = '0.5';
-    calculateBaselineBtn.style.cursor = 'not-allowed';
-    calculateBaselineBtn.innerHTML = '<span class="material-icons">hourglass_empty</span> Calculating...';
 
     window.parent.postMessage({
       type: "start_accurate_baseline",

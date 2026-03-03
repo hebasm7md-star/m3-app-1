@@ -513,17 +513,30 @@ var BackendSync = (function () {
     if (event.data && (event.data.type === "baseline_completed" || event.data.type === "baseline_error")) {
       var calculateBaselineBtn = document.getElementById("calculateBaselineBtn");
       if (calculateBaselineBtn) {
-        calculateBaselineBtn.disabled = false;
-        calculateBaselineBtn.style.opacity = '1';
-        calculateBaselineBtn.style.cursor = 'pointer';
         calculateBaselineBtn.innerHTML = 'Calculate Accurate Baseline';
+
+        if (event.data.type === "baseline_completed") {
+          // Keep disabled after successful baseline completion
+          calculateBaselineBtn.disabled = true;
+          calculateBaselineBtn.style.opacity = '0.5';
+          calculateBaselineBtn.style.cursor = 'not-allowed';
+        } else {
+          // Re-enable on baseline errors (including no baseline initialized)
+          calculateBaselineBtn.disabled = false;
+          calculateBaselineBtn.style.opacity = '1';
+          calculateBaselineBtn.style.cursor = 'pointer';
+        }
       }
       
       if (typeof window.NotificationSystem !== 'undefined') {
         if (event.data.type === "baseline_completed") {
           window.NotificationSystem.success(event.data.message || "Accurate baseline calculated successfully!");
         } else {
-          window.NotificationSystem.error(event.data.message || "Failed to calculate accurate baseline.");
+          window.NotificationSystem.warning(
+            event.data.message ||
+            event.data.error ||
+            "Add antennas to calculate accurate baseline using manual or automatic placement."
+          );
         }
       }
     }
