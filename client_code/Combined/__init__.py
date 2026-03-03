@@ -53,7 +53,7 @@ class Combined(CombinedTemplate):
                             window.dispatchEvent(new CustomEvent('anvilFetchAntennaConfigs', {{detail: event.data}}));
                         if (event.data && event.data.type === 'start_optimization_and_poll')
                             window.dispatchEvent(new CustomEvent('anvilStartOptimizationAndPoll', {{detail: event.data}}));
-                        if (event.data && event.data.type === 'get_accurate_baseline')
+                        if (event.data && (event.data.type === 'start_accurate_baseline'))
                             window.dispatchEvent(new CustomEvent('anvilStartAccurateBaseline', {{detail: event.data}}));
                         
                         if (event.data && event.data.type === 'save_json_file') {{
