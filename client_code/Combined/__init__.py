@@ -466,7 +466,7 @@ class Combined(CombinedTemplate):
     self.last_rsrp_idx = 0
     self.last_compliance_idx = 0
 
-  def reset_session(self):
+  def reset_session(self,event=None):
     self.opt_running = False
     self._reset_indexes()
     print("Resetting backend session...")
