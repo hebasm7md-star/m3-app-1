@@ -488,9 +488,9 @@
 
   var calculateBaselineBtn = document.getElementById("calculateBaselineBtn");
   if (calculateBaselineBtn) calculateBaselineBtn.addEventListener("click", function () {
-    if (typeof window.NotificationSystem !== "undefined") {
-      window.NotificationSystem.warning("No baseline initialized or baseline error.");
-    }
+    // if (typeof window.NotificationSystem !== "undefined") {
+    //   window.NotificationSystem.warning("No baseline initialized or baseline error.");
+    // }
 
     window.parent.postMessage({
       type: "start_accurate_baseline",
