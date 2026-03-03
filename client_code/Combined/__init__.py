@@ -405,7 +405,7 @@ class Combined(CombinedTemplate):
 
     with anvil.server.no_loading_indicator:
       dxf_media = anvil.server.call("generate_dxf_from_floorplan", image_base64, params)
-
+    
     if not dxf_media:
       self._send_error("dxf_error", "Backend failed to generate DXF", request_id=request_id)
       return
