@@ -516,7 +516,7 @@ var BackendSync = (function () {
         calculateBaselineBtn.disabled = false;
         calculateBaselineBtn.style.opacity = '1';
         calculateBaselineBtn.style.cursor = 'pointer';
-        calculateBaselineBtn.innerHTML = '<span class="material-icons">analytics</span> Calculate Accurate Baseline';
+        calculateBaselineBtn.innerHTML = 'Calculate Accurate Baseline';
       }
       
       if (typeof window.NotificationSystem !== 'undefined') {
