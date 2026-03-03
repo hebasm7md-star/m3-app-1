@@ -370,7 +370,7 @@ class Combined(CombinedTemplate):
     if status == "finished":
       if new_actions or new_bsrv_rsrp or new_compliance:
         print(f"[DEBUG] Sending final batch: {len(new_actions)} action(s), {len(new_bsrv_rsrp)} rsrp, {len(new_compliance)} compliance")
-        print("[BACK] compliance: ", new_compliance)
+        print("[BACK] compliance: ", new_compliance[-1])
       self._send_to_iframe("optimization_update", new_action_configs=new_actions, new_bsrv_rsrp=new_bsrv_rsrp, new_compliance=new_compliance, status=status, message=message)
       _update_indexes()
       print(f"[+] OPTIMIZATION COMPLETED — actions={self.last_action_idx}, rsrp={self.last_rsrp_idx}, compliance={self.last_compliance_idx}")
