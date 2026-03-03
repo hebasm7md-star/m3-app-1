@@ -6,18 +6,15 @@ import json
 import base64
 import time
 
+
 class Combined(CombinedTemplate):
+
   def __init__(self, **properties):
     self.init_components(**properties)
-    self.opt_running = False
-    self.last_action_idx = 0
-    self.last_rsrp_idx = 0
-    self.last_compliance_idx = 0
-    self._reset_session()
+    self.reset_session()
 
     filepath = "_/theme/src/index.html"
-    html_panel = HtmlPanel(
-      html=f"""
+    html_panel = HtmlPanel(html=f"""
                 <style>
                     * {{ margin: 0; padding: 0; box-sizing: border-box; }}
                     body, html {{ margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }}
@@ -56,7 +53,7 @@ class Combined(CombinedTemplate):
                             window.dispatchEvent(new CustomEvent('anvilFetchAntennaConfigs', {{detail: event.data}}));
                         if (event.data && event.data.type === 'start_optimization_and_poll')
                             window.dispatchEvent(new CustomEvent('anvilStartOptimizationAndPoll', {{detail: event.data}}));
-                        if (event.data && event.data.type === 'start_accurate_baseline')
+                        if (event.data && (event.data.type === 'start_accurate_baseline'))
                             window.dispatchEvent(new CustomEvent('anvilStartAccurateBaseline', {{detail: event.data}}));
                         
                         if (event.data && event.data.type === 'save_json_file') {{
@@ -101,24 +98,23 @@ class Combined(CombinedTemplate):
 
                     console.log('Message listener set up for iframe');
                 </script>
-            """
-    )
+            """)
 
     self.add_component(html_panel)
     js.window.addEventListener("anvilStartOptimizationAndPoll", self.start_optimization)
-    js.window.addEventListener("anvilStartAccurateBaseline",    self.start_accurate_baseline)
-    js.window.addEventListener("anvilAntennaStatusUpdate",      self.send_antenna_config)
-    js.window.addEventListener("anvilAntennasBatchStatusUpdate",self.add_batch_antennas)
-    js.window.addEventListener("anvilUploadAntennaPattern",     self.send_pattern_to_server)
+    js.window.addEventListener("anvilStartAccurateBaseline", self.get_accurate_baseline)
+    js.window.addEventListener("anvilAntennaStatusUpdate", self.send_antenna_config)
+    js.window.addEventListener("anvilAntennasBatchStatusUpdate", self.add_batch_antennas)
+    js.window.addEventListener("anvilUploadAntennaPattern", self.send_pattern_to_server)
     # js.window.addEventListener("anvilAlert",                    self.show_alert)
     # js.window.addEventListener("anvilNotification",             self.show_notification)
     # js.window.addEventListener("anvilConfirm",                  self.show_confirm)
-    js.window.addEventListener("anvilGenerateDxf",              self.generate_dxf)
-    js.window.addEventListener("anvilParseDxf",                 self.parse_dxf)
-    js.window.addEventListener("anvilComplianceSettings",       self.update_compliance_settings)
-    js.window.addEventListener("anvilRestartSession",           self.handle_restart_session)
+    js.window.addEventListener("anvilGenerateDxf", self.generate_dxf)
+    js.window.addEventListener("anvilParseDxf", self.parse_dxf)
+    js.window.addEventListener("anvilComplianceSettings", self.update_compliance_settings)
+    js.window.addEventListener("anvilRestartSession", self.reset_session)
 
-  # ========== Core Iframe Communication ==========
+    # ========== Core Iframe Communication ==========
   def _send_to_iframe(self, msg_type, success=None, **kwargs):
     """Single entry point for ALL communication to the iframe."""
     data = {"type": msg_type}
@@ -130,7 +126,7 @@ class Combined(CombinedTemplate):
   def _send_error(self, msg_type, technical_error, request_id=None):
     """Log raw error to console, send friendly message to iframe."""
     if not technical_error:
-      friendly_msg = "An unexpected error occurred."# Please try again later."
+      friendly_msg = "An unexpected error occurred."  # Please try again later."
     else:
       technical_lower = str(technical_error).lower()
       if "uplink disconnected" in technical_lower or "no response" in technical_lower:
@@ -154,12 +150,12 @@ class Combined(CombinedTemplate):
       elif "compliance" in technical_lower:
         friendly_msg = "Could not update compliance settings."
       else:
-        friendly_msg = "An unexpected error occurred."# Please try again later."
+        friendly_msg = "An unexpected error occurred."  # Please try again later."
 
     print(f"[ERROR] {technical_error}")
     self._send_to_iframe(msg_type, success=False, error=friendly_msg, requestId=request_id)
 
-  # ========== Antenna Pattern Upload ==========
+    # ========== Antenna Pattern Upload ==========
   def send_pattern_to_server(self, event):
     data = getattr(event, "data", None) or getattr(event, "detail", None)
     if not data:
@@ -191,13 +187,11 @@ class Combined(CombinedTemplate):
 
     if result.get("status") == "success":
       print(f"[SUCCESS] Pattern {result.get('pattern_name')} uploaded.")
-      self._send_to_iframe("upload_antenna_pattern_response", success=True,
-                           pattern_name=result.get("pattern_name"),
-                           filename=result.get("filename"))
+      self._send_to_iframe("upload_antenna_pattern_response", success=True, pattern_name=result.get("pattern_name"), filename=result.get("filename"))
     else:
       self._send_error("upload_antenna_pattern_response", result.get("message", "Unknown error during upload"))
 
-  # ========== Antenna Config / Batch ==========
+    # ========== Antenna Config / Batch ==========
 
   def _transform_antenna_data(self, antenna_data):
     enabled_value = antenna_data.get("enabled", True)
@@ -206,24 +200,22 @@ class Combined(CombinedTemplate):
     elif enabled_value is None:
       enabled_value = True
 
-    clean_pattern = "".join(
-      c for c in antenna_data.get("antennaPatternFileName", "") if c.isalnum() or c in (" ", "-", "_")
-    ).strip().replace(" ", "_")
+    clean_pattern = "".join(c for c in antenna_data.get("antennaPatternFileName", "") if c.isalnum() or c in (" ", "-", "_")).strip().replace(" ", "_")
 
     return {
-      "Az_BL":                antenna_data.get("azimuth", 0),
-      "Tilt_BL":              antenna_data.get("tilt", 0),
-      "power(antenna)_BL":    antenna_data.get("tx", 18),
+      "Az_BL": antenna_data.get("azimuth", 0),
+      "Tilt_BL": antenna_data.get("tilt", 0),
+      "power(antenna)_BL": antenna_data.get("tx", 18),
       "Antenna_Pattern_Name": f"{clean_pattern}.xlsx",
-      "X_antenna":            antenna_data.get("x", ""),
-      "Y_antenna":            antenna_data.get("y", ""),
-      "Z_antenna":            antenna_data.get("z", 2.5),
-      "Turning_ON_OFF":       enabled_value,
+      "X_antenna": antenna_data.get("x", ""),
+      "Y_antenna": antenna_data.get("y", ""),
+      "Z_antenna": antenna_data.get("z", 2.5),
+      "Turning_ON_OFF": enabled_value,
     }
 
   def send_antenna_config(self, event):
     antenna_data = event.detail.get("antenna") if hasattr(event, "detail") else event.detail
-    request_id   = event.detail.get("requestId") if hasattr(event, "detail") else None
+    request_id = event.detail.get("requestId") if hasattr(event, "detail") else None
 
     if not antenna_data:
       self._send_error("antenna_status_response", "No antenna data in status update", request_id=request_id)
@@ -258,7 +250,7 @@ class Combined(CombinedTemplate):
   def add_batch_antennas(self, event):
     print("Iframe sent batch antenna configs...")
     request_id = event.detail.get("requestId") if hasattr(event, "detail") else None
-    antennas   = event.detail.get("antennas")  if hasattr(event, "detail") else []
+    antennas = event.detail.get("antennas") if hasattr(event, "detail") else []
 
     self._send_to_iframe("antennas_batch_status_response", success=True, requestId=request_id)
 
@@ -282,61 +274,39 @@ class Combined(CombinedTemplate):
 
     print(f"[SUCCESS] Added {len(ants_ids)} antenna(s) from batch update")
 
-  # ========== Optimization ==========
-  def start_accurate_baseline(self, event):
+    # ========== Optimization ==========
+  def get_accurate_baseline(self, event):
     if self.opt_running:
       self._send_to_iframe("baseline_error", success=False, message="Optimization is currently running")
       return
 
     with anvil.server.no_loading_indicator:
       baseline_check = anvil.server.call("check_baseline_exists")
-  
       if not baseline_check.get("exists", False):
         self._send_error("baseline_error", "No baseline initialized! Please ensure baseline is loaded before calculating accurate baseline.")
         return
-    
+
     with anvil.server.no_loading_indicator:
-      result = anvil.server.call("calculate_accurate_baseline")
-    
+      result = anvil.server.call("get_accurate_baseline")
+
     status = result.get("status")
     if status == "success":
       with anvil.server.no_loading_indicator:
         live = anvil.server.call("get_live_optimization", 0, 0, 0)
         self._send_to_iframe("optimization_update",
-                           new_action_configs=[],
-                           new_bsrv_rsrp=live.get("new_bsrv_rsrp", []),
-                           new_compliance=live.get("new_compliance", []),
-                           status="finished",
-                           message="Accurate Baseline")
+                             new_action_configs=[],
+                             new_bsrv_rsrp=live.get("new_bsrv_rsrp", []),
+                             new_compliance=live.get("new_compliance", []),
+                             status="finished",
+                             message="Accurate Baseline")
       self._send_to_iframe("baseline_completed", success=True, message="Accurate baseline calculated successfully")
     else:
       self._send_error("baseline_error", result.get("message", "Error calculating accurate baseline"))
-  
+
   @handle("timer_1", "tick")
   def timer_1_tick(self, **event_args):
     if self.opt_running:
       self.poll_optimization_data(**event_args)
-    # local function , need to be outside 
-    # def start_accurate_baseline(self, event):
-    #   if self.opt_running:
-    #     self._send_to_iframe("baseline_error", success=False, message="Optimization is currently running")
-    #     return
-
-    # with anvil.server.no_loading_indicator:
-    #   baseline_check = anvil.server.call("check_baseline_exists")
-
-    # if not baseline_check.get("exists", False):
-    #   self._send_error("baseline_error", "No baseline initialized! Please ensure baseline is loaded before calculating accurate baseline.")
-    #   return
-
-    # with anvil.server.no_loading_indicator:
-    #   result = anvil.server.call("calculate_accurate_baseline")
-
-    # status = result.get("status")
-    # if status == "success":
-    #   self._send_to_iframe("baseline_completed", success=True, message="Accurate baseline calculated successfully")
-    # else:
-    #   self._send_error("baseline_error", result.get("message", "Error calculating accurate baseline"))
 
   def start_optimization(self, event):
     if self.opt_running:
@@ -360,9 +330,7 @@ class Combined(CombinedTemplate):
       print("[SUCCESS] Optimization started!")
       self._send_to_iframe("optimization_started", success=True)
       self.opt_running = True
-      self.last_action_idx = 0
-      self.last_rsrp_idx = 0
-      self.last_compliance_idx = 0
+      self._reset_indexes()
 
     elif status == "busy":
       self._send_to_iframe("optimization_started", success=False, message="Optimization already running")
@@ -370,82 +338,66 @@ class Combined(CombinedTemplate):
     elif status in ("no_baseline", "baseline_error"):
       self._send_error("optimization_error", result.get("reason") or result.get("error", "Baseline error"))
       self.opt_running = False
+      self._reset_indexes()
 
     else:
       technical_error = result.get("error") or result.get("reason", "Unknown error") if isinstance(result, dict) else "No response from backend"
       self._send_error("optimization_error", technical_error)
       self.opt_running = False
+      self._reset_indexes()
 
   def poll_optimization_data(self, **event_args):
     with anvil.server.no_loading_indicator:
-      result = anvil.server.call("get_live_optimization",
-                                 self.last_action_idx,
-                                 self.last_rsrp_idx,
-                                 self.last_compliance_idx)
+      result = anvil.server.call("get_live_optimization", self.last_action_idx, self.last_rsrp_idx, self.last_compliance_idx)
 
-    new_actions    = result.get("new_action_configs", [])
-    new_bsrv_rsrp  = result.get("new_bsrv_rsrp", [])
+    new_actions = result.get("new_action_configs", [])
+    new_bsrv_rsrp = result.get("new_bsrv_rsrp", [])
     new_compliance = result.get("new_compliance", [])
-    status         = result.get("state", "idle")
-    message        = result.get("message", "")
-    
-    def _advance_cursors():
+    status = result.get("state", "idle")
+    message = result.get("message", "")
+
+    def _update_indexes():
       self.last_action_idx = result.get("last_action_idx", self.last_action_idx)
       self.last_rsrp_idx = result.get("last_rsrp_idx", self.last_rsrp_idx)
       self.last_compliance_idx = result.get("last_compliance_idx", self.last_compliance_idx)
 
-    def _reset_cursors():
-      self.last_action_idx = 0
-      self.last_rsrp_idx = 0
-      self.last_compliance_idx = 0
-
     if status == "error":
       self.opt_running = False
-      _reset_cursors()
+      self._reset_indexes()
       self._send_error("optimization_error", message or "Optimization failed")
       return
 
     if status == "finished":
       if new_actions or new_bsrv_rsrp or new_compliance:
         print(f"[DEBUG] Sending final batch: {len(new_actions)} action(s), {len(new_bsrv_rsrp)} rsrp, {len(new_compliance)} compliance")
-        print("[BACK] compliance: ",new_compliance)
-      self._send_to_iframe("optimization_update",
-                           new_action_configs=new_actions,
-                           new_bsrv_rsrp=new_bsrv_rsrp,
-                           new_compliance=new_compliance,
-                           status=status,
-                           message=message)
-      _advance_cursors()
+        print("[BACK] compliance: ", new_compliance)
+      self._send_to_iframe("optimization_update", new_action_configs=new_actions, new_bsrv_rsrp=new_bsrv_rsrp, new_compliance=new_compliance, status=status, message=message)
+      _update_indexes()
       print(f"[+] OPTIMIZATION COMPLETED — actions={self.last_action_idx}, rsrp={self.last_rsrp_idx}, compliance={self.last_compliance_idx}")
       self._send_to_iframe("optimization_finished", success=True)
       self.opt_running = False
-      _reset_cursors()
+      self._reset_indexes()
       return
 
     if status == "idle":
       self.opt_running = False
-      _reset_cursors()
+      self._reset_indexes()
       print("[!] Optimization is idle")
       return
 
     if new_actions or new_bsrv_rsrp or new_compliance:
       print(f"[DEBUG] Sending {len(new_actions)} action(s), {len(new_bsrv_rsrp)} rsrp, {len(new_compliance)} compliance to HTML display")
 
-    self._send_to_iframe("optimization_update",
-                         new_action_configs=new_actions,
-                         new_bsrv_rsrp=new_bsrv_rsrp,
-                         new_compliance=new_compliance,
-                         status=status,
-                         message=message)
-    _advance_cursors()
+    self._send_to_iframe("optimization_update", new_action_configs=new_actions, new_bsrv_rsrp=new_bsrv_rsrp, new_compliance=new_compliance, status=status, message=message)
+    _update_indexes()
 
-  # ========== DXF ==========
+    # ========== DXF ==========
   def generate_dxf(self, event):
     print("Iframe sent DXF generation request...")
-    request_id   = event.detail.get("requestId") if hasattr(event, "detail") else None
-    data         = event.detail
+    request_id = event.detail.get("requestId") if hasattr(event, "detail") else None
+    data = event.detail
     image_base64 = data.get("image")
-    params       = data.get("params")
+    params = data.get("params")
 
     if not image_base64:
       self._send_error("dxf_error", "No image provided for DXF generation", request_id=request_id)
@@ -464,10 +416,10 @@ class Combined(CombinedTemplate):
 
   def parse_dxf(self, event):
     print("Iframe sent DXF parsing request...")
-    request_id   = event.detail.get("requestId") if hasattr(event, "detail") else None
-    data         = event.detail
+    request_id = event.detail.get("requestId") if hasattr(event, "detail") else None
+    data = event.detail
     file_content = data.get("content")
-    filename     = data.get("filename", "floorplan.dxf")
+    filename = data.get("filename", "floorplan.dxf")
 
     if not file_content:
       self._send_error("dxf_parsed_response", "No file content provided for DXF parsing", request_id=request_id)
@@ -490,33 +442,13 @@ class Combined(CombinedTemplate):
 
     self._send_to_iframe("dxf_parsed_response", success=True, requestId=request_id, data=project_data)
 
-  # ========== Dialogs ==========
 
-  # def show_alert(self, event):
-  #     data = event.detail
-  #     alert(data.get("message", ""), title=data.get("title", "Alert"))
-
-  # def show_notification(self, event):
-  #     data = event.detail
-  #     Notification(data.get("message", ""),
-  #                   title=data.get("title", "Notification"),
-  #                   style=data.get("style", "info"),
-  #                   timeout=data.get("timeout", 3000)).show()
-
-  # def show_confirm(self, event):
-  #     data       = event.detail
-  #     request_id = data.get("requestId")
-  #     choice     = confirm(data.get("message", ""),
-  #                           title=data.get("title", "Confirm"),
-  #                           buttons=[("Accept", True), ("Cancel", False)])
-  #     self._send_to_iframe("anvil_confirm_response", requestId=request_id, confirmed=choice)
-
-  # ========== Compliance ==========
+    # ========== Compliance ==========
 
   def update_compliance_settings(self, event):
     request_id = event.detail.get("requestId") if hasattr(event, "detail") else None
-    data       = event.detail
-    threshold  = data.get("complianceThreshold")
+    data = event.detail
+    threshold = data.get("complianceThreshold")
     percentage = data.get("compliancePercentage")
 
     with anvil.server.no_loading_indicator:
@@ -526,20 +458,17 @@ class Combined(CombinedTemplate):
       self._send_error("compliance_settings_response", result.get("message", "Unknown error"), request_id=request_id)
       return
 
-    self._send_to_iframe("compliance_settings_response", success=True,
-                         requestId=request_id,
-                         threshold=result.get("threshold"),
-                         percentage=result.get("percentage"))
+    self._send_to_iframe("compliance_settings_response", success=True, requestId=request_id, threshold=result.get("threshold"), percentage=result.get("percentage"))
 
-  # ========== Session ==========
-  def handle_restart_session(self, event):
-    self._reset_session()
-
-  def _reset_session(self):
-    self.opt_running = False
+    # ========== Session ==========
+  def _reset_indexes(self):
     self.last_action_idx = 0
     self.last_rsrp_idx = 0
     self.last_compliance_idx = 0
+
+  def reset_session(self):
+    self.opt_running = False
+    self._reset_indexes()
     print("Resetting backend session...")
     while True:
       try:
