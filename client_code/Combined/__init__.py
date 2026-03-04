@@ -199,53 +199,49 @@ class Combined(CombinedTemplate):
 
   def send_pattern_to_server(self, event):
     """
-        Unified handler — validates here, then sends any number of files in one server call.
-        Accepts both single-file {"filename", "content"} and multi-file {"files": [...]} shapes.
-        """
+    Unified handler — validates once here, sends all files in one server call.
+    Accepts single-file  {"filename", "content"}
+    or     multi-file   {"files": [{"filename", "content"}, ...]}
+    """
     data = getattr(event, "detail", None) or getattr(event, "data", None)
     if not data:
       return
 
-      # ── Normalise to a list regardless of single / batch shape ──────────────
+    # ── Normalise to list (single or batch — same path from here) ───────────
     raw_files = data.get("files") if hasattr(data, "get") and data.get("files") else None
     if raw_files is None:
-      # single-file shape — wrap so the rest of the code is identical
-      single_content  = data.get("content")  if hasattr(data, "get") else None
-      single_filename = data.get("filename")  if hasattr(data, "get") else "uploaded_pattern.txt"
-      raw_files = [{"filename": single_filename or "uploaded_pattern.txt", "content": single_content}]
+      raw_files = [{
+        "filename": data.get("filename", "uploaded_pattern.txt") if hasattr(data, "get") else "uploaded_pattern.txt",
+        "content":  data.get("content")                          if hasattr(data, "get") else None,
+      }]
 
-      # ── Validate all files ONCE here (server will trust the result) ──────────
+    # ── Validate ONCE here — server trusts this list ─────────────────────────
     ALLOWED_EXT = (".txt", ".msi")
     files_payload = []
     for f in raw_files:
       fname   = f.get("filename", "")
-      content = f.get("content",  "")
+      content = f.get("content")
 
       if not fname.lower().endswith(ALLOWED_EXT):
         self._send_error("upload_antenna_pattern_response",
                          f"Unsupported file type: {fname}. Only .txt and .msi are allowed.")
         return
-
       if not content:
         self._send_error("upload_antenna_pattern_response",
                          f"No content received for: {fname}")
         return
 
-        # Decode base64 → raw bytes once, here
-        # Keep as base64 string — Anvil cannot serialize bytes over the wire
-        if isinstance(content, str) and "," in content:
-          _, encoded = content.split(",", 1)          # strip data-URL prefix
-        elif isinstance(content, str):
-          encoded = base64.b64encode(
-            content.encode("utf-8")
-          ).decode("ascii")                           # plain text → b64 string
-        else:
-          encoded = base64.b64encode(content).decode("ascii")
+        # Normalise to a plain base64 string (Anvil serialises strings, not bytes)
+      if isinstance(content, str) and "," in content:
+        _, encoded = content.split(",", 1)          # strip data-URL prefix
+      elif isinstance(content, str):
+        encoded = base64.b64encode(content.encode("utf-8")).decode("ascii")
+      else:
+        encoded = base64.b64encode(content).decode("ascii")
 
-        files_payload.append({"filename": fname, "content": encoded})  # string, safe to serialize
+      files_payload.append({"filename": fname, "content": encoded})
 
-
-      # ── One server call for everything ───────────────────────────────────────
+    # ── One server call regardless of count ──────────────────────────────────
     with anvil.server.no_loading_indicator:
       batch_result = anvil.server.call("upload_antenna_patterns", files_payload)
 
@@ -260,7 +256,11 @@ class Combined(CombinedTemplate):
       failed    = batch_result.get("failed", 0),
     )
 
-    # ========== Antenna Config / Batch ==========
+    if batch_result.get("failed", 0):
+      failed_names = [r["filename"] for r in results if r.get("status") != "success"]
+      print(f"[WARN] Pattern upload — {batch_result['failed']} failed: {', '.join(failed_names)}")
+  
+  # ========== Antenna Config / Batch ==========
 
   def _transform_antenna_data(self, antenna_data):
     enabled_value = antenna_data.get("enabled", True)
