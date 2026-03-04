@@ -655,9 +655,9 @@
 <script src="ui/CanvasRenderers.js"></script>
 <script src="ui/LegendRenderer.js"></script>
 <script src="ui/CoordinateSystem.js"></script>
+  <script src="AppOrchestrator.js"></script>  <!-- <script src="AppOrchestrator.js"></script> -->
   <script src="ui/AppUIEvents.js"></script>
   <script src="IPSStudioV2.6_clean.js"></script>
-  <script src="AppOrchestrator.js"></script>
 
 <!-- Post-monolith modules (depend on state, draw, canvas, etc.) -->
 <script src="ui/WallManager.js"></script>
@@ -666,7 +666,7 @@
 <script src="antennas/sendAntennaConfigurations.js"></script>
 <script src="optimization/pollOptimizationData.js"></script>
 <!-- <script src="systems/CSVCoverageSystem.js"></script> -->
-<script src="system/SystemSate.js"></script>
+<script src="system/SystemState.js"></script>
 <script src="ui/CanvasInteraction.js"></script>
 <script src="ui/UIRenderers.js"></script>
 <script src="io/ProjectIO.js"></script>
@@ -677,7 +677,10 @@
 
 <script>
   //  It finds every element with class .upload-zone and adds drag-and-drop visual feedback — toggling the drag-over class when the user drags a file over the zone.
-
+  document.addEventListener("DOMContentLoaded", function () {
+        AppOrchestrator.init();
+      });
+      
   (function () {
   var zones = document.querySelectorAll(".upload-zone");
   zones.forEach(function (zone) {

@@ -6,6 +6,21 @@ var AppOrchestrator = (function () {
 
   var iconSidebarData = { sidebar: null, currentSection: null };
 
+  // Registry for per-section side-effects contributed by other modules.
+  // AppUIEvents (and any future module) calls AppOrchestrator.onSectionChange()
+  // to register a callback instead of attaching its own icon-btn listener.
+  var _sectionChangeCallbacks = [];
+
+  function onSectionChange(fn) {
+    if (typeof fn === "function") _sectionChangeCallbacks.push(fn);
+  }
+
+  function _fireSectionChange(section) {
+    _sectionChangeCallbacks.forEach(function (fn) {
+      try { fn(section); } catch (e) { console.error("onSectionChange callback error:", e); }
+    });
+  }
+
   function initIconSidebar() {
     var iconButtons = document.querySelectorAll(".icon-btn");
     var currentSection = "floorplan";
@@ -34,6 +49,7 @@ var AppOrchestrator = (function () {
         var section = this.getAttribute("data-section");
         if (!section) return;
 
+        // ── Toggle-closed: clicking the already-open section collapses it ──
         if (
           section === currentSection &&
           sidebar.classList.contains("expanded")
@@ -52,6 +68,7 @@ var AppOrchestrator = (function () {
           return;
         }
 
+        // ── Switch to a new section ──
         iconButtons.forEach(function (b) {
           b.classList.remove("active");
         });
@@ -84,6 +101,9 @@ var AppOrchestrator = (function () {
             window.constrainLegendPosition();
           }
         }, 350);
+
+        // ── Notify all registered modules about the section change ──
+        _fireSectionChange(section);
       });
     });
 
@@ -179,12 +199,14 @@ var AppOrchestrator = (function () {
 
   return {
     init: init,
-    getIconSidebarData: function() { return iconSidebarData; }
+    getIconSidebarData: function () { return iconSidebarData; },
+    /** Register a callback(section) fired after every icon-btn switch. */
+    onSectionChange: onSectionChange
   };
 })();
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", AppOrchestrator.init);
-} else {
-  AppOrchestrator.init();
-}
+// if (document.readyState === "loading") {
+//   document.addEventListener("DOMContentLoaded", AppOrchestrator.init);
+// } else {
+//   AppOrchestrator.init();
+// }

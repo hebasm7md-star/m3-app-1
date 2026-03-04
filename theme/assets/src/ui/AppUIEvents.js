@@ -46,25 +46,20 @@
     });
   });
 
-  // Tab Switching Logic for Image Visibility
-  document.querySelectorAll('.icon-btn').forEach(function (btn) {
-    if (btn) btn.addEventListener('click', function () {
-      var section = this.getAttribute('data-section');
-      window.state.activeSection = section; // Track active section for isolation logic
+  // ── Section-change side-effects (image swap, draw, delete-btn visibility) ──
+  // AppOrchestrator owns the icon-btn click listeners and fires this callback
+  // after updating sidebar state, so we never attach a second set of listeners.
+  AppOrchestrator.onSectionChange(function (section) {
+    window.state.activeSection = section;
 
-      if (section === 'xd') {
-        if (window.state.xdImage) {
-          window.state.backgroundImage = window.state.xdImage;
-        } else {
-          window.state.backgroundImage = null;
-        }
-      } else {
-        window.state.backgroundImage = window.state.floorPlanImage || null;
-      }
+    if (section === "xd") {
+      window.state.backgroundImage = window.state.xdImage || null;
+    } else {
+      window.state.backgroundImage = window.state.floorPlanImage || null;
+    }
 
-      window.draw();
-      updateDeleteImageButton();
-    });
+    window.draw();
+    updateDeleteImageButton();
   });
 
   // Event Bindings

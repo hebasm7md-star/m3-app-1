@@ -43,7 +43,7 @@
   // Initialize Web Worker for heatmap generation
   function initHeatmapWorker() {
     try {
-      state.heatmapWorker = new Worker("heatmap-worker.js");
+      // state.heatmapWorker = new Worker("heatmap-worker.js");
       state.heatmapWorker.onmessage = function (e) {
         var data = e.data;
         if (data.type === "complete") {
