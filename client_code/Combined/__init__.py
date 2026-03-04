@@ -162,42 +162,6 @@ class Combined(CombinedTemplate):
     self._send_to_iframe(msg_type, success=False, error=friendly_msg, requestId=request_id)
 
     # ========== Antenna Pattern Upload ==========
-    # def send_pattern_to_server(self, event):
-    #     data = getattr(event, "data", None) or getattr(event, "detail", None)
-    #     if not data:
-    #         return
-    #     msg_type = getattr(data, "type", None) or (data.get("type") if hasattr(data, "get") else None)
-    #     if msg_type != "upload_antenna_pattern":
-    #         return
-
-    #     filename = getattr(data, "filename", None) or (data.get("filename") if hasattr(data, "get") else "uploaded_pattern.txt")
-    #     if not (filename.lower().endswith(".txt") or filename.lower().endswith(".msi")):
-    #         self._send_error("upload_antenna_pattern_response", f"Unsupported file type: {filename}")
-    #         return
-
-    #     file_content = getattr(data, "content", None) or (data.get("content") if hasattr(data, "get") else None)
-    #     if not file_content:
-    #         self._send_error("upload_antenna_pattern_response", "No file content received for pattern upload")
-    #         return
-
-    #     if isinstance(file_content, str) and "," in file_content:
-    #         _, encoded = file_content.split(",", 1)
-    #         media_obj = anvil.BlobMedia("text/plain", base64.b64decode(encoded), filename)
-    #     elif isinstance(file_content, str):
-    #         media_obj = anvil.BlobMedia("text/plain", file_content.encode("utf-8"), filename)
-    #     else:
-    #         media_obj = anvil.BlobMedia("text/plain", file_content, filename)
-
-    #     with anvil.server.no_loading_indicator:
-    #         result = anvil.server.call("upload_antenna_pattern", media_obj)
-
-    #     if result.get("status") == "success":
-    #         print(f"[SUCCESS] Pattern {result.get('pattern_name')} uploaded.")
-    #         self._send_to_iframe("upload_antenna_pattern_response", success=True, pattern_name=result.get("pattern_name"), filename=result.get("filename"))
-    #     else:
-    #         self._send_error("upload_antenna_pattern_response", result.get("message", "Unknown error during upload"))
-
-
   def send_pattern_to_server(self, event):
     event_data = getattr(event, "data", None) or getattr(event, "detail", None) # list of dict
     print(f"[INFO] Data list: {type(event_data['files'])}")
@@ -519,7 +483,7 @@ class Combined(CombinedTemplate):
         self._send_to_iframe("app_version", version=version)
         break
       except Exception as e:
-        print(f"Waiting for backend connection to get app version... ({retries} attempts left)")
+        # print(f"Waiting for backend connection to get app version... ({retries} attempts left)")
         time.sleep(1)
         retries -= 1
 
