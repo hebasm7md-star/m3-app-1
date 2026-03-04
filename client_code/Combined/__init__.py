@@ -80,6 +80,8 @@ class Combined(CombinedTemplate):
                             window.dispatchEvent(new CustomEvent('anvilComplianceSettings', {{detail: event.data}}));
                         if (event.data && event.data.type === 'restart_backend_session')
                             window.dispatchEvent(new CustomEvent('anvilRestartSession', {{detail: event.data}}));
+                        if (event.data && event.data.type === 'request_app_version')
+                            window.dispatchEvent(new CustomEvent('anvilGetAppVersion', {{detail: event.data}}));
                     }});
 
                     function triggerMessageCheck() {{
@@ -113,6 +115,7 @@ class Combined(CombinedTemplate):
     js.window.addEventListener("anvilParseDxf", self.parse_dxf)
     js.window.addEventListener("anvilComplianceSettings", self.update_compliance_settings)
     js.window.addEventListener("anvilRestartSession", self.reset_session)
+    js.window.addEventListener("anvilGetAppVersion", self.send_app_version)
 
     # ========== Core Iframe Communication ==========
   def _send_to_iframe(self, msg_type, success=None, **kwargs):
@@ -370,7 +373,7 @@ class Combined(CombinedTemplate):
     if status == "finished":
       if new_actions or new_bsrv_rsrp or new_compliance:
         print(f"[DEBUG] Sending final batch: {len(new_actions)} action(s), {len(new_bsrv_rsrp)} rsrp, {len(new_compliance)} compliance")
-        print("[BACK] compliance: ", new_compliance[-1])
+        print("[BACK] compliance: ", new_compliance)
       self._send_to_iframe("optimization_update", new_action_configs=new_actions, new_bsrv_rsrp=new_bsrv_rsrp, new_compliance=new_compliance, status=status, message=message)
       _update_indexes()
       print(f"[+] OPTIMIZATION COMPLETED — actions={self.last_action_idx}, rsrp={self.last_rsrp_idx}, compliance={self.last_compliance_idx}")
@@ -405,7 +408,7 @@ class Combined(CombinedTemplate):
 
     with anvil.server.no_loading_indicator:
       dxf_media = anvil.server.call("generate_dxf_from_floorplan", image_base64, params)
-    
+
     if not dxf_media:
       self._send_error("dxf_error", "Backend failed to generate DXF", request_id=request_id)
       return
@@ -460,13 +463,27 @@ class Combined(CombinedTemplate):
 
     self._send_to_iframe("compliance_settings_response", success=True, requestId=request_id, threshold=result.get("threshold"), percentage=result.get("percentage"))
 
+    # ========== App Version ==========
+  def send_app_version(self, event=None):
+    retries = 10
+    while retries > 0:
+      try:
+        with anvil.server.no_loading_indicator:
+          version = anvil.server.call("get_app_version")
+        self._send_to_iframe("app_version", version=version)
+        break
+      except Exception as e:
+        print(f"Waiting for backend connection to get app version... ({retries} attempts left)")
+        time.sleep(1)
+        retries -= 1
+
     # ========== Session ==========
   def _reset_indexes(self):
     self.last_action_idx = 0
     self.last_rsrp_idx = 0
     self.last_compliance_idx = 0
 
-  def reset_session(self,event=None):
+  def reset_session(self, event=None):
     self.opt_running = False
     self._reset_indexes()
     print("Resetting backend session...")
