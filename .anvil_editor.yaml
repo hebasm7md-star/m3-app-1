@@ -12,6 +12,7 @@ unique_ids:
     src/antennas/AntennaPlacement.js: WWVIUJDBLBFBE3PN4Y7X23TIX5T42TIR
     src/antennas/AntennaPlacement_old.js: VBYBLHX7VH3CCWNIO4X5PM3K3D5L6NZS
     src/antennas/CSVCoverageSystem.js: YWVUBK4ZGH2MCXDHDHNUQ7NPREHQL7GU
+    src/antennas/sendAntennaConfigs.js: H2AG2RAU7S42CIFKJCO2XSSBO5DBW324
     src/antennas/sendAntennaConfigurations.js: GTUCDUHFEC2H3GY4WJWAVGE2G4RTH6YL
     src/app.js: CMRRW6LRGYD4Z3AMOCEMSXMAIL6BNLZT
     src/index.html: 3EVNIYIU42V7EPXSDMS4ABIHOFM5BNBW
@@ -20,6 +21,7 @@ unique_ids:
     src/io/ProjectIO.js: CPZIMU2J2YCPYD3NJ5X6V274VE3FF6MB
     src/modern_index.html: UELYPZRGQQQFX53BQ564IH53ULRY5QEG
     src/optimization/pollOptimizationData.js: 7KEMUQPSPHMQ3LS4LLT2HI45PAYLCYKA
+    src/optimization/receiveAntennaConfigs.js: DENJBV2GJBQ2JR7BUPZL2OODJ25MMK4D
     src/propagation/PropagationModel25DN.js: PCBBELO327PYN3WAT5TFQMDYEZCM77BT
     src/propagation/RadioCalculations.js: DK2PUJZFUPHV6QMKF242ORFDXJFZQXNL
     src/propagation/SignalCalculations_archived.js: YVJL7YSJTQURYOAVTM2K4W3G2MDRLGXO
