@@ -197,70 +197,50 @@ class Combined(CombinedTemplate):
     #     else:
     #         self._send_error("upload_antenna_pattern_response", result.get("message", "Unknown error during upload"))
 
+
   def send_pattern_to_server(self, event):
-    """
-    Unified handler — validates once here, sends all files in one server call.
-    Accepts single-file  {"filename", "content"}
-    or     multi-file   {"files": [{"filename", "content"}, ...]}
-    """
-    data = getattr(event, "detail", None) or getattr(event, "data", None)
-    if not data:
+    event_data = getattr(event, "data", None) or getattr(event, "detail", None) # list of dict
+    print(f"[INFO] Data list: {type(event_data['files'])}")
+    if not event_data: #or not isinstance(data_list, list):
+      # self._send_error("upload_antenna_pattern_response", "No data received for pattern upload")
       return
 
-    # ── Normalise to list (single or batch — same path from here) ───────────
-    raw_files = data.get("files") if hasattr(data, "get") and data.get("files") else None
-    if raw_files is None:
-      raw_files = [{
-        "filename": data.get("filename", "uploaded_pattern.txt") if hasattr(data, "get") else "uploaded_pattern.txt",
-        "content":  data.get("content")                          if hasattr(data, "get") else None,
-      }]
+    msg_type = getattr(event_data, "type", None) or (event_data.get("type") if hasattr(event_data, "get") else None)
+    if msg_type != "upload_antenna_pattern":
+      self._send_error("upload_antenna_pattern_response", "Invalid message type for pattern upload")
+      return
 
-    # ── Validate ONCE here — server trusts this list ─────────────────────────
-    ALLOWED_EXT = (".txt", ".msi")
-    files_payload = []
-    for f in raw_files:
-      fname   = f.get("filename", "")
-      content = f.get("content")
+    for data in event_data['files']:
 
-      if not fname.lower().endswith(ALLOWED_EXT):
-        self._send_error("upload_antenna_pattern_response",
-                         f"Unsupported file type: {fname}. Only .txt and .msi are allowed.")
-        return
-      if not content:
-        self._send_error("upload_antenna_pattern_response",
-                         f"No content received for: {fname}")
+      filename = getattr(data, "filename", None) or (data.get("filename") if hasattr(data, "get") else "uploaded_pattern.txt")
+      if not (filename.lower().endswith(".txt") or filename.lower().endswith(".msi")):
+        self._send_error("upload_antenna_pattern_response", f"Unsupported file type: {filename}")
         return
 
-        # Normalise to a plain base64 string (Anvil serialises strings, not bytes)
-      if isinstance(content, str) and "," in content:
-        _, encoded = content.split(",", 1)          # strip data-URL prefix
-      elif isinstance(content, str):
-        encoded = base64.b64encode(content.encode("utf-8")).decode("ascii")
+      file_content = getattr(data, "content", None) or (data.get("content") if hasattr(data, "get") else None)
+      if not file_content:
+        self._send_error("upload_antenna_pattern_response", "No file content received for pattern upload")
+        return
+
+      if isinstance(file_content, str) and "," in file_content:
+        _, encoded = file_content.split(",", 1)
+        media_obj = anvil.BlobMedia("text/plain", base64.b64decode(encoded), filename)
+      elif isinstance(file_content, str):
+        media_obj = anvil.BlobMedia("text/plain", file_content.encode("utf-8"), filename)
       else:
-        encoded = base64.b64encode(content).decode("ascii")
+        media_obj = anvil.BlobMedia("text/plain", file_content, filename)
 
-      files_payload.append({"filename": fname, "content": encoded})
+      with anvil.server.no_loading_indicator:
+        result = anvil.server.call("upload_antenna_pattern", media_obj)
 
-    # ── One server call regardless of count ──────────────────────────────────
-    with anvil.server.no_loading_indicator:
-      batch_result = anvil.server.call("upload_antenna_patterns", files_payload)
+      if result.get("status") == "success":
+        print(f"[SUCCESS] Pattern {result.get('pattern_name')} uploaded.")
+        self._send_to_iframe("upload_antenna_pattern_response", success=True, pattern_name=result.get("pattern_name"), filename=result.get("filename"))
+      else:
+        self._send_error("upload_antenna_pattern_response", result.get("message", "Unknown error during upload"))
 
-    succeeded = batch_result.get("succeeded", 0)
-    results   = batch_result.get("results",   [])
 
-    self._send_to_iframe(
-      "upload_antenna_pattern_response",
-      success   = succeeded > 0,
-      results   = results,
-      succeeded = succeeded,
-      failed    = batch_result.get("failed", 0),
-    )
-
-    if batch_result.get("failed", 0):
-      failed_names = [r["filename"] for r in results if r.get("status") != "success"]
-      print(f"[WARN] Pattern upload — {batch_result['failed']} failed: {', '.join(failed_names)}")
-  
-  # ========== Antenna Config / Batch ==========
+    # ========== Antenna Config / Batch ==========
 
   def _transform_antenna_data(self, antenna_data):
     enabled_value = antenna_data.get("enabled", True)
