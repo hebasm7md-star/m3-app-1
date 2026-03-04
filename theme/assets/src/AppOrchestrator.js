@@ -173,6 +173,8 @@ var AppOrchestrator = (function () {
     if (typeof window.updateAntennaPatternsList === "function") window.updateAntennaPatternsList();
     
     if (typeof window.draw === "function") window.draw();
+
+    window.parent.postMessage({ type: "request_app_version" }, "*");
   }
 
   return {

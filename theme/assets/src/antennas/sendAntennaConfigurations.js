@@ -473,6 +473,13 @@ var BackendSync = (function () {
       console.log("Anvil parent ready");
     }
 
+    if (event.data && event.data.type === "app_version") {
+      var badge = document.getElementById("modelBadge");
+      if (badge && event.data.version) {
+        badge.textContent = "V" + event.data.version;
+      }
+    }
+
     // Handle CSV data from Anvil backend
     if (event.data && event.data.type === "csv_data") {
       console.log("Received CSV data from Anvil");
