@@ -483,7 +483,7 @@ class Combined(CombinedTemplate):
         self._send_to_iframe("app_version", version=version)
         break
       except Exception as e:
-        # print(f"Waiting for backend connection to get app version... ({retries} attempts left)")
+        print(f"Waiting for backend connection to get app version... ({retries} attempts left)")
         time.sleep(1)
         retries -= 1
 
