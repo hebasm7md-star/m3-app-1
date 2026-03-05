@@ -311,7 +311,8 @@ class Combined(CombinedTemplate):
                              new_bsrv_rsrp=live.get("new_bsrv_rsrp", []),
                              new_compliance=live.get("new_compliance", []),
                              status="finished",
-                             message="Accurate Baseline")
+                             message="Accurate Baseline",
+                             rsrp_send_timestamp_ms=live.get("rsrp_send_timestamp_ms"))
       self._send_to_iframe("baseline_completed", success=True, message="Accurate baseline calculated successfully")
     else:
       self._send_error("baseline_error", result.get("message", "Error calculating accurate baseline"))
@@ -384,7 +385,7 @@ class Combined(CombinedTemplate):
       if new_actions or new_bsrv_rsrp or new_compliance:
         print(f"[DEBUG] Sending final batch: {len(new_actions)} action(s), {len(new_bsrv_rsrp)} rsrp, {len(new_compliance)} compliance")
         print("[BACK] compliance: ", new_compliance)
-      self._send_to_iframe("optimization_update", new_action_configs=new_actions, new_bsrv_rsrp=new_bsrv_rsrp, new_compliance=new_compliance, status=status, message=message)
+      self._send_to_iframe("optimization_update", new_action_configs=new_actions, new_bsrv_rsrp=new_bsrv_rsrp, new_compliance=new_compliance, status=status, message=message, rsrp_send_timestamp_ms=result.get("rsrp_send_timestamp_ms"))
       _update_indexes()
       print(f"[+] OPTIMIZATION COMPLETED — actions={self.last_action_idx}, rsrp={self.last_rsrp_idx}, compliance={self.last_compliance_idx}")
       self._send_to_iframe("optimization_finished", success=True)
@@ -401,7 +402,7 @@ class Combined(CombinedTemplate):
     if new_actions or new_bsrv_rsrp or new_compliance:
       print(f"[DEBUG] Sending {len(new_actions)} action(s), {len(new_bsrv_rsrp)} rsrp, {len(new_compliance)} compliance to HTML display")
 
-    self._send_to_iframe("optimization_update", new_action_configs=new_actions, new_bsrv_rsrp=new_bsrv_rsrp, new_compliance=new_compliance, status=status, message=message)
+    self._send_to_iframe("optimization_update", new_action_configs=new_actions, new_bsrv_rsrp=new_bsrv_rsrp, new_compliance=new_compliance, status=status, message=message, rsrp_send_timestamp_ms=result.get("rsrp_send_timestamp_ms"))
     _update_indexes()
 
     # ========== DXF ==========
