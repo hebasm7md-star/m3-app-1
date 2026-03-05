@@ -63,10 +63,11 @@ var OptimizationSystem = (function () {
     btn.style.opacity = locked ? '0.5' : '1';
   }
 
-  function refreshHeatmap() {
+  function refreshHeatmap(onHeatmapShown) {
     if (!state.showVisualization) return;
     // state.cachedHeatmap = null;
     state.heatmapUpdatePending = false;
+    state.onHeatmapShownCallback = onHeatmapShown || null;
     if (typeof generateHeatmapAsync === 'function') generateHeatmapAsync(null, true);
     // if (typeof draw === 'function') draw();
   }
@@ -210,17 +211,42 @@ var OptimizationSystem = (function () {
     try {
       var newActions = data.new_action_configs || [];
       var newRsrp = data.new_bsrv_rsrp || [];
+      var newRsrpTimestamps = data.new_rsrp_timestamps || [];
       var newCompliance = data.new_compliance || [];
       var status = data.status;
       var message = data.message;
 
-      // RSRP grid
+      // RSRP grid with timing
       var rsrpUpdated = false;
+      var receiveAt = performance.now();
+      var clientReceiveTimeMs = Date.now();
+      var serverSendMs = data.server_send_timestamp_ms;
+      var pythonAppendMs = null;
+      
       if (Array.isArray(newRsrp) && newRsrp.length > 0) {
         var latestRsrp = newRsrp[newRsrp.length - 1];
         if (latestRsrp && latestRsrp.length > 0) {
+          // Get the Python append timestamp if available
+          if (newRsrpTimestamps.length > 0) {
+            var latestTimestamp = newRsrpTimestamps[newRsrpTimestamps.length - 1];
+            pythonAppendMs = latestTimestamp.timestamp_ms;
+            console.log("[RSRP-TIMING] Python append time (UTC):", latestTimestamp.python_append_time_utc);
+          }
+          
           buildBackendRsrpGrid(latestRsrp);
           rsrpUpdated = true;
+          
+          // Calculate latencies
+          var python2ServerMs = serverSendMs != null && pythonAppendMs != null ? (serverSendMs - pythonAppendMs) : null;
+          var server2ClientMs = serverSendMs != null ? (clientReceiveTimeMs - serverSendMs) : null;
+          
+          console.log("[RSRP-TIMING] " + "=".repeat(60));
+          console.log("[RSRP-TIMING] Python append: " + (pythonAppendMs ? new Date(pythonAppendMs).toISOString() + " (" + pythonAppendMs + " ms)" : "N/A"));
+          console.log("[RSRP-TIMING] Server send: " + (serverSendMs ? new Date(serverSendMs).toISOString() + " (" + serverSendMs + " ms)" : "N/A"));
+          console.log("[RSRP-TIMING] Client receive: " + new Date(clientReceiveTimeMs).toISOString() + " (" + clientReceiveTimeMs + " ms)");
+          console.log("[RSRP-TIMING] Python→Server latency: " + (python2ServerMs != null ? python2ServerMs.toFixed(2) + " ms" : "N/A"));
+          console.log("[RSRP-TIMING] Server→Client latency: " + (server2ClientMs != null ? server2ClientMs.toFixed(2) + " ms" : "N/A"));
+          console.log("[RSRP-TIMING] Received at performance.now(): " + receiveAt.toFixed(2) + " ms");
         }
       }
 
@@ -317,7 +343,24 @@ var OptimizationSystem = (function () {
           if (window.saveState) window.saveState();
           if (window.renderAPs) window.renderAPs();
         }
-        refreshHeatmap();
+        var onHeatmapShown = rsrpUpdated ? function () {
+          var heatmapShownAt = performance.now();
+          var heatmapShownTimeMs = Date.now();
+          
+          // Calculate end-to-end latency
+          var python2HeatmapMs = pythonAppendMs != null ? (heatmapShownTimeMs - pythonAppendMs) : null;
+          var server2HeatmapMs = serverSendMs != null ? (heatmapShownTimeMs - serverSendMs) : null;
+          var client2HeatmapMs = receiveAt != null ? (heatmapShownAt - receiveAt) : null;
+          
+          console.log("[RSRP-TIMING] " + "=".repeat(60));
+          console.log("[RSRP-TIMING] Heatmap shown at performance.now(): " + heatmapShownAt.toFixed(2) + " ms");
+          console.log("[RSRP-TIMING] Heatmap shown at: " + new Date(heatmapShownTimeMs).toISOString() + " (" + heatmapShownTimeMs + " ms)");
+          console.log("[RSRP-TIMING] Client receive→Heatmap display: " + (client2HeatmapMs != null ? client2HeatmapMs.toFixed(2) : "N/A") + " ms");
+          console.log("[RSRP-TIMING] Server send→Heatmap display: " + (server2HeatmapMs != null ? server2HeatmapMs.toFixed(2) : "N/A") + " ms");
+          console.log("[RSRP-TIMING] Python append→Heatmap display: " + (python2HeatmapMs != null ? python2HeatmapMs.toFixed(2) : "N/A") + " ms (TOTAL END-TO-END)");
+          console.log("[RSRP-TIMING] " + "=".repeat(60));
+        } : null;
+        refreshHeatmap(onHeatmapShown);
       }
 
       handleTerminalStatus(status, data, footerBadge, footerMessage);

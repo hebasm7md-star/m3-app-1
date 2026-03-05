@@ -75,6 +75,11 @@
           // Use requestAnimationFrame to ensure the update is rendered
           requestAnimationFrame(function () {
             draw();
+            if (state.onHeatmapShownCallback) {
+              var cb = state.onHeatmapShownCallback;
+              state.onHeatmapShownCallback = null;
+              try { cb(); } catch (e) { console.error("[HeatmapEngine] onHeatmapShown error:", e); }
+            }
           });
         }
       };
@@ -413,6 +418,11 @@
               // Use requestAnimationFrame to ensure the update is rendered
               requestAnimationFrame(function () {
                 draw();
+                if (state.onHeatmapShownCallback) {
+                  var cb = state.onHeatmapShownCallback;
+                  state.onHeatmapShownCallback = null;
+                  try { cb(); } catch (e) { console.error("[HeatmapEngine] onHeatmapShown error:", e); }
+                }
               });
               // Start high-res update after a brief delay to let UI update
               setTimeout(function () {
@@ -425,6 +435,11 @@
               // Use requestAnimationFrame to ensure the update is rendered
               requestAnimationFrame(function () {
                 draw();
+                if (state.onHeatmapShownCallback) {
+                  var cb = state.onHeatmapShownCallback;
+                  state.onHeatmapShownCallback = null;
+                  try { cb(); } catch (e) { console.error("[HeatmapEngine] onHeatmapShown error:", e); }
+                }
               });
               if (callback) callback(off);
             }
