@@ -382,7 +382,7 @@
     var newItems  = batch.filter(function (item) { return !item.isDuplicate; });
     var skipItems = batch.filter(function (item) { return  item.isDuplicate; });
 
-    if (newItems.length === 0) { NotificationSystem.warning("All uploaded patterns already exist in this project. Nothing was added."); return; }
+    if (newItems.length === 0) { NotificationSystem.warning("The uploaded patterns were registered before."); return; }
 
     NotificationSystem.confirm(buildBatchConfirmMessage(newItems, skipItems), "Confirm Pattern Upload", function (confirmed) {
       if (!confirmed) return;
@@ -438,15 +438,30 @@
     var wasEmpty = state.antennaPatterns.length === 0;
     var now      = new Date().toISOString();
 
+    var duplicateItems = [];
+    var uniqueItems = [];
+
     newItems.forEach(function (item) {
       item.pattern.fileName = item.file.name; 
       item.pattern.uploadTime = now;
-      state.antennaPatterns.push(item.pattern);
+
+      if (isDuplicatePattern(item.pattern)) {
+        duplicateItems.push(item.pattern.name);// || item.file.name);
+      } else {
+        uniqueItems.push(item);
+        state.antennaPatterns.push(item.pattern);
+      }
       // this will send one antenna pattern to the backend
       // if (window.parent !== window) {
       //   window.parent.postMessage({ type: "upload_antenna_pattern", filename: item.file.name, content: item.rawContent }, PARENT_ORIGIN);
       // }
     });
+    // Only add unique patterns
+    // uniqueItems.forEach(function (item) {
+    //   item.pattern.fileName = item.file.name;
+    //   item.pattern.uploadTime = now;
+    //   state.antennaPatterns.push(item.pattern);
+    // });
 
     if (wasEmpty && state.antennaPatterns.length > 0) state.defaultAntennaPatternIndex = 0;
 
@@ -454,11 +469,21 @@
     updateAntennaPatternsList();
     draw();
 
+    // Warn if any were duplicates
+    console.log("duplicateItems: %s", duplicateItems);
+    console.log("uniqueItems: %s", uniqueItems);
+    if (duplicateItems.length > 0) {
+      NotificationSystem.warning(
+        duplicateItems.length + " duplicate pattern(s) skipped: " + duplicateItems.join(", ") +
+        ". Only unique patterns were registered."
+      );
+    }
+
     // Single postMessage with a "files" array — works for 1 or N patterns
-    if (window.parent !== window) {
+    if (window.parent !== window && uniqueItems.length > 0) {
       window.parent.postMessage({
           type  : "upload_antenna_pattern",
-          files : newItems.map(function (item) {
+          files : uniqueItems.map(function (item) {
               return { filename: item.file.name, content: item.rawContent };
           }),
       }, PARENT_ORIGIN);
@@ -471,7 +496,26 @@
   // Shared helpers
   // ---------------------------------------------------------------------------
   function isDuplicatePattern(pattern) {
-    return state.antennaPatterns.some(function (p) { return p.name === pattern.name && p.frequency === pattern.frequency; });
+    return state.antennaPatterns.some(function (p) {
+      if (p.name      !== pattern.name)      return false;
+      if (p.frequency !== pattern.frequency) return false;
+      if (p.gain      !== pattern.gain)      return false;
+  
+      if (p.horizontalData.length !== pattern.horizontalData.length) return false;
+      if (p.verticalData.length   !== pattern.verticalData.length)   return false;
+  
+      for (var i = 0; i < p.horizontalData.length; i++) {
+        if (p.horizontalData[i].angle !== pattern.horizontalData[i].angle) return false;
+        if (p.horizontalData[i].gain  !== pattern.horizontalData[i].gain)  return false;
+      }
+  
+      for (var j = 0; j < p.verticalData.length; j++) {
+        if (p.verticalData[j].angle !== pattern.verticalData[j].angle) return false;
+        if (p.verticalData[j].gain  !== pattern.verticalData[j].gain)  return false;
+      }
+  
+      return true;
+    });
   }
 
   function assignDefaultPatternToUnassignedAps() {

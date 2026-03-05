@@ -981,7 +981,7 @@ input[type="checkbox"] {
     align-items: center;
     gap: 8px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 12px;
     color: var(--color-slate-600);
     padding: 8px;
     border-radius: 8px;
