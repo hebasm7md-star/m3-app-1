@@ -303,6 +303,7 @@ class Combined(CombinedTemplate):
       result = anvil.server.call("get_accurate_baseline")
 
     status = result.get("status")
+    print("GET ACCURATE: ",result.get("message"))
     if status == "success":
       with anvil.server.no_loading_indicator:
         live = anvil.server.call("get_live_optimization", 0, 0, 0)
