@@ -123,27 +123,27 @@ var OptimizationSystem = (function () {
   function getBackendRsrpAt(x, y) {
     if (!state.optimizationRsrpGrid) return null;
     var bgrid = state.optimizationRsrpGrid;
-    
+
     var bx = x / bgrid.dx;
     var by = y / bgrid.dy;
-    
+
     var gx0 = Math.max(0, Math.min(bgrid.cols - 1, Math.floor(bx - 0.5)));
     var gx1 = Math.max(0, Math.min(bgrid.cols - 1, gx0 + 1));
     var gy0 = Math.max(0, Math.min(bgrid.rows - 1, Math.floor(by - 0.5)));
     var gy1 = Math.max(0, Math.min(bgrid.rows - 1, gy0 + 1));
-    
+
     var tx = (bx - 0.5) - gx0;
     var ty = (by - 0.5) - gy0;
-    
+
     var v00 = bgrid.data[gy0 * bgrid.cols + gx0];
     var v10 = bgrid.data[gy0 * bgrid.cols + gx1];
     var v01 = bgrid.data[gy1 * bgrid.cols + gx0];
     var v11 = bgrid.data[gy1 * bgrid.cols + gx1];
-    
+
     var v0 = v00 * (1 - tx) + v10 * tx;
     var v1 = v01 * (1 - tx) + v11 * tx;
     var bval = v0 * (1 - ty) + v1 * ty;
-    
+
     if (!isNaN(bval) && bval !== 0) {
       return bval;
     }
@@ -208,8 +208,8 @@ var OptimizationSystem = (function () {
     }
 
     console.log("[BackendRSRP] Grid:", cols, "x", rows,
-      "| dx:", (state.w / cols).toFixed(3), "dy:", (state.h / rows).toFixed(3),
-      "| RSRP:", dataMin.toFixed(1), "to", dataMax.toFixed(1));
+                "| dx:", (state.w / cols).toFixed(3), "dy:", (state.h / rows).toFixed(3),
+                "| RSRP:", dataMin.toFixed(1), "to", dataMax.toFixed(1));
   }
 
   // ── Main Update Handler ───────────────────────────────────────────────
@@ -232,6 +232,17 @@ var OptimizationSystem = (function () {
         if (latestRsrp && latestRsrp.length > 0) {
           buildBackendRsrpGrid(latestRsrp);
           rsrpUpdated = true;
+          if (serverSendSec != null) {
+            rsrpTimingRows.push({
+              index: rsrpTimingRows.length + 1,
+              serverSendTime: toReadable(serverSendSec),
+              clientReceiveTime: toReadable(receiveAtSec),
+              heatmapTime: '',
+              serverToClientSec: (receiveAtSec - serverSendSec).toFixed(3),
+              receiveToHeatmapSec: '',
+              serverToHeatmapSec: ''
+            });
+          }
         }
       }
 
@@ -328,17 +339,12 @@ var OptimizationSystem = (function () {
           if (window.saveState) window.saveState();
           if (window.renderAPs) window.renderAPs();
         }
-        var onHeatmapShown = rsrpUpdated && serverSendSec != null ? function () {
+        var onHeatmapShown = rsrpUpdated && rsrpTimingRows.length > 0 ? function () {
           var heatmapSec = (performance.timeOrigin + performance.now()) / 1000;
-          rsrpTimingRows.push({
-            index: rsrpTimingRows.length + 1,
-            serverSendTime: toReadable(serverSendSec),
-            clientReceiveTime: toReadable(receiveAtSec),
-            heatmapTime: toReadable(heatmapSec),
-            serverToClientSec: (receiveAtSec - serverSendSec).toFixed(3),
-            receiveToHeatmapSec: (heatmapSec - receiveAtSec).toFixed(3),
-            serverToHeatmapSec: (heatmapSec - serverSendSec).toFixed(3)
-          });
+          var last = rsrpTimingRows[rsrpTimingRows.length - 1];
+          last.heatmapTime = toReadable(heatmapSec);
+          last.receiveToHeatmapSec = (heatmapSec - receiveAtSec).toFixed(3);
+          last.serverToHeatmapSec = (heatmapSec - serverSendSec).toFixed(3);
         } : null;
         refreshHeatmap(onHeatmapShown);
       }
@@ -384,10 +390,10 @@ var OptimizationSystem = (function () {
         var oldX = existing.x, oldY = existing.y;
         existing.x = canvasX;
         existing.y = canvasY;
-        
+
         if (enabledRaw !== undefined) {
           existing.enabled = enabledRaw === "True" || enabledRaw === true ||
-                             enabledRaw === "true" || enabledRaw === 1 || enabledRaw === "1";
+            enabledRaw === "true" || enabledRaw === 1 || enabledRaw === "1";
         }
 
         if (Math.abs(oldX - canvasX) > 0.01 || Math.abs(oldY - canvasY) > 0.01) {
@@ -401,7 +407,7 @@ var OptimizationSystem = (function () {
         var isNewEnabled = true;
         if (enabledRaw !== undefined) {
           isNewEnabled = enabledRaw === "True" || enabledRaw === true ||
-                         enabledRaw === "true" || enabledRaw === 1 || enabledRaw === "1";
+            enabledRaw === "true" || enabledRaw === 1 || enabledRaw === "1";
         }
         var ap = {
           id: antennaId, x: canvasX, y: canvasY, z: 0,
