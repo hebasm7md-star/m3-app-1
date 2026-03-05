@@ -5,6 +5,7 @@
 var OptimizationSystem = (function () {
 
   var optimizationPollingInterval = null;
+  var rsrpTimingRows = [];
 
   var ACTION_MESSAGES = {
     Sectorization:  'Optimizing sector configuration...',
@@ -28,6 +29,7 @@ var OptimizationSystem = (function () {
   // ── Polling ────────────────────────────────────────────────────────────
 
   function startOptimizationPolling() {
+    rsrpTimingRows = [];
     if (optimizationPollingInterval) clearInterval(optimizationPollingInterval);
     optimizationPollingInterval = setInterval(function () {
       window.parent.postMessage({
@@ -104,6 +106,11 @@ var OptimizationSystem = (function () {
       setFooter(footerBadge, footerMessage, 'COMPLETED', "Optimization process successfully completed.", 'completed');
       if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportBackendRsrpGrid) {
         DataExportSystem.exportBackendRsrpGrid();
+      }
+      if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportRsrpTimingCsv) {
+        setTimeout(function () {
+          if (rsrpTimingRows.length > 0) DataExportSystem.exportRsrpTimingCsv(rsrpTimingRows);
+        }, 1500);
       }
     } else {
       setFooter(footerBadge, footerMessage, 'ERROR', "Error: " + (data.error || "Optimization failed."));
@@ -225,12 +232,6 @@ var OptimizationSystem = (function () {
         if (latestRsrp && latestRsrp.length > 0) {
           buildBackendRsrpGrid(latestRsrp);
           rsrpUpdated = true;
-          if (serverSendSec != null) {
-            console.log("[RSRP-TIMING] ============================================================");
-            console.log("[RSRP-TIMING] Server send:", toReadable(serverSendSec));
-            console.log("[RSRP-TIMING] Client receive:", toReadable(receiveAtSec));
-            console.log("[RSRP-TIMING] Server→Client interval:", (receiveAtSec - serverSendSec).toFixed(3), "sec");
-          }
         }
       }
 
@@ -328,10 +329,16 @@ var OptimizationSystem = (function () {
           if (window.renderAPs) window.renderAPs();
         }
         var onHeatmapShown = rsrpUpdated && serverSendSec != null ? function () {
-          var heatmapShownAtSec = (performance.timeOrigin + performance.now()) / 1000;
-          console.log("[RSRP-TIMING] Heatmap shown:", toReadable(heatmapShownAtSec));
-          console.log("[RSRP-TIMING] Receive→Heatmap interval:", (heatmapShownAtSec - receiveAtSec).toFixed(3), "sec");
-          console.log("[RSRP-TIMING] Server→Heatmap interval:", (heatmapShownAtSec - serverSendSec).toFixed(3), "sec");
+          var heatmapSec = (performance.timeOrigin + performance.now()) / 1000;
+          rsrpTimingRows.push({
+            index: rsrpTimingRows.length + 1,
+            serverSendTime: toReadable(serverSendSec),
+            clientReceiveTime: toReadable(receiveAtSec),
+            heatmapTime: toReadable(heatmapSec),
+            serverToClientSec: (receiveAtSec - serverSendSec).toFixed(3),
+            receiveToHeatmapSec: (heatmapSec - receiveAtSec).toFixed(3),
+            serverToHeatmapSec: (heatmapSec - serverSendSec).toFixed(3)
+          });
         } : null;
         refreshHeatmap(onHeatmapShown);
       }

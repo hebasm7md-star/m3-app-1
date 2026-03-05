@@ -237,6 +237,21 @@ var DataExportSystem = (function () {
       console.log('Backend RSRP exported:', { cols: grid.cols, rows: grid.rows, points: grid.data.length, filename: finalFileName });
     },
 
+    // EXPORT RSRP TIMING DATA
+    exportRsrpTimingCsv: function (rows, fileName) {
+      if (!rows || rows.length === 0) return;
+      var cols = ['#', 'Server Send Time', 'Client Receive Time', 'Heatmap Time', 'Server→Client (sec)', 'Receive→Heatmap (sec)', 'Server→Heatmap (sec)'];
+      var csvRows = [cols.join(',')];
+      for (var i = 0; i < rows.length; i++) {
+        var r = rows[i];
+        csvRows.push([r.index, r.serverSendTime, r.clientReceiveTime, r.heatmapTime, r.serverToClientSec, r.receiveToHeatmapSec, r.serverToHeatmapSec].join(','));
+      }
+      var csvData = csvRows.join('\n');
+      var finalFileName = fileName || ('rsrp_timing_' + getCurrentTimestamp() + '.csv');
+      downloadCSV(csvData, finalFileName);
+      NotificationSystem.toast('RSRP timing exported (' + rows.length + ' rows)', 'success');
+    },
+
     // 
     // EXPORT ANTENNA POSITIONS & STATUS
     // 
