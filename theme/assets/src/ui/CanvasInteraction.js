@@ -1833,7 +1833,7 @@
                 value.toFixed(1) +
                 " " +
                 unit;
-            } else if (best && best.ap || ((state.optimizationRsrpGrid || state.accurateEngineRsrpGrid) && state.view === "rssi")) {
+            } else if (best && best.ap || (typeof window.getActiveRsrpGrid === 'function' && window.getActiveRsrpGrid() && state.view === "rssi")) {
               // Calculate value based on current view mode
               var val = typeof window.getValueAt === 'function' ? window.getValueAt(worldX, worldY) : null;
               var fallbackBest = best && best.ap;

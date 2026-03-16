@@ -305,7 +305,7 @@
         // In accurate engine mode: keep cached heatmap to hold last accurate engine heatmap during drag
         // In 2.5D/ITU mode: clear cache so heatmap recalculates in real-time during drag
         var isAccurateEngine = (state.model || "p25d") === "accurateEngine";
-        var hasAccurateGrid = !!(state.optimizationRsrpGrid || state.accurateEngineRsrpGrid);
+        var hasAccurateGrid = isAccurateEngine && !!state.accurateEngineRsrpGrid;
         if (state.heatmapUpdateRequestId !== null) {
           cancelAnimationFrame(state.heatmapUpdateRequestId);
           state.heatmapUpdateRequestId = null;

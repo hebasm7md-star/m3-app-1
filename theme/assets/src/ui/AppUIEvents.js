@@ -551,11 +551,9 @@
       if (isBackendModel && typeof window.resetHeatmapForLocalModel === "function") {
         window.resetHeatmapForLocalModel();
       } else {
-        window.state.optimizationRsrpGrid = null;
-        window.state.accurateEngineRsrpGrid = null;
+        if (typeof window.clearBackendRsrpCache === "function") window.clearBackendRsrpCache();
         window.state.cachedHeatmap = null;
         window.state.heatmapUpdatePending = false;
-        if (typeof window.clearBackendRsrpCache === "function") window.clearBackendRsrpCache();
         if (typeof window.invalidateHeatmapCache === "function") window.invalidateHeatmapCache();
         window.draw();
       }

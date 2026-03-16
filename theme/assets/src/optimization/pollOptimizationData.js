@@ -104,8 +104,6 @@ var OptimizationSystem = (function () {
   function handleBaselineRsrpUpdate(data) {
     if (data.new_bsrv_rsrp === null) {
       if (typeof window.clearBackendRsrpCache === 'function') window.clearBackendRsrpCache();
-      state.optimizationRsrpGrid = null;
-      state.accurateEngineRsrpGrid = null;
       refreshHeatmap();
       return;
     }
@@ -114,11 +112,10 @@ var OptimizationSystem = (function () {
     if (Array.isArray(newRsrp) && newRsrp.length > 0) {
       if (typeof window.clearBackendRsrpCache === 'function') window.clearBackendRsrpCache();
       var latestRsrp = newRsrp[newRsrp.length - 1];
-      if (latestRsrp && latestRsrp.length > 0) {
-        buildOptimizationRsrpGrid(latestRsrp);
+      if (latestRsrp && latestRsrp.length > 0 && typeof window.buildOptimizationRsrpGrid === 'function') {
+        window.buildOptimizationRsrpGrid(latestRsrp);
       }
     } else if (Array.isArray(newCompliance) && newCompliance.length > 0 && typeof window.mergeBackendRsrpFromCache === 'function') {
-      // Per-antenna cache in use; ensure merged grid is up to date
       window.mergeBackendRsrpFromCache();
     }
     if (Array.isArray(newCompliance) && newCompliance.length > 0) {
@@ -164,101 +161,6 @@ var OptimizationSystem = (function () {
     }
   }
 
-  // ── Backend RSRP Grid ─────────────────────────────────────────────────
-
-  /** Lookup RSRP at (x,y) from optimization or accurateEngine grid (for display). */
-  function getBackendRsrpAt(x, y) {
-    var bgrid = state.optimizationRsrpGrid || state.accurateEngineRsrpGrid;
-    if (!bgrid) return null;
-    
-    var bx = x / bgrid.dx;
-    var by = y / bgrid.dy;
-    
-    var gx0 = Math.max(0, Math.min(bgrid.cols - 1, Math.floor(bx - 0.5)));
-    var gx1 = Math.max(0, Math.min(bgrid.cols - 1, gx0 + 1));
-    var gy0 = Math.max(0, Math.min(bgrid.rows - 1, Math.floor(by - 0.5)));
-    var gy1 = Math.max(0, Math.min(bgrid.rows - 1, gy0 + 1));
-    
-    var tx = (bx - 0.5) - gx0;
-    var ty = (by - 0.5) - gy0;
-    
-    var v00 = bgrid.data[gy0 * bgrid.cols + gx0];
-    var v10 = bgrid.data[gy0 * bgrid.cols + gx1];
-    var v01 = bgrid.data[gy1 * bgrid.cols + gx0];
-    var v11 = bgrid.data[gy1 * bgrid.cols + gx1];
-    
-    var v0 = v00 * (1 - tx) + v10 * tx;
-    var v1 = v01 * (1 - tx) + v11 * tx;
-    var bval = v0 * (1 - ty) + v1 * ty;
-    
-    if (!isNaN(bval) && bval !== 0) {
-      return bval;
-    }
-    return null;
-  }
-
-  function buildOptimizationRsrpGrid(rsrpValues) {
-    var totalBins = rsrpValues.length;
-    if (totalBins === 0) return;
-
-    var cols = Math.round(state.w);
-    var rows = Math.round(state.h);
-
-    if (cols * rows !== totalBins) {
-      var aspectRatio = state.w / state.h;
-      cols = Math.round(Math.sqrt(totalBins * aspectRatio));
-      rows = Math.round(totalBins / cols);
-    }
-    if (cols * rows !== totalBins) {
-      console.warn("[BackendRSRP] Grid mismatch:", cols, "x", rows, "!=", totalBins);
-      return;
-    }
-
-    var gridData = new Float32Array(totalBins);
-    var dataMin = Infinity, dataMax = -Infinity;
-    for (var i = 0; i < totalBins; i++) {
-      var val = Number(rsrpValues[i]);
-      gridData[i] = val;
-      // Filter out invalid/extreme values (like 0 for obstacles, or -200 for no coverage)
-      // so the legend range remains realistic for RSSI.
-      if (!isNaN(val) && val !== 0 && val >= -140 && val < 0) {
-        if (val < dataMin) dataMin = val;
-        if (val > dataMax) dataMax = val;
-      }
-    }
-
-    state.optimizationRsrpGrid = {
-      data: gridData, cols: cols, rows: rows,
-      dx: state.w / cols, dy: state.h / rows
-    };
-
-    if (dataMin !== Infinity && dataMax !== -Infinity) {
-      // Save these values so changing view mode back to RSSI restores them
-      if (state.viewMinMax && state.viewMinMax["rssi"]) {
-        state.viewMinMax["rssi"].min = Math.floor(dataMin);
-        state.viewMinMax["rssi"].max = Math.ceil(dataMax);
-      }
-
-      // Only update the active UI min/max if we are actually viewing RSSI
-      if (state.view === "rssi") {
-        state.minVal = Math.floor(dataMin);
-        state.maxVal = Math.ceil(dataMax);
-
-        var el;
-        el = document.getElementById("legendMin"); if (el) el.textContent = state.minVal;
-        el = document.getElementById("legendMax"); if (el) el.textContent = state.maxVal;
-        el = document.getElementById("minVal");    if (el) el.value = state.minVal;
-        el = document.getElementById("maxVal");    if (el) el.value = state.maxVal;
-
-        if (typeof window.updateLegendBar === 'function') window.updateLegendBar();
-      }
-    }
-
-    console.log("[OptimizationRSRP] Grid:", cols, "x", rows,
-      "| dx:", (state.w / cols).toFixed(3), "dy:", (state.h / rows).toFixed(3),
-      "| RSRP:", dataMin.toFixed(1), "to", dataMax.toFixed(1));
-  }
-
   // ── Main Update Handler ───────────────────────────────────────────────
 
   function handleOptimizationUpdate(data) {
@@ -276,8 +178,8 @@ var OptimizationSystem = (function () {
       var serverSendSec = data.rsrp_send_timestamp_sec;
       if (Array.isArray(newRsrp) && newRsrp.length > 0) {
         var latestRsrp = newRsrp[newRsrp.length - 1];
-        if (latestRsrp && latestRsrp.length > 0) {
-          buildOptimizationRsrpGrid(latestRsrp);
+        if (latestRsrp && latestRsrp.length > 0 && typeof window.buildOptimizationRsrpGrid === 'function') {
+          window.buildOptimizationRsrpGrid(latestRsrp);
           rsrpUpdated = true;
           // Record timing row when backend provides send timestamp (for latency profiling)
           if (serverSendSec != null) {
@@ -486,15 +388,12 @@ var OptimizationSystem = (function () {
   window.handleOptimizationUpdate = handleOptimizationUpdate;
   window.handleBaselineRsrpUpdate = handleBaselineRsrpUpdate;
   window.updateSingleAntennaFromAction = updateSingleAntennaFromAction;
-  window.getBackendRsrpAt = getBackendRsrpAt;
-  window.buildOptimizationRsrpGrid = buildOptimizationRsrpGrid;
 
   return {
     startOptimizationPolling: startOptimizationPolling,
     stopOptimizationPolling: stopOptimizationPolling,
     handleOptimizationUpdate: handleOptimizationUpdate,
     updateSingleAntennaFromAction: updateSingleAntennaFromAction,
-    getFriendlyActionMessage: getFriendlyActionMessage,
-    getBackendRsrpAt: getBackendRsrpAt
+    getFriendlyActionMessage: getFriendlyActionMessage
   };
 })();

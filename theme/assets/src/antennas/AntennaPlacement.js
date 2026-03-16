@@ -379,11 +379,9 @@
     }
 
     // Clear heatmap and backend RSRP so we recalc based on current engine (2.5D, IUT, or accurate)
-    state.optimizationRsrpGrid = null;
-    state.accurateEngineRsrpGrid = null;
+    if (typeof window.clearBackendRsrpCache === 'function') window.clearBackendRsrpCache();
     state.cachedHeatmap = null;
     state.heatmapUpdatePending = false;
-    if (typeof window.clearBackendRsrpCache === 'function') window.clearBackendRsrpCache();
     if (typeof window.invalidateHeatmapCache === 'function') window.invalidateHeatmapCache();
 
     notifyParentOfBatchUpdate();

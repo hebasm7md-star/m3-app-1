@@ -467,125 +467,6 @@ var BackendSync = (function () {
     }
   }
 
-  // ── Live RSRP cache (best-server merge for antenna placement only) ─────
-  function cacheLiveRsrpAndMergeBestServer(ant_id, rsrpValues) {
-    state.backendRsrpPerAntenna = state.backendRsrpPerAntenna || {};
-    if (rsrpValues == null || !Array.isArray(rsrpValues) || rsrpValues.length === 0) {
-      delete state.backendRsrpPerAntenna[ant_id];
-    } else {
-      state.backendRsrpPerAntenna[ant_id] = rsrpValues.slice();
-    }
-    mergeLiveRsrpToBestServerGrid();
-  }
-
-  function mergeLiveRsrpToBestServerGrid() {
-    var cache = state.backendRsrpPerAntenna;
-    if (!cache || Object.keys(cache).length === 0) {
-      state.accurateEngineRsrpGrid = null;
-      return;
-    }
-    var apIds = {};
-    for (var i = 0; i < state.aps.length; i++) {
-      if (state.aps[i].enabled !== false) apIds[state.aps[i].id] = true;
-    }
-    for (var aid in cache) { if (!apIds[aid]) delete cache[aid]; }
-    if (Object.keys(cache).length === 0) {
-      state.accurateEngineRsrpGrid = null;
-      return;
-    }
-    var totalBins = 0;
-    for (var aid in cache) {
-      var rsrp = cache[aid];
-      if (rsrp && rsrp.length > 0) {
-        totalBins = rsrp.length;
-        break;
-      }
-    }
-    if (totalBins === 0) return;
-
-    var cols = Math.round(state.w);
-    var rows = Math.round(state.h);
-    if (cols * rows !== totalBins) {
-      var aspectRatio = state.w / state.h;
-      cols = Math.round(Math.sqrt(totalBins * aspectRatio));
-      rows = Math.round(totalBins / cols);
-    }
-    if (cols * rows !== totalBins) return;
-
-    var gridData = new Float32Array(totalBins);
-    var dataMin = Infinity, dataMax = -Infinity;
-    for (var i = 0; i < totalBins; i++) {
-      var best = -Infinity;
-      for (var aid in cache) {
-        if (!apIds[aid]) continue;
-        var val = Number(cache[aid][i]);
-        if (!isNaN(val) && val !== 0 && val >= -140 && val < 0 && val > best) best = val;
-      }
-      gridData[i] = best === -Infinity ? 0 : best;
-      if (best > -Infinity) {
-        if (best < dataMin) dataMin = best;
-        if (best > dataMax) dataMax = best;
-      }
-    }
-
-    state.accurateEngineRsrpGrid = {
-      data: gridData, cols: cols, rows: rows,
-      dx: state.w / cols, dy: state.h / rows
-    };
-
-    if (dataMin !== Infinity && dataMax !== -Infinity && state.view === "rssi") {
-      if (state.viewMinMax && state.viewMinMax["rssi"]) {
-        state.viewMinMax["rssi"].min = Math.floor(dataMin);
-        state.viewMinMax["rssi"].max = Math.ceil(dataMax);
-      }
-      state.minVal = Math.floor(dataMin);
-      state.maxVal = Math.ceil(dataMax);
-      var el;
-      el = document.getElementById("legendMin"); if (el) el.textContent = state.minVal;
-      el = document.getElementById("legendMax"); if (el) el.textContent = state.maxVal;
-      el = document.getElementById("minVal"); if (el) el.value = state.minVal;
-      el = document.getElementById("maxVal"); if (el) el.value = state.maxVal;
-      if (typeof window.updateLegendBar === 'function') window.updateLegendBar();
-    }
-  }
-
-  // function clearLiveRsrpCache() {
-  //   state.backendRsrpPerAntenna = {};
-  //   state.accurateEngineRsrpGrid = null;
-  // }
-
-  /** Call when user selects 2.5D or IUT (local model). Clears backend caches and re-renders heatmap with local calc. */
-  function resetHeatmapForLocalModel() {
-    state.backendRsrpPerAntenna = {};
-    state.accurateEngineRsrpGrid = null;
-    // state.optimizationRsrpGrid = null;
-    state.cachedHeatmap = null;
-    if (typeof window.generateHeatmapAsync === "function") {
-      window.generateHeatmapAsync(null, true);
-    }
-  }
-
-  /** Call when antenna is deleted. Removes from cache (backendRsrpPerAntenna) and recalc merge heatmap. */
-  function evictAntennaAndRefreshHeatmap(antId) {
-    state.backendRsrpPerAntenna = state.backendRsrpPerAntenna || {};
-    delete state.backendRsrpPerAntenna[antId];
-    if (Object.keys(state.backendRsrpPerAntenna).length > 0) {
-      mergeLiveRsrpToBestServerGrid();
-    } else {
-      state.accurateEngineRsrpGrid = null;
-      state.optimizationRsrpGrid = null;
-    }
-    state.cachedHeatmap = null;
-    if (typeof window.generateHeatmapAsync === "function") {
-      window.generateHeatmapAsync(null, true);
-    }
-  }
-
-  window.mergeBackendRsrpFromCache = mergeLiveRsrpToBestServerGrid;
-  // window.clearBackendRsrpCache = clearLiveRsrpCache;
-  window.resetHeatmapForLocalModel = resetHeatmapForLocalModel;
-  window.evictAntennaAndRefreshHeatmap = evictAntennaAndRefreshHeatmap;
-
   // Set up message listener for Anvil events
   window.addEventListener("message", function (event) {
     if (event.data && event.data.type === "anvil_ready") {
@@ -645,7 +526,9 @@ var BackendSync = (function () {
       var rsrp = event.data.rsrp;
       var ant_id = event.data.ant_id;
       console.log("[RSRP] Received live_rsrp:", ant_id, "| len:", rsrp ? rsrp.length : "null");
-      cacheLiveRsrpAndMergeBestServer(ant_id, rsrp);
+      if (typeof window.cacheLiveRsrpAndMergeBestServer === "function") {
+        window.cacheLiveRsrpAndMergeBestServer(ant_id, rsrp);
+      }
       if (state.showVisualization && typeof window.generateHeatmapAsync === "function") {
         window.generateHeatmapAsync(null, true);
       }
@@ -695,6 +578,7 @@ var BackendSync = (function () {
       console.log("Optimization completed");
       if (typeof window.stopOptimizationPolling === 'function') window.stopOptimizationPolling();
       state.isOptimizing = false;
+      if (typeof window.clearOptimizationRsrpGrid === 'function') window.clearOptimizationRsrpGrid();
       var optimizeBtn = document.getElementById("optimizeBtn");
       var addAPBtn = document.getElementById("addAP");
       if (optimizeBtn) {
@@ -731,6 +615,7 @@ var BackendSync = (function () {
       console.log("Optimization error:", event.data.error);
       if (typeof window.stopOptimizationPolling === 'function') window.stopOptimizationPolling();
       state.isOptimizing = false;
+      if (typeof window.clearOptimizationRsrpGrid === 'function') window.clearOptimizationRsrpGrid();
       var optimizeBtn = document.getElementById("optimizeBtn");
       var addAPBtn = document.getElementById("addAP");
       if (optimizeBtn) {
@@ -797,8 +682,6 @@ var BackendSync = (function () {
     scheduleInputChange: scheduleInputChange,
     applyInputChangeImmediately: applyInputChangeImmediately,
     sendAllAntennaConfigs: sendAllAntennaConfigs,
-    updateAntennasFromConfigs: updateAntennasFromConfigs,
-    resetHeatmapForLocalModel: resetHeatmapForLocalModel,
-    evictAntennaAndRefreshHeatmap: evictAntennaAndRefreshHeatmap
+    updateAntennasFromConfigs: updateAntennasFromConfigs
   };
 })();
