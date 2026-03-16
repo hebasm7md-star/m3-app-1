@@ -248,8 +248,7 @@ class Combined(CombinedTemplate):
     antenna_data = event.detail.get("antenna") if hasattr(event, "detail") else event.detail
     request_id = event.detail.get("requestId") if hasattr(event, "detail") else None
     ant_id = antenna_data.get("id") if antenna_data else None
-    print(f"[RSRP] send_antenna_config received ant_id={ant_id} enable_live_rsrp={getattr(self, 'enable_live_rsrp', False)}")
-
+    print(f"send_antenna_config received ant_id={ant_id} enable_live_rsrp={getattr(self, 'enable_live_rsrp', False)}")
     if not antenna_data:
       self._send_error("antenna_status_response", "No antenna data in status update", request_id=request_id)
       return
