@@ -567,7 +567,7 @@
       if (isBackendModel && typeof window.resetHeatmapForLocalModel === "function") {
         window.resetHeatmapForLocalModel();
       } else {
-        if (typeof window.clearBackendRsrpCache === "function") window.clearBackendRsrpCache();
+        if (typeof window.clearBackendRsrpCache === "function") window.clearBackendRsrpCache(true);
         window.state.cachedHeatmap = null;
         window.state.heatmapUpdatePending = false;
         if (typeof window.invalidateHeatmapCache === "function") window.invalidateHeatmapCache();

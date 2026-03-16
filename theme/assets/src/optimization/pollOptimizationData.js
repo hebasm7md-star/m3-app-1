@@ -155,6 +155,9 @@ var OptimizationSystem = (function () {
   function handleTerminalStatus(status, data, footerBadge, footerMessage) {
     if (status !== 'finished' && status !== 'error') return;
     stopOptimizationPolling();
+    if (typeof window.clearOptimizationRsrpGrid === 'function') {
+      window.clearOptimizationRsrpGrid(status === 'finished');
+    }
     if (status === 'finished') {
       setFooter(footerBadge, footerMessage, 'COMPLETED', "Optimization process successfully completed.", 'completed');
       if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportDetailedCoverageData) {

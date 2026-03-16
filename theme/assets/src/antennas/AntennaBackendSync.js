@@ -617,7 +617,7 @@ var BackendSync = (function () {
       }
       if (typeof window.stopOptimizationPolling === 'function') window.stopOptimizationPolling();
       state.isOptimizing = false;
-      if (typeof window.clearOptimizationRsrpGrid === 'function') window.clearOptimizationRsrpGrid();
+      if (typeof window.clearOptimizationRsrpGrid === 'function') window.clearOptimizationRsrpGrid(true);
       var optimizeBtn = document.getElementById("optimizeBtn");
       var addAPBtn = document.getElementById("addAP");
       if (optimizeBtn) {
@@ -662,7 +662,7 @@ var BackendSync = (function () {
       }
       if (typeof window.stopOptimizationPolling === 'function') window.stopOptimizationPolling();
       state.isOptimizing = false;
-      if (typeof window.clearOptimizationRsrpGrid === 'function') window.clearOptimizationRsrpGrid();
+      if (typeof window.clearOptimizationRsrpGrid === 'function') window.clearOptimizationRsrpGrid(false);
       var optimizeBtn = document.getElementById("optimizeBtn");
       var addAPBtn = document.getElementById("addAP");
       if (optimizeBtn) {

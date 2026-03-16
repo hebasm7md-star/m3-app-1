@@ -84,9 +84,10 @@
 
   // ─── Active grid lookup ───────────────────────────────────────────────────────
 
-  /** Return the RSRP grid that is currently driving the heatmap. */
+  /** Return the RSRP grid that is currently driving the heatmap.
+   *  Optimization result takes precedence: after optimize, always show it until cleared. */
   function getActiveRsrpGrid() {
-    if (state.isOptimizing && state.optimizationRsrpGrid) return state.optimizationRsrpGrid;
+    if (state.optimizationRsrpGrid) return state.optimizationRsrpGrid;
     var model = state.model || "p25d";
     if (model === "accurateEngine") return state.accurateEngineRsrpGrid || null;
     if (model === "p25d")           return state.p25RsrpGrid            || null;
@@ -199,18 +200,23 @@
 
   // ─── Cache / heatmap helpers ──────────────────────────────────────────────────
 
-  /** Wipe all backend RSRP grids and per-antenna cache. */
-  function clearBackendRsrpCache() {
+  /** Wipe all backend RSRP grids and per-antenna cache.
+   *  @param {boolean} preserveOptimization - if true, keep optimizationRsrpGrid (e.g. when switching to accurate). */
+  function clearBackendRsrpCache(preserveOptimization) {
     state.backendRsrpPerAntenna  = {};
-    state.optimizationRsrpGrid   = null;
+    if (!preserveOptimization) state.optimizationRsrpGrid = null;
     state.accurateEngineRsrpGrid = null;
     state.p25RsrpGrid            = null;
     state.ituRsrpGrid            = null;
   }
 
-  /** Drop only the optimization grid (called when optimization ends). */
-  function clearOptimizationRsrpGrid() {
-    state.optimizationRsrpGrid = null;
+  /** Finalize optimization: keep optimization grid on success (heatmap stays); clear on error.
+   *  @param {boolean} transferOnSuccess - true when optimization finished; false on error (just clear). */
+  function clearOptimizationRsrpGrid(transferOnSuccess) {
+    if (!transferOnSuccess) state.optimizationRsrpGrid = null;
+    state.cachedHeatmap = null;
+    state.cachedHeatmapModel = null;
+    if (typeof window.generateHeatmapAsync === "function") window.generateHeatmapAsync(null, true);
   }
 
   function refreshHeatmap() {

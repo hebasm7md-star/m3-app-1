@@ -276,15 +276,14 @@
               var x = (c + 0.5) * dx;
               var idx = 4 * (r * cols + c);
 
-              // Use active RSRP grid when available (optimization/accurateEngine/fast)
-              // When highlighting one antenna in accurate engine, use per-antenna grid if available
+              // Use active RSRP grid when available (optimization takes precedence over per-antenna)
               var bgrid = null;
               if (state.view === "rssi") {
                 var model = state.model || "p25d";
-                if (useOnlySelected && selectedAP && model === "accurateEngine" && typeof window.getRsrpGridForAntenna === "function") {
+                if (typeof window.getActiveRsrpGrid === "function") bgrid = window.getActiveRsrpGrid();
+                if (!bgrid && useOnlySelected && selectedAP && model === "accurateEngine" && typeof window.getRsrpGridForAntenna === "function") {
                   bgrid = window.getRsrpGridForAntenna(selectedAP.id);
                 }
-                if (!bgrid && typeof window.getActiveRsrpGrid === "function") bgrid = window.getActiveRsrpGrid();
               }
               if (bgrid && state.view === "rssi") {
                 
@@ -725,15 +724,14 @@
               var x = (c + 0.5) * dx;
               var idx = 4 * (r * cols + c);
 
-              // Use active RSRP grid when available
-              // When highlighting one antenna in accurate engine, use per-antenna grid if available
+              // Use active RSRP grid when available (optimization takes precedence over per-antenna)
               var bgrid = null;
               if (state.view === "rssi") {
                 var model = state.model || "p25d";
-                if (useOnlySelected && selectedAP && model === "accurateEngine" && typeof window.getRsrpGridForAntenna === "function") {
+                if (typeof window.getActiveRsrpGrid === "function") bgrid = window.getActiveRsrpGrid();
+                if (!bgrid && useOnlySelected && selectedAP && model === "accurateEngine" && typeof window.getRsrpGridForAntenna === "function") {
                   bgrid = window.getRsrpGridForAntenna(selectedAP.id);
                 }
-                if (!bgrid && typeof window.getActiveRsrpGrid === "function") bgrid = window.getActiveRsrpGrid();
               }
               if (bgrid && state.view === "rssi") {
                 
@@ -767,8 +765,7 @@
                 }
               }
 
-              /* TRIAL: during optimization, all RSRP comes from backend only —
-                 skip frontend propagation calc entirely */
+              /* During optimization, all RSRP comes from backend only — skip frontend propagation */
               if (state.isOptimizing) {
                 img.data[idx] = 0;
                 img.data[idx + 1] = 0;
