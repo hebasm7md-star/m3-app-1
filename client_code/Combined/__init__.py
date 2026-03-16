@@ -181,11 +181,11 @@ class Combined(CombinedTemplate):
 
     # ========== Antenna Pattern Upload ==========
   def send_pattern_to_server(self, event):
-    event_data = getattr(event, "data", None) or getattr(event, "detail", None) # list of dict
-    print(f"[INFO] Data list: {type(event_data['files'])}")
-    if not event_data: #or not isinstance(data_list, list):
-      # self._send_error("upload_antenna_pattern_response", "No data received for pattern upload")
+    event_data = getattr(event, "data", None) or getattr(event, "detail", None)
+    if not event_data or "files" not in event_data:
+      self._send_error("upload_antenna_pattern_response", "No files received for pattern upload")
       return
+    print(f"[INFO] Data list: {type(event_data['files'])}")
 
     msg_type = getattr(event_data, "type", None) or (event_data.get("type") if hasattr(event_data, "get") else None)
     if msg_type != "upload_antenna_pattern":
@@ -280,11 +280,17 @@ class Combined(CombinedTemplate):
     print(f"[SUCCESS] Antenna {ant_id} {state}")
     self._send_to_iframe("antenna_status_response", success=True, requestId=request_id)
 
-    # Live RSRP only for single-ant config (ant-by-ant), not for batch
+    # Live RSRP: backend appends to bl_rsrp; client polls get_live_rsrp
     if self.enable_live_rsrp and state in ("added", "updated"):
-      self._pending_rsrp_ant_id = ant_id
-      self._pending_rsrp_timestamp = time.time()
-      print(f"[RSRP] Pending RSRP fetch for ant_id={ant_id} (enable_live_rsrp={self.enable_live_rsrp})")
+      if not ant_config.get('Turning_ON_OFF'):
+        # Antenna turned off: send null RSRP so UI evicts from cache and re-merges
+        self._send_to_iframe("live_rsrp", ant_id=ant_id, rsrp=None, config=ant_config)
+        print(f"[RSRP] Antenna {ant_id} turned OFF — sent null RSRP to UI")
+      else:
+        self._pending_rsrp = True  # Signal poll_live_rsrp to run
+        self._pending_rsrp_ant_id = ant_id
+        self._pending_rsrp_timestamp = time.time()
+        print(f"[RSRP] Pending RSRP fetch for ant_id={ant_id} (enable_live_rsrp={self.enable_live_rsrp})")
     else:
       if state in ("added", "updated"):
         print(f"[RSRP] Skipped pending (enable_live_rsrp={self.enable_live_rsrp})")
@@ -293,8 +299,6 @@ class Combined(CombinedTemplate):
     print("Iframe sent batch antenna configs...")
     request_id = event.detail.get("requestId") if hasattr(event, "detail") else None
     antennas = event.detail.get("antennas") if hasattr(event, "detail") else []
-
-    self._send_to_iframe("antennas_batch_status_response", success=True, requestId=request_id)
 
     if not antennas:
       self._send_error("antennas_batch_status_response", "No antennas in configs update", request_id=request_id)
@@ -311,10 +315,19 @@ class Combined(CombinedTemplate):
         pattern = ant_config["Antenna_Pattern_Name"].replace(".txt", "")
       ants_configs.append(ant_config)
 
+    if not ants_ids or not pattern:
+      self._send_error("antennas_batch_status_response", "No valid antennas or pattern for batch update", request_id=request_id)
+      return
+
     with anvil.server.no_loading_indicator:
       anvil.server.call("process_batch_antennas", pattern, ants_ids, ants_configs)
 
+    self._send_to_iframe("antennas_batch_status_response", success=True, requestId=request_id)
     print(f"[SUCCESS] Added {len(ants_ids)} antenna(s) from batch update")
+
+    if self.enable_live_rsrp and ants_ids:
+      self.get_accurate_baseline()
+      print(f"[RSRP] Sent accurate baseline for batch ({len(ants_ids)} antennas)")
 
     # ========== Optimization ==========
   def get_accurate_baseline(self, event):
@@ -334,15 +347,12 @@ class Combined(CombinedTemplate):
     status = result.get("status")
     if status == "success":
       with anvil.server.no_loading_indicator:
-        live = anvil.server.call("get_live_optimization", 0, 0, 0)
-        self._send_to_iframe("optimization_update",
-                             new_action_configs=[],
-                             new_bsrv_rsrp=live.get("new_bsrv_rsrp", []),
-                             new_compliance=live.get("new_compliance", []),
-                             status="finished",
-                             message="Accurate Baseline",
-                             rsrp_send_timestamp_sec=live.get("rsrp_send_timestamp_sec"))
-      self._send_to_iframe("baseline_completed", success=True, message="Accurate baseline calculated successfully")
+        live_baseline = anvil.server.call("get_live_rsrp", 0, 0)
+      self._send_to_iframe("baseline_rsrp",
+                           new_bsrv_rsrp=live_baseline.get("new_bsrv_rsrp", []),
+                           new_compliance=live_baseline.get("new_compliance", []),
+                           success=True,
+                           message="Accurate baseline calculated successfully")
     else:
       self._send_error("baseline_error", result.get("message", "Error calculating accurate baseline"))
 
@@ -358,32 +368,36 @@ class Combined(CombinedTemplate):
       self.poll_live_rsrp(**event_args)
 
   def poll_live_rsrp(self, **event_args):
-    """Poll backend for live RSRP: when RSRP arrives, send to iframe and clear pending."""
-    ant_id = getattr(self, "_pending_rsrp_ant_id", None)
-    if not ant_id:
+    """Poll backend for live RSRP: when new grid arrives, send baseline_rsrp to iframe."""
+    if not getattr(self, "_pending_rsrp", False):
       return
     ts = getattr(self, "_pending_rsrp_timestamp", 0)
     elapsed = time.time() - ts
-    if elapsed > 10:
-      print(f"[RSRP] Poll timeout for ant_id={ant_id} after {elapsed:.1f}s")
+    if elapsed > 15:
+      print(f"[RSRP] Poll timeout after {elapsed:.1f}s")
+      self._pending_rsrp = False
       self._pending_rsrp_ant_id = None
       self._pending_rsrp_timestamp = None
       return
+    last_rsrp = getattr(self, "_last_rsrp_idx", 0)
+    last_comp = getattr(self, "_last_compliance_idx", 0)
     try:
       with anvil.server.no_loading_indicator:
-        result = anvil.server.call("get_live_rsrp", ant_id, evict=True)
-      if result and ant_id in result:
-        rsrp_len = len(result[ant_id].get("rsrp", []))
-        print(f"[RSRP] Got RSRP for ant_id={ant_id} ({rsrp_len} values), sending to iframe")
+        result = anvil.server.call("get_live_rsrp", last_rsrp, last_comp)
+      new_rsrp = result.get("new_bsrv_rsrp", [])
+      new_comp = result.get("new_compliance", [])
+      if new_rsrp or new_comp:
+        self._pending_rsrp = False
         self._pending_rsrp_ant_id = None
         self._pending_rsrp_timestamp = None
-        self._send_to_iframe(
-          "live_rsrp",
-          ant_id=ant_id,
-          rsrp=result[ant_id]["rsrp"],
-          config=result[ant_id].get("config"),
-        )
-        # else: backend not ready yet, will retry next tick
+        self._last_rsrp_idx = result.get("last_rsrp_idx", last_rsrp)
+        self._last_compliance_idx = result.get("last_compliance_idx", last_comp)
+        self._send_to_iframe("baseline_rsrp",
+                             new_bsrv_rsrp=new_rsrp,
+                             new_compliance=new_comp,
+                             success=True,
+                             message="Live RSRP updated")
+        print(f"[RSRP] Sent baseline RSRP to iframe")
     except Exception as e:
       print(f"[RSRP] get_live_rsrp failed: {e}")
 
@@ -561,6 +575,7 @@ class Combined(CombinedTemplate):
   def reset_session(self, event=None):
     self.opt_running = False
     self.enable_live_rsrp = False
+    self._pending_rsrp = False
     self._pending_rsrp_ant_id = None
     self._pending_rsrp_timestamp = None
     self._reset_indexes()
