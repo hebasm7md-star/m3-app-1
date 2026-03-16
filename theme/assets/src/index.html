@@ -256,6 +256,47 @@
             <p class="helper-text helper-text-small">
               💡 Optimization will adjust antenna positions to meet the coverage targets above.
             </p>
+
+            <div class="xd-container-margin">
+              <label class="checkbox-label assisted-drawing-checkbox">
+                <input type="checkbox" id="optAdvancedToggle" />
+                <span>Show Advanced Parameters</span>
+              </label>
+            </div>
+
+            <div id="optAdvancedContainer" class="xd-advanced-container">
+              <div class="form-group xd-form-group-spacing">
+                <label>Financial Cost Weight</label>
+                <input type="number" id="optFinancialCostWeight" value="2" placeholder="2" step="0.5" min="0" />
+              </div>
+              <div class="form-group xd-form-group-spacing-12">
+                <label>RSRP Weight</label>
+                <input type="number" id="optRsrpWeight" value="0" placeholder="0" step="0.5" min="0" />
+              </div>
+              <div class="form-group xd-form-group-spacing-12">
+                <label>Homogeneity Weight</label>
+                <input type="number" id="optHomogeneityWeight" value="1" placeholder="1" step="0.5" min="0" />
+              </div>
+              <div class="form-group xd-form-group-spacing-12">
+                <label>Num Trials</label>
+                <input type="number" id="optNumTrials" value="1" placeholder="1" step="1" min="1" />
+              </div>
+              <div class="form-group xd-form-group-spacing-12">
+                <label>Max Changes</label>
+                <input type="number" id="optMaxChanges" value="20" placeholder="20" step="1" min="1" />
+              </div>
+              <div class="form-group xd-form-group-spacing-12">
+                <label>Temperature</label>
+                <input type="number" id="optTemp" value="10" placeholder="10" step="0.5" min="0" />
+              </div>
+              <div class="form-group xd-form-group-spacing-12">
+                <label>Min Temperature</label>
+                <input type="number" id="optMinimumTemp" value="1" placeholder="1" step="0.5" min="0" />
+              </div>
+              <button id="optParamsSaveBtn" class="action-btn" style="margin-top: 12px;">
+                Save
+              </button>
+            </div>
           </div>
         </div>
 

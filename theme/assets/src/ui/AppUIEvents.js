@@ -698,6 +698,53 @@
     }, '*');
   });
 
+  // Optimization Advanced Params
+  var optAdvToggle = document.getElementById("optAdvancedToggle");
+  if (optAdvToggle) optAdvToggle.addEventListener("change", function () {
+    var container = document.getElementById("optAdvancedContainer");
+    if (container) container.style.display = this.checked ? "block" : "none";
+  });
+
+  function sendOptimizationParams() {
+    var opt_params = {
+      financial_cost_weight: window.state.optFinancialCostWeight,
+      rsrp_weight: window.state.optRsrpWeight,
+      homogeneity_weight: window.state.optHomogeneityWeight,
+      num_trials: window.state.optNumTrials,
+      max_changes: window.state.optMaxChanges,
+      temp: window.state.optTemp,
+      minimum_temp: window.state.optMinimumTemp
+    };
+    window.parent.postMessage({
+      type: "set_optimization_params",
+      opt_params: opt_params,
+      requestId: "opt-" + Date.now()
+    }, "*");
+  }
+  window.sendOptimizationParams = sendOptimizationParams;
+
+  var optParamIds = ["optFinancialCostWeight", "optRsrpWeight", "optHomogeneityWeight", "optNumTrials", "optMaxChanges", "optTemp", "optMinimumTemp"];
+  optParamIds.forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener("input", function () {
+      var val = id === "optNumTrials" || id === "optMaxChanges" ? parseInt(this.value, 10) : parseFloat(this.value);
+      if (isNaN(val)) return;
+      window.state[id] = val;
+    });
+  });
+
+  var optParamsSaveBtn = document.getElementById("optParamsSaveBtn");
+  if (optParamsSaveBtn) optParamsSaveBtn.addEventListener("click", function () {
+    window.state.optFinancialCostWeight = parseFloat(document.getElementById("optFinancialCostWeight").value) || window.state.optFinancialCostWeight;
+    window.state.optRsrpWeight = parseFloat(document.getElementById("optRsrpWeight").value) || window.state.optRsrpWeight;
+    window.state.optHomogeneityWeight = parseFloat(document.getElementById("optHomogeneityWeight").value) || window.state.optHomogeneityWeight;
+    window.state.optNumTrials = parseInt(document.getElementById("optNumTrials").value, 10) || window.state.optNumTrials;
+    window.state.optMaxChanges = parseInt(document.getElementById("optMaxChanges").value, 10) || window.state.optMaxChanges;
+    window.state.optTemp = parseFloat(document.getElementById("optTemp").value) || window.state.optTemp;
+    window.state.optMinimumTemp = parseFloat(document.getElementById("optMinimumTemp").value) || window.state.optMinimumTemp;
+    sendOptimizationParams();
+  });
+
   var sc = document.getElementById("showContours");
   if (sc) sc.addEventListener("change", function () {
     window.state.showContours = document.getElementById("showContours").checked;

@@ -503,18 +503,18 @@ var BackendSync = (function () {
     }
 
     // Handle CSV data from Anvil backend
-    if (event.data && event.data.type === "csv_data") {
-      console.log("Received CSV data from Anvil");
-      if (event.data.success && event.data.csv_data) {
-        if (typeof window.processCsvDataFromAnvil === 'function') {
-          window.processCsvDataFromAnvil(event.data.csv_data);
-        } else {
-          console.warn("processCsvDataFromAnvil function not found.");
-        }
-      } else {
-        NotificationSystem.error("Failed to receive CSV data.\n" + (event.data.error || "Unknown error"));
-      }
-    }
+    // if (event.data && event.data.type === "csv_data") {
+    //   console.log("Received CSV data from Anvil");
+    //   if (event.data.success && event.data.csv_data) {
+    //     if (typeof window.processCsvDataFromAnvil === 'function') {
+    //       window.processCsvDataFromAnvil(event.data.csv_data);
+    //     } else {
+    //       console.warn("processCsvDataFromAnvil function not found.");
+    //     }
+    //   } else {
+    //     NotificationSystem.error("Failed to receive CSV data.\n" + (event.data.error || "Unknown error"));
+    //   }
+    // }
 
     // Handle antenna configs from Anvil backend
     if (event.data && event.data.type === "antenna_configs") {
@@ -690,6 +690,15 @@ var BackendSync = (function () {
         footerMessage.textContent = 'Optimization error occurred';
       }
       NotificationSystem.error("Optimization failed.\n" + (event.data.error || "Unknown error"));
+    }
+
+    // Handle optimization params save response
+    if (event.data && event.data.type === "optimization_params_response") {
+      if (event.data.success) {
+        NotificationSystem.success("Optimization parameters saved.");
+      } else {
+        NotificationSystem.error("Failed to save optimization parameters.\n" + (event.data.error || "Unknown error"));
+      }
     }
 
     // Handle backend messages with different button types

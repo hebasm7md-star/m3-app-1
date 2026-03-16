@@ -68,6 +68,13 @@
         maxVal: state.maxVal,
         complianceThreshold: state.complianceThreshold,
         compliancePercentage: state.compliancePercentage,
+        optFinancialCostWeight: state.optFinancialCostWeight,
+        optRsrpWeight: state.optRsrpWeight,
+        optHomogeneityWeight: state.optHomogeneityWeight,
+        optNumTrials: state.optNumTrials,
+        optMaxChanges: state.optMaxChanges,
+        optTemp: state.optTemp,
+        optMinimumTemp: state.optMinimumTemp,
         weak: state.weak,
         mid: state.mid,
         strong: state.strong,
@@ -312,6 +319,20 @@
           state.complianceThreshold = projectData.complianceThreshold;
         if (projectData.compliancePercentage !== undefined)
           state.compliancePercentage = projectData.compliancePercentage;
+        if (projectData.optFinancialCostWeight !== undefined)
+          state.optFinancialCostWeight = projectData.optFinancialCostWeight;
+        if (projectData.optRsrpWeight !== undefined)
+          state.optRsrpWeight = projectData.optRsrpWeight;
+        if (projectData.optHomogeneityWeight !== undefined)
+          state.optHomogeneityWeight = projectData.optHomogeneityWeight;
+        if (projectData.optNumTrials !== undefined)
+          state.optNumTrials = projectData.optNumTrials;
+        if (projectData.optMaxChanges !== undefined)
+          state.optMaxChanges = projectData.optMaxChanges;
+        if (projectData.optTemp !== undefined)
+          state.optTemp = projectData.optTemp;
+        if (projectData.optMinimumTemp !== undefined)
+          state.optMinimumTemp = projectData.optMinimumTemp;
         if (projectData.weak) state.weak = projectData.weak;
         if (projectData.mid) state.mid = projectData.mid;
         if (projectData.strong) state.strong = projectData.strong;
@@ -555,6 +576,13 @@
         if (document.getElementById("maxVal")) document.getElementById("maxVal").value = state.maxVal;
         if (document.getElementById("complianceThreshold")) document.getElementById("complianceThreshold").value = state.complianceThreshold !== undefined ? state.complianceThreshold : state.minVal;
         if (document.getElementById("compliancePercentage")) document.getElementById("compliancePercentage").value = state.compliancePercentage !== undefined ? state.compliancePercentage : 80;
+        if (document.getElementById("optFinancialCostWeight")) document.getElementById("optFinancialCostWeight").value = state.optFinancialCostWeight !== undefined ? state.optFinancialCostWeight : 2;
+        if (document.getElementById("optRsrpWeight")) document.getElementById("optRsrpWeight").value = state.optRsrpWeight !== undefined ? state.optRsrpWeight : 0;
+        if (document.getElementById("optHomogeneityWeight")) document.getElementById("optHomogeneityWeight").value = state.optHomogeneityWeight !== undefined ? state.optHomogeneityWeight : 1;
+        if (document.getElementById("optNumTrials")) document.getElementById("optNumTrials").value = state.optNumTrials !== undefined ? state.optNumTrials : 1;
+        if (document.getElementById("optMaxChanges")) document.getElementById("optMaxChanges").value = state.optMaxChanges !== undefined ? state.optMaxChanges : 20;
+        if (document.getElementById("optTemp")) document.getElementById("optTemp").value = state.optTemp !== undefined ? state.optTemp : 10;
+        if (document.getElementById("optMinimumTemp")) document.getElementById("optMinimumTemp").value = state.optMinimumTemp !== undefined ? state.optMinimumTemp : 1;
         if (document.getElementById("showContours"))
           document.getElementById("showContours").checked = state.showContours;
         if (document.getElementById("showTooltip")) document.getElementById("showTooltip").checked = state.showTooltip;
