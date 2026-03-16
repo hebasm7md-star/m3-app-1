@@ -16,6 +16,7 @@ unique_ids:
     src/io/DataExportSystem.js: HIFDS2QG4ZEUNGXQ3MZKPJWK6DSMPJG6
     src/io/ImportDXF.js: T5EBHU5I6PKJ5PLLDEFLJEO35JYMHAIA
     src/io/ProjectIO.js: CPZIMU2J2YCPYD3NJ5X6V274VE3FF6MB
+    src/optimization/AccurateEngineRsrp.js: 5VRVWAG7F4ZQYIYNCJR6ZQIODN2WHSUV
     src/optimization/pollOptimizationData.js: 7KEMUQPSPHMQ3LS4LLT2HI45PAYLCYKA
     src/propagation/PropagationModel25DN.js: PCBBELO327PYN3WAT5TFQMDYEZCM77BT
     src/propagation/RadioCalculations.js: DK2PUJZFUPHV6QMKF242ORFDXJFZQXNL
