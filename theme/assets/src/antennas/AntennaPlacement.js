@@ -381,11 +381,18 @@
     notifyParentOfBatchUpdate();
     refreshCanvas();
 
+    var calculateBaselineBtn = document.getElementById("calculateBaselineBtn");
+    if (calculateBaselineBtn) {
+      calculateBaselineBtn.disabled = false;
+      calculateBaselineBtn.style.opacity = '1';
+      calculateBaselineBtn.style.cursor = 'pointer';
+    }
+
     if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportDetailedCoverageData) {
       setTimeout(function () {
         var ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
         DataExportSystem.exportDetailedCoverageData('auto_placed_cm_' + ts + '.csv', 1.0);
-      }, 500);
+      }, 1000);
     }
   }
 

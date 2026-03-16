@@ -634,7 +634,7 @@ var BackendSync = (function () {
             setTimeout(function () {
               var ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
               DataExportSystem.exportDetailedCoverageData('accurate_bl_cm_' + ts + '.csv', 1.0);
-            }, 1500);
+            }, 500);
           }
         } else {
           // Re-enable on baseline errors (including no baseline initialized)

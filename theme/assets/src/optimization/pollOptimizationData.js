@@ -105,9 +105,9 @@ var OptimizationSystem = (function () {
     if (status === 'finished') {
       setFooter(footerBadge, footerMessage, 'COMPLETED', "Optimization process successfully completed.", 'completed');
       if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportBackendRsrpGrid) {
-        // var ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-        // DataExportSystem.exportDetailedCoverageData('accurate_bl_cm_' + ts + '.csv');
-        
+        var ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+        DataExportSystem.exportBackendRsrpGrid('accurate_bl_rsrp_' + ts + '.csv');
+      }
       if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportDetailedCoverageData) {
         setTimeout(function () {
           var ts2 = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
