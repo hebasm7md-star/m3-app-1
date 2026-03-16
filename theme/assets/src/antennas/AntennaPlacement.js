@@ -386,6 +386,12 @@
 
     notifyParentOfBatchUpdate();
     if (state.model === 'accurateEngine' && typeof window.requestRsrpForCurrentConfigs === 'function') {
+      var overlay = document.getElementById("loadingOverlay");
+      var loadingText = document.getElementById("loadingText");
+      var subtext = document.getElementById("loadingSubtext");
+      if (overlay) overlay.style.display = "flex";
+      if (loadingText) loadingText.textContent = "Finalizing the baseline...";
+      if (subtext) subtext.textContent = "Computing accurate RSRP from the backend. This may take a moment.";
       window.requestRsrpForCurrentConfigs();
     }
     refreshCanvas();
