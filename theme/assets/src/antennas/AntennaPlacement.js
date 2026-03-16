@@ -383,7 +383,8 @@
 
     if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportDetailedCoverageData) {
       setTimeout(function () {
-        DataExportSystem.exportDetailedCoverageData("auto_placed_cm_" + getCurrentTimestamp() + ".csv", 1.0);
+        var ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+        DataExportSystem.exportDetailedCoverageData('auto_placed_cm_' + ts + '.csv', 1.0);
       }, 500);
     }
   }
