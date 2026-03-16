@@ -125,8 +125,8 @@ var RadioCalculations = (function () {
   }
 
   function getValueAt(x, y) {
-    // If backend optimization grid is present and we're viewing RSSI, try to use it
-    if (_state && _state.backendRsrpGrid && _state.view === "rssi" && typeof window.getBackendRsrpAt === 'function') {
+    // If optimization or accurateEngine grid is present and we're viewing RSSI, use it
+    if (_state && (_state.optimizationRsrpGrid || _state.accurateEngineRsrpGrid) && _state.view === "rssi" && typeof window.getBackendRsrpAt === 'function') {
       var bval = window.getBackendRsrpAt(x, y);
       if (bval !== null && bval !== undefined) {
         return bval;

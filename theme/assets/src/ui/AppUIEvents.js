@@ -531,7 +531,7 @@
   function syncLiveRsrpFromModel() {
     var model = (window.state && window.state.model) || (document.getElementById("model") || {}).value || "p25d";
     var enabled = model === "accurateEngine";
-    // if (!enabled && typeof window.clearBackendRsrpCache === "function") window.clearBackendRsrpCache();
+    if (!enabled && typeof window.clearBackendRsrpCache === "function") window.clearBackendRsrpCache();
     // only rssi map is supported for accurate engine
     updateViewModeForEngine(model);
     if (window.parent !== window) {

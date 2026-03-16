@@ -121,7 +121,8 @@ var state = {
   floorPlaneInclination: 0,
   floorPlaneInclinationDirection: 0,
   currentProjectFileName: null,
-  backendRsrpGrid: null,
+  accurateEngineRsrpGrid: null,
+  optimizationRsrpGrid: null,
   optimizationCompliancePercent: null,
   /** Per-antenna RSRP cache (accurateEngine): ant_id -> { rsrp, config }. Enables best-server merge. */
   backendRsrpPerAntenna: {},

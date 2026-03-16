@@ -9,7 +9,7 @@
 //   DataExportSystem.exportAntennaRsrp(antenna, fileName, spacing)
 //   DataExportSystem.exportCoverageMap(fileName, spacing)
 //   DataExportSystem.exportDetailedCoverageData(fileName, spacing)
-//   DataExportSystem.exportBackendRsrpGrid(fileName)
+//   DataExportSystem.exportOptimizationRsrpGrid(fileName)
 //   DataExportSystem.exportAntennaConfiguration(fileName)
 // 
 
@@ -207,34 +207,32 @@ var DataExportSystem = (function () {
       NotificationSystem.toast(' Detailed coverage data exported (' + count + ' points)', 'success');
       console.log('Detailed coverage exported:', { points: count, filename: finalFileName });
     },
-// HEBA : this function used only for dubugging the rsrp grid from the backend
-    exportBackendRsrpGrid: function (fileName) {
+    /** Export optimization RSRP grid only (not accurateEngine/placing grid). */
+    exportOptimizationRsrpGrid: function (fileName) {
       if (!_state) {
         console.error('DataExportSystem not initialized.');
         return;
       }
-      var grid = _state.backendRsrpGrid;
+      var grid = _state.optimizationRsrpGrid;
       if (!grid || !grid.data) {
-        console.warn('No backend RSRP grid data available to export.');
+        console.warn('No optimization RSRP grid available to export.');
         return;
       }
 
       var csvRows = ['X,Y,rsrp'];
       for (var y = 0; y < grid.rows; y++) {
         for (var x = 0; x < grid.cols; x++) {
-          // var x = (c + 0.5) * grid.dx;
-          // var y = (r + 0.5) * grid.dy;
           var rsrp = grid.data[y * grid.cols + x];
           csvRows.push(x.toFixed(3) + ',' + y.toFixed(3) + ',' + rsrp.toFixed(2));
         }
       }
 
       var csvData = csvRows.join('\n');
-      var finalFileName = fileName || ('backend_rsrp.csv');
+      var finalFileName = fileName || ('after_opt_rsrp.csv');
       downloadCSV(csvData, finalFileName);
 
-      NotificationSystem.toast('Backend RSRP grid exported (' + grid.data.length + ' points)', 'success');
-      console.log('Backend RSRP exported:', { cols: grid.cols, rows: grid.rows, points: grid.data.length, filename: finalFileName });
+      NotificationSystem.toast('Optimization RSRP grid exported (' + grid.data.length + ' points)', 'success');
+      console.log('Optimization RSRP exported:', { cols: grid.cols, rows: grid.rows, points: grid.data.length, filename: finalFileName });
     },
 
     // EXPORT RSRP TIMING DATA

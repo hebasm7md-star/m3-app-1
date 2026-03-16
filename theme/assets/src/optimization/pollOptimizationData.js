@@ -104,8 +104,8 @@ var OptimizationSystem = (function () {
     stopOptimizationPolling();
     if (status === 'finished') {
       setFooter(footerBadge, footerMessage, 'COMPLETED', "Optimization process successfully completed.", 'completed');
-      if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportBackendRsrpGrid) {
-        DataExportSystem.exportBackendRsrpGrid();
+      if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportOptimizationRsrpGrid) {
+        DataExportSystem.exportOptimizationRsrpGrid();
       }
       if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportRsrpTimingCsv) {
         setTimeout(function () {
@@ -120,9 +120,10 @@ var OptimizationSystem = (function () {
 
   // ── Backend RSRP Grid ─────────────────────────────────────────────────
 
+  /** Lookup RSRP at (x,y) from optimization or accurateEngine grid (for display). */
   function getBackendRsrpAt(x, y) {
-    if (!state.backendRsrpGrid) return null;
-    var bgrid = state.backendRsrpGrid;
+    var bgrid = state.optimizationRsrpGrid || state.accurateEngineRsrpGrid;
+    if (!bgrid) return null;
     
     var bx = x / bgrid.dx;
     var by = y / bgrid.dy;
@@ -150,7 +151,7 @@ var OptimizationSystem = (function () {
     return null;
   }
 
-  function buildBackendRsrpGrid(rsrpValues) {
+  function buildOptimizationRsrpGrid(rsrpValues) {
     var totalBins = rsrpValues.length;
     if (totalBins === 0) return;
 
@@ -180,7 +181,7 @@ var OptimizationSystem = (function () {
       }
     }
 
-    state.backendRsrpGrid = {
+    state.optimizationRsrpGrid = {
       data: gridData, cols: cols, rows: rows,
       dx: state.w / cols, dy: state.h / rows
     };
@@ -203,11 +204,11 @@ var OptimizationSystem = (function () {
         el = document.getElementById("minVal");    if (el) el.value = state.minVal;
         el = document.getElementById("maxVal");    if (el) el.value = state.maxVal;
 
-        if (typeof updateLegendBar === 'function') updateLegendBar();
+        if (typeof window.updateLegendBar === 'function') window.updateLegendBar();
       }
     }
 
-    console.log("[BackendRSRP] Grid:", cols, "x", rows,
+    console.log("[OptimizationRSRP] Grid:", cols, "x", rows,
       "| dx:", (state.w / cols).toFixed(3), "dy:", (state.h / rows).toFixed(3),
       "| RSRP:", dataMin.toFixed(1), "to", dataMax.toFixed(1));
   }
@@ -230,7 +231,7 @@ var OptimizationSystem = (function () {
       if (Array.isArray(newRsrp) && newRsrp.length > 0) {
         var latestRsrp = newRsrp[newRsrp.length - 1];
         if (latestRsrp && latestRsrp.length > 0) {
-          buildBackendRsrpGrid(latestRsrp);
+          buildOptimizationRsrpGrid(latestRsrp);
           rsrpUpdated = true;
           // Record timing row when backend provides send timestamp (for latency profiling)
           if (serverSendSec != null) {
@@ -439,7 +440,7 @@ var OptimizationSystem = (function () {
   window.handleOptimizationUpdate = handleOptimizationUpdate;
   window.updateSingleAntennaFromAction = updateSingleAntennaFromAction;
   window.getBackendRsrpAt = getBackendRsrpAt;
-  window.buildBackendRsrpGrid = buildBackendRsrpGrid;
+  window.buildOptimizationRsrpGrid = buildOptimizationRsrpGrid;
 
   return {
     startOptimizationPolling: startOptimizationPolling,

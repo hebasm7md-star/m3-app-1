@@ -110,9 +110,8 @@
       state.heatmapUpdateRequestId = null;
     }
 
-    // Try to use Web Worker first (if available and not dragging)
     // Skip worker when backend RSRP grid is active — worker has no access to it
-    if (state.heatmapWorker && !state.isDraggingAntenna && !state.backendRsrpGrid) {
+    if (state.heatmapWorker && !state.isDraggingAntenna && !(state.optimizationRsrpGrid || state.accurateEngineRsrpGrid)) {
       state.heatmapUpdatePending = true;
 
       var resolutionMultiplier = useLowRes === true ? 1 : 1.5;
@@ -270,8 +269,8 @@
 
               // Use backend-computed RSRP when available (from optimization)
               // Backend data is row-major (y outer, x inner): data[y_idx * cols + x_idx]
-              if (state.backendRsrpGrid && state.view === "rssi") {
-                var bgrid = state.backendRsrpGrid;
+              if ((state.optimizationRsrpGrid || state.accurateEngineRsrpGrid) && state.view === "rssi") {
+                var bgrid = (state.optimizationRsrpGrid || state.accurateEngineRsrpGrid);
                 
                 var bx = x / bgrid.dx;
                 var by = y / bgrid.dy;
@@ -676,11 +675,11 @@
       } else if (!state.heatmapUpdatePending) {
         // No cache exists and no update pending - generate synchronously for initial display
         // This ensures the heatmap shows immediately on first load
-        // Generate if we have antennas OR CSV coverage data OR backendRsrpGrid
+        // Generate if we have antennas OR accurateEngineRsrpGrid
         if (
           state.aps.length > 0 ||
-          (state.csvCoverageData && state.csvCoverageGrid) ||
-          state.backendRsrpGrid
+          // (state.csvCoverageData && state.csvCoverageGrid) ||
+          (state.optimizationRsrpGrid || state.accurateEngineRsrpGrid)
         ) {
           var resolutionMultiplier = 1.5; // High quality rendering
           var baseCols = Math.max(20, Math.floor(state.w / state.res));
@@ -708,8 +707,8 @@
               var idx = 4 * (r * cols + c);
 
               // Use backend-computed RSRP when available (from optimization)
-              if (state.backendRsrpGrid && state.view === "rssi") {
-                var bgrid = state.backendRsrpGrid;
+              if ((state.optimizationRsrpGrid || state.accurateEngineRsrpGrid) && state.view === "rssi") {
+                var bgrid = (state.optimizationRsrpGrid || state.accurateEngineRsrpGrid);
                 
                 var bx = x / bgrid.dx;
                 var by = y / bgrid.dy;
@@ -877,9 +876,8 @@
           // If no valid cache and we have antennas, trigger async generation
           if (
             !state.isDraggingAntenna &&
-            (state.aps.length > 0 ||
-              (state.csvCoverageData && state.csvCoverageGrid) || state.backendRsrpGrid)
-          ) {
+            (state.aps.length > 0 || (state.optimizationRsrpGrid || state.accurateEngineRsrpGrid))
+            ) {
             // No cache and no update pending - fallback: trigger async generation
             // This handles cases where sync generation didn't run (e.g., no antennas yet, or edge cases)
             if (typeof generateHeatmapAsync === 'function') {

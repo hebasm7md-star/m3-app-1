@@ -481,7 +481,7 @@ var BackendSync = (function () {
   function mergeLiveRsrpToBestServerGrid() {
     var cache = state.backendRsrpPerAntenna;
     if (!cache || Object.keys(cache).length === 0) {
-      state.backendRsrpGrid = null;
+      state.accurateEngineRsrpGrid = null;
       return;
     }
     var apIds = {};
@@ -490,7 +490,7 @@ var BackendSync = (function () {
     }
     for (var aid in cache) { if (!apIds[aid]) delete cache[aid]; }
     if (Object.keys(cache).length === 0) {
-      state.backendRsrpGrid = null;
+      state.accurateEngineRsrpGrid = null;
       return;
     }
     var totalBins = 0;
@@ -528,7 +528,7 @@ var BackendSync = (function () {
       }
     }
 
-    state.backendRsrpGrid = {
+    state.accurateEngineRsrpGrid = {
       data: gridData, cols: cols, rows: rows,
       dx: state.w / cols, dy: state.h / rows
     };
@@ -551,7 +551,7 @@ var BackendSync = (function () {
 
   function clearLiveRsrpCache() {
     state.backendRsrpPerAntenna = {};
-    state.backendRsrpGrid = null;
+    state.accurateEngineRsrpGrid = null;
   }
 
   window.mergeBackendRsrpFromCache = mergeLiveRsrpToBestServerGrid;
