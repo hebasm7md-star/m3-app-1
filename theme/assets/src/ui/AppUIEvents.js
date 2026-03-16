@@ -832,7 +832,7 @@
   var csvBtn = document.getElementById("exportCoverageBtn");
   if (csvBtn) csvBtn.addEventListener("click", function () {
     if (typeof window.DataExportSystem !== 'undefined') {
-      window.DataExportSystem.exportDetailedCoverageData('detailed.csv', 1.0);
+      window.DataExportSystem.exportDetailedCoverageData(null, 1.0);
     } else {
       if (typeof window.NotificationSystem !== 'undefined') {
         window.NotificationSystem.error("Export module not found.");

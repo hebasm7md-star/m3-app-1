@@ -380,6 +380,12 @@
 
     notifyParentOfBatchUpdate();
     refreshCanvas();
+
+    if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportDetailedCoverageData) {
+      setTimeout(function () {
+        DataExportSystem.exportDetailedCoverageData("auto_placed_cm_" + getCurrentTimestamp() + ".csv", 1.0);
+      }, 500);
+    }
   }
 
   // ---------------------------------------------------------------------------

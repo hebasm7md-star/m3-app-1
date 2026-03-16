@@ -104,8 +104,11 @@ var OptimizationSystem = (function () {
     stopOptimizationPolling();
     if (status === 'finished') {
       setFooter(footerBadge, footerMessage, 'COMPLETED', "Optimization process successfully completed.", 'completed');
-      if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportOptimizationRsrpGrid) {
-        DataExportSystem.exportOptimizationRsrpGrid();
+      if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportBackendRsrpGrid) {
+        DataExportSystem.exportBackendRsrpGrid("accurate_bl_rsrp_" + getCurrentTimestamp() + ".csv"); // before optimization rsrp grid "accurate_bl_rsrp_<timestamp>.csv"
+        setTimeout(function () {
+          DataExportSystem.exportBackendRsrpGrid("after_opt_rsrp_" + getCurrentTimestamp() + ".csv"); // after optimization rsrp grid "after_opt_rsrp_<timestamp>.csv"
+        }, 500);
       }
       if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportRsrpTimingCsv) {
         setTimeout(function () {

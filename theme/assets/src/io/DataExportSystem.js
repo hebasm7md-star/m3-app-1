@@ -8,7 +8,7 @@
 //   DataExportSystem.init({ state })
 //   DataExportSystem.exportAntennaRsrp(antenna, fileName, spacing)
 //   DataExportSystem.exportCoverageMap(fileName, spacing)
-//   DataExportSystem.exportDetailedCoverageData(fileName, spacing)
+//   DataExportSystem.exportDetailedCoverageData(finalFileName, spacing)  // filename: cm_<timestamp>.csv
 //   DataExportSystem.exportOptimizationRsrpGrid(fileName)
 //   DataExportSystem.exportAntennaConfiguration(fileName)
 // 
@@ -159,7 +159,7 @@ var DataExportSystem = (function () {
     // EXPORT DETAILED RSRP DATA
     // Extended coverage data with multiple metrics per point
     // 
-    exportDetailedCoverageData: function (fileName, spacing) {
+    exportDetailedCoverageData: function (finalFileName, spacing) {
       if (!_state) {
         console.error('DataExportSystem not initialized. Call DataExportSystem.init() first.');
         return;
@@ -200,15 +200,15 @@ var DataExportSystem = (function () {
       }
 
       var csvData = rows.join('\n');
-      var finalFileName = fileName || ('coverage_details.csv'); // + getCurrentTimestamp()
+      var finalFileName = finalFileName || ('cm_' + getCurrentTimestamp() + '.csv');
 
       downloadCSV(csvData, finalFileName);
 
       NotificationSystem.toast(' Detailed coverage data exported (' + count + ' points)', 'success');
-      console.log('Detailed coverage exported:', { points: count, filename: finalFileName });
+      // console.log('Detailed coverage exported:', { points: count, filename: finalFileName });
     },
     /** Export optimization RSRP grid only (not accurateEngine/placing grid). */
-    exportOptimizationRsrpGrid: function (fileName) {
+    exportBackendRsrpGrid: function (fileName) {
       if (!_state) {
         console.error('DataExportSystem not initialized.');
         return;
@@ -228,11 +228,11 @@ var DataExportSystem = (function () {
       }
 
       var csvData = csvRows.join('\n');
-      var finalFileName = fileName || ('after_opt_rsrp.csv');
+      var finalFileName = fileName || ('backend_rsrp_' + getCurrentTimestamp() + '.csv');
       downloadCSV(csvData, finalFileName);
 
-      NotificationSystem.toast('Optimization RSRP grid exported (' + grid.data.length + ' points)', 'success');
-      console.log('Optimization RSRP exported:', { cols: grid.cols, rows: grid.rows, points: grid.data.length, filename: finalFileName });
+      NotificationSystem.toast('RSRP grid exported (' + grid.data.length + ' points)', 'success');
+      // console.log('Optimization RSRP exported:', { cols: grid.cols, rows: grid.rows, points: grid.data.length, filename: finalFileName });
     },
 
     // EXPORT RSRP TIMING DATA
@@ -285,19 +285,5 @@ var DataExportSystem = (function () {
     }*/
   };
 })();
-// AI COMMENT: Refactored CSV export system
-// REPLACES: exportFrontendRsrpCsv() [line 206] + exportAntennaRsrpCsv() [line 240]
-// IMPROVEMENTS:
-//   - Separate per-antenna RSRP (specific antenna signal map)
-//   - Separate coverage map (best signal from all antennas)
-//   - New detailed metrics export (SINR, throughput, CCI)
-//   - New antenna configuration export
-//   - Professional filename generation with timestamps
-//   - Statistics and summary logging
-//   - Consistent toast notifications via NotificationSystem
-// USAGE:
-//   DataExportSystem.exportAntennaRsrp(antenna, 'MyAntenna.csv', 1.0);
-//   DataExportSystem.exportCoverageMap('coverage.csv', 1.0);
-//   DataExportSystem.exportDetailedCoverageData('detailed.csv', 1.0);
-//   DataExportSystem.exportAntennaConfiguration('config.csv');
+
 
