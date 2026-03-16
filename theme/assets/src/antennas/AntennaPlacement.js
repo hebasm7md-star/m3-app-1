@@ -396,12 +396,12 @@
       calculateBaselineBtn.style.cursor = 'pointer';
     }
 
-    if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportDetailedCoverageData) {
-      setTimeout(function () {
-        var ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-        DataExportSystem.exportDetailedCoverageData('auto_placed_cm_' + ts + '.csv', 1.0, { silent: true });
-      }, 1500);
-    }
+    // if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportDetailedCoverageData) {
+    //   setTimeout(function () {
+    //     var ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+    //     DataExportSystem.exportDetailedCoverageData('auto_placed_cm_' + ts + '.csv', 1.0, { silent: true });
+    //   }, 1500);
+    // }
   }
 
   // ---------------------------------------------------------------------------
@@ -435,7 +435,8 @@
     window.parent.postMessage({
       type:      "antennas_batch_status_update",
       requestId: requestId,
-      antennas:  state.aps
+      antennas:  state.aps,
+      source:    "auto_place"
     }, PARENT_ORIGIN);
   }
 

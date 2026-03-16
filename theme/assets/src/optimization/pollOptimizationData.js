@@ -132,7 +132,8 @@ var OptimizationSystem = (function () {
     }
     refreshHeatmap();
     var isAccurateBaseline = data.isAccurateBaseline === true || (data.message || '').indexOf('Accurate baseline') >= 0;
-    if (isAccurateBaseline && typeof DataExportSystem !== 'undefined' && DataExportSystem.exportDetailedCoverageData) {
+    var fromAutoPlace = data.fromAutoPlace === true;
+    if (isAccurateBaseline && !fromAutoPlace && typeof DataExportSystem !== 'undefined' && DataExportSystem.exportDetailedCoverageData) {
       setTimeout(function () {
         var ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
         DataExportSystem.exportDetailedCoverageData('accurate_bl_cm_' + ts + '.csv', 1.0, { silent: true });
