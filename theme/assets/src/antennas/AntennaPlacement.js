@@ -385,6 +385,9 @@
     if (typeof window.invalidateHeatmapCache === 'function') window.invalidateHeatmapCache();
 
     notifyParentOfBatchUpdate();
+    if (state.model === 'accurateEngine' && typeof window.requestRsrpForCurrentConfigs === 'function') {
+      window.requestRsrpForCurrentConfigs();
+    }
     refreshCanvas();
 
     var calculateBaselineBtn = document.getElementById("calculateBaselineBtn");

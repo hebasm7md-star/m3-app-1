@@ -120,8 +120,15 @@ var OptimizationSystem = (function () {
     if (Array.isArray(newRsrp) && newRsrp.length > 0) {
       if (typeof window.clearBackendRsrpCache === 'function') window.clearBackendRsrpCache();
       var latestRsrp = newRsrp[newRsrp.length - 1];
-      if (latestRsrp && latestRsrp.length > 0 && typeof window.buildOptimizationRsrpGrid === 'function') {
-        window.buildOptimizationRsrpGrid(latestRsrp);
+      if (latestRsrp && latestRsrp.length > 0) {
+        var build = state.isOptimizing ? window.buildOptimizationRsrpGrid : window.buildAccurateEngineRsrpGrid;
+        if (typeof build === 'function') build(latestRsrp);
+        if (!state.isOptimizing && state.model !== 'accurateEngine') {
+          state.model = 'accurateEngine';
+          var mdl = document.getElementById('model');
+          if (mdl) mdl.value = 'accurateEngine';
+          if (typeof window.syncLiveRsrpFromModel === 'function') window.syncLiveRsrpFromModel();
+        }
         hideLoadingOverlay();
       }
     } else if (Array.isArray(newCompliance) && newCompliance.length > 0 && typeof window.mergeBackendRsrpFromCache === 'function') {
@@ -224,7 +231,7 @@ var OptimizationSystem = (function () {
           var sub = document.getElementById('loadingSubtext');
           var txt = document.getElementById('loadingText');
           if (sub) sub.textContent = message;
-          if (txt) txt.textContent = status === 'error' ? 'Optimization Failed' : 'Finalizing Baseline Data...';
+          if (txt && !rsrpUpdated) txt.textContent = status === 'error' ? 'Optimization Failed' : 'Finalizing Baseline Data...';
         }
         if (status !== 'starting' && status !== 'idle' || status === 'error') {
           overlay.style.opacity = '0';

@@ -77,9 +77,10 @@
   }
 
   // Named wrappers keep call sites readable and decouple them from state key names.
-  function buildOptimizationRsrpGrid(rsrpValues) { buildRsrpGrid(rsrpValues, "optimizationRsrpGrid"); }
-  function buildP25RsrpGrid(rsrpValues)          { buildRsrpGrid(rsrpValues, "p25RsrpGrid"); }
-  function buildItuRsrpGrid(rsrpValues)           { buildRsrpGrid(rsrpValues, "ituRsrpGrid"); }
+  function buildOptimizationRsrpGrid(rsrpValues)   { buildRsrpGrid(rsrpValues, "optimizationRsrpGrid"); }
+  function buildAccurateEngineRsrpGrid(rsrpValues) { buildRsrpGrid(rsrpValues, "accurateEngineRsrpGrid"); }
+  function buildP25RsrpGrid(rsrpValues)           { buildRsrpGrid(rsrpValues, "p25RsrpGrid"); }
+  function buildItuRsrpGrid(rsrpValues)            { buildRsrpGrid(rsrpValues, "ituRsrpGrid"); }
 
   // ─── Active grid lookup ───────────────────────────────────────────────────────
 
@@ -246,6 +247,7 @@
   window.getBackendRsrpAt               = getBackendRsrpAt;
   window.getBackendRsrpAtForAntenna     = getBackendRsrpAtForAntenna;
   window.buildOptimizationRsrpGrid      = buildOptimizationRsrpGrid;
+  window.buildAccurateEngineRsrpGrid    = buildAccurateEngineRsrpGrid;
   window.buildP25RsrpGrid               = buildP25RsrpGrid;
   window.buildItuRsrpGrid               = buildItuRsrpGrid;
   window.cacheLiveRsrpAndMergeBestServer = cacheLiveRsrpAndMergeBestServer;
