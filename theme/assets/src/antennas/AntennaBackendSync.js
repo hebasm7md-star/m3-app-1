@@ -558,6 +558,15 @@ var BackendSync = (function () {
 
     // Handle baseline calculation
     if (event.data && (event.data.type === "baseline_completed" || event.data.type === "baseline_error")) {
+      var overlay = document.getElementById("loadingOverlay");
+      if (overlay) {
+        overlay.style.opacity = "0";
+        setTimeout(function () {
+          overlay.style.display = "none";
+          overlay.style.opacity = "1";
+        }, 400);
+      }
+
       var calculateBaselineBtn = document.getElementById("calculateBaselineBtn");
       if (calculateBaselineBtn) {
         calculateBaselineBtn.innerHTML = 'Calculate Accurate Baseline';
@@ -598,6 +607,14 @@ var BackendSync = (function () {
     // Handle optimization completed
     if (event.data && event.data.type === "optimization_finished") {
       console.log("Optimization completed");
+      var overlay = document.getElementById("loadingOverlay");
+      if (overlay) {
+        overlay.style.opacity = "0";
+        setTimeout(function () {
+          overlay.style.display = "none";
+          overlay.style.opacity = "1";
+        }, 400);
+      }
       if (typeof window.stopOptimizationPolling === 'function') window.stopOptimizationPolling();
       state.isOptimizing = false;
       if (typeof window.clearOptimizationRsrpGrid === 'function') window.clearOptimizationRsrpGrid();
@@ -635,6 +652,14 @@ var BackendSync = (function () {
     // Handle optimization error
     if (event.data && event.data.type === "optimization_error") {
       console.log("Optimization error:", event.data.error);
+      var overlay = document.getElementById("loadingOverlay");
+      if (overlay) {
+        overlay.style.opacity = "0";
+        setTimeout(function () {
+          overlay.style.display = "none";
+          overlay.style.opacity = "1";
+        }, 400);
+      }
       if (typeof window.stopOptimizationPolling === 'function') window.stopOptimizationPolling();
       state.isOptimizing = false;
       if (typeof window.clearOptimizationRsrpGrid === 'function') window.clearOptimizationRsrpGrid();

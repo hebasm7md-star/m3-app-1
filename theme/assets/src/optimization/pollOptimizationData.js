@@ -1,6 +1,8 @@
 // OptimizationSystem — Handles AI antenna optimization polling and updates
 // Depends on: global state, draw(), renderAPs(), NotificationSystem,
-//             logAntennaPositionChange, generateHeatmapAsync, updateLegendBar, DataExportSystem
+//             logAntennaPositionChange, generateHeatmapAsync, updateLegendBar,
+//             DataExportSystem, AccurateEngineRsrp (buildOptimizationRsrpGrid,
+//             clearBackendRsrpCache, mergeBackendRsrpFromCache)
 
 var OptimizationSystem = (function () {
 
@@ -19,14 +21,33 @@ var OptimizationSystem = (function () {
     location:       'Optimizing physical location coordinates...'
   };
 
-  function getFriendlyActionMessage(action) {
-    if (!action) return "Analyzing network state...";
-    var id = action.antenna_id || "System";
-    var msg = ACTION_MESSAGES[action.action_type] || action.action_desc;
-    return id + ": " + (msg || "Optimization parameter updated successfully.");
+  // Footer badge config: status -> [badgeText, cssClass]
+  var FOOTER_STATUS = {
+    starting: ['STARTING',   'optimizing'],
+    running:  ['OPTIMIZING', 'optimizing'],
+    finished: ['COMPLETED',  'completed'],
+    error:    ['ERROR',       null],
+    idle:     ['READY',       null]
+  };
+
+  // Shared helpers
+
+  function nowTimestamp() {
+    return new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
   }
 
-  // ── Polling ────────────────────────────────────────────────────────────
+  function parseEnabled(raw) {
+    return raw === true || raw === "True" || raw === "true" || raw === 1 || raw === "1";
+  }
+
+  function pickField(obj, keys) {
+    for (var i = 0; i < keys.length; i++) {
+      if (obj[keys[i]] != null) return obj[keys[i]];
+    }
+    return undefined;
+  }
+
+  // Polling
 
   function startOptimizationPolling() {
     rsrpTimingRows = [];  // Reset timing data for new optimization run
@@ -50,11 +71,12 @@ var OptimizationSystem = (function () {
 
   // ── Helpers ────────────────────────────────────────────────────────────
 
-  function setFooter(badge, msg, badgeText, msgText, addClass) {
+  function setFooter(badge, msg, status, msgText) {
+    var cfg = FOOTER_STATUS[status] || FOOTER_STATUS.idle;
     if (badge) {
-      badge.textContent = badgeText;
+      badge.textContent = cfg[0];
       badge.classList.remove('active', 'manual', 'optimizing', 'completed');
-      if (addClass) badge.classList.add(addClass);
+      if (cfg[1]) badge.classList.add(cfg[1]);
     }
     if (msg && msgText) msg.textContent = msgText;
   }
@@ -65,27 +87,40 @@ var OptimizationSystem = (function () {
     btn.style.opacity = locked ? '0.5' : '1';
   }
 
-  function refreshHeatmap(onHeatmapShown) {
-    if (!state.showVisualization) return;
-    // state.cachedHeatmap = null;
-    state.heatmapUpdatePending = false;
-    state.onHeatmapShownCallback = onHeatmapShown || null;
-    if (typeof generateHeatmapAsync === 'function') generateHeatmapAsync(null, true);
-    // if (typeof draw === 'function') draw();
+  function setOptimizeButtons(running) {
+    var optimizeBtn = document.getElementById("optimizeBtn");
+    var addAPBtn    = document.getElementById("addAP");
+    setButtonLocked(optimizeBtn, running);
+    setButtonLocked(addAPBtn,    running);
+    if (optimizeBtn) {
+      optimizeBtn.style.cursor = running ? 'not-allowed' : 'pointer';
+      optimizeBtn.textContent  = running ? 'Running...'  : 'Optimize';
+    }
+    if (addAPBtn) addAPBtn.style.pointerEvents = running ? 'none' : 'auto';
+    state.isOptimizing = running;
   }
 
-  // ── Compliance Display ─────────────────────────────────────────────────
+  function refreshHeatmap(onHeatmapShown) {
+    if (!state.showVisualization) return;
+    state.heatmapUpdatePending   = false;
+    state.onHeatmapShownCallback = onHeatmapShown || null;
+    if (typeof generateHeatmapAsync === 'function') generateHeatmapAsync(null, true);
+  }
+
+  function getFriendlyActionMessage(action) {
+    if (!action) return "Analyzing network state...";
+    var msg = ACTION_MESSAGES[action.action_type] || action.action_desc;
+    return (action.antenna_id || "System") + ": " + (msg || "Optimization parameter updated successfully.");
+  }
+
+  // Compliance display
 
   function setComplianceDisplay(value) {
     var el = document.getElementById('compliancePercent');
     if (!el) return;
     el.textContent = value;
-    // Color-code: red < 60, orange 60–79, green ≥ 80
     el.classList.remove('compliance-low', 'compliance-mid', 'compliance-high');
-    if (value < 60)       el.classList.add('compliance-low');
-    else if (value < 80)  el.classList.add('compliance-mid');
-    else                  el.classList.add('compliance-high');
-    // Show AI source badge on the label
+    el.classList.add(value < 60 ? 'compliance-low' : value < 80 ? 'compliance-mid' : 'compliance-high');
     var label = document.getElementById('complianceLabelAI');
     if (label) label.style.display = 'inline';
   }
@@ -95,119 +130,114 @@ var OptimizationSystem = (function () {
     if (el) el.classList.remove('compliance-low', 'compliance-mid', 'compliance-high');
     var label = document.getElementById('complianceLabelAI');
     if (label) label.style.display = 'none';
-    // Unblock UIRenderers so frontend calc resumes
     state.compliancePercentFromBackend = null;
   }
 
-  /** Handle baseline RSRP update (place/move or get_accurate_baseline). 
-    * When new_bsrv_rsrp null, clear backend grids (antenna turned off). */
+  function applyComplianceUpdate(newCompliance) {
+    if (!Array.isArray(newCompliance) || !newCompliance.length) return;
+    var rounded = Math.round(+newCompliance[newCompliance.length - 1]);
+    state.optimizationCompliancePercent = rounded;
+    state.compliancePercentFromBackend  = rounded;
+    setComplianceDisplay(rounded);
+  }
+
+  // RSRP grid update (delegates to AccurateEngineRsrp)
+  function applyRsrpUpdate(newRsrp, serverSendSec, receiveAtSec) {
+    if (!Array.isArray(newRsrp) || !newRsrp.length) return false;
+    var latestRsrp = newRsrp[newRsrp.length - 1];
+    if (!latestRsrp || !latestRsrp.length) return false;
+
+    window.buildOptimizationRsrpGrid(latestRsrp);
+
+    if (serverSendSec != null) {
+      var toReadable = function (sec) {
+        return new Date(sec * 1000).toISOString().replace('T', ' ').replace('Z', '');
+      };
+      rsrpTimingRows.push({
+        index:               rsrpTimingRows.length + 1,
+        serverSendTime:      toReadable(serverSendSec),
+        clientReceiveTime:   toReadable(receiveAtSec),
+        heatmapTime:         '',
+        serverToClientSec:   (receiveAtSec - serverSendSec).toFixed(3),
+        receiveToHeatmapSec: '',
+        serverToHeatmapSec:  ''
+      });
+    }
+    return true;
+  }
+
+  // Baseline RSRP update
+
   function handleBaselineRsrpUpdate(data) {
     if (data.new_bsrv_rsrp === null) {
-      if (typeof window.clearBackendRsrpCache === 'function') window.clearBackendRsrpCache();
+      window.clearBackendRsrpCache();
       refreshHeatmap();
       return;
     }
-    var newRsrp = data.new_bsrv_rsrp || [];
+
+    var newRsrp       = data.new_bsrv_rsrp || [];  // RSRP values from backend
     var newCompliance = data.new_compliance || [];
-    if (Array.isArray(newRsrp) && newRsrp.length > 0) {
-      if (typeof window.clearBackendRsrpCache === 'function') window.clearBackendRsrpCache();
-      var latestRsrp = newRsrp[newRsrp.length - 1];
-      if (latestRsrp && latestRsrp.length > 0 && typeof window.buildOptimizationRsrpGrid === 'function') {
-        window.buildOptimizationRsrpGrid(latestRsrp);
-      }
-    } else if (Array.isArray(newCompliance) && newCompliance.length > 0 && typeof window.mergeBackendRsrpFromCache === 'function') {
+
+    if (Array.isArray(newRsrp) && newRsrp.length) {
+      window.clearBackendRsrpCache();
+      var latest = newRsrp[newRsrp.length - 1];
+      if (latest && latest.length) window.buildOptimizationRsrpGrid(latest);
+    } else if (Array.isArray(newCompliance) && newCompliance.length) {
       window.mergeBackendRsrpFromCache();
     }
-    if (Array.isArray(newCompliance) && newCompliance.length > 0) {
-      var latest = newCompliance[newCompliance.length - 1];
-      if (latest !== undefined && latest !== null) {
-        var rounded = Math.round(Number(latest));
-        state.optimizationCompliancePercent = rounded;
-        state.compliancePercentFromBackend = rounded;
-        setComplianceDisplay(rounded);
-      }
-    }
+
+    applyComplianceUpdate(newCompliance);
     refreshHeatmap();
-    if (data.type === "baseline_rsrp" && Array.isArray(newRsrp) && newRsrp.length > 0 && typeof DataExportSystem !== 'undefined' && DataExportSystem.exportDetailedCoverageData) {
+
+    if (data.type === "baseline_rsrp" && Array.isArray(newRsrp) && newRsrp.length &&
+        typeof DataExportSystem !== 'undefined' && DataExportSystem.exportDetailedCoverageData) {
       setTimeout(function () {
-        var ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-        DataExportSystem.exportDetailedCoverageData('accurate_bl_cm_' + ts + '.csv', 1.0, { silent: true });
+        DataExportSystem.exportDetailedCoverageData('accurate_bl_cm_' + nowTimestamp() + '.csv', 1.0, { silent: true });
       }, 1000);
     }
   }
 
+  // Terminal status
+
   function handleTerminalStatus(status, data, footerBadge, footerMessage) {
     if (status !== 'finished' && status !== 'error') return;
     stopOptimizationPolling();
+
     if (status === 'finished') {
-      setFooter(footerBadge, footerMessage, 'COMPLETED', "Optimization process successfully completed.", 'completed');
+      setFooter(footerBadge, footerMessage, 'finished', "Optimization process successfully completed.");
+
       if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportDetailedCoverageData) {
         setTimeout(function () {
-          var ts2 = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-          DataExportSystem.exportDetailedCoverageData('after_opt_cm_' + ts2 + '.csv', 1.0, { silent: true });
+          DataExportSystem.exportDetailedCoverageData('after_opt_cm_' + nowTimestamp() + '.csv', 1.0, { silent: true });
         }, 1000);
       }
-      // Timing export only after optimization completes (snapshot & clear immediately to avoid re-export on re-entry)
-      if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportTimingRowsAsXlsx && rsrpTimingRows.length > 0) {
+
+      if (rsrpTimingRows.length > 0) {
         var rowsSnapshot = rsrpTimingRows.slice();
         rsrpTimingRows = [];
-        setTimeout(function () {
-          DataExportSystem.exportTimingRowsAsXlsx(rowsSnapshot);
-        }, 2000);
+        setTimeout(function () { exportTimingRowsAsXlsx(rowsSnapshot); }, 2000);
       }
     } else {
-      setFooter(footerBadge, footerMessage, 'ERROR', "Error: " + (data.error || "Optimization failed."));
-      clearComplianceDisplay();  // reset to frontend calc on error
+      setFooter(footerBadge, footerMessage, 'error', "Error: " + (data.error || "Optimization failed."));
+      clearComplianceDisplay();
     }
   }
 
-  // ── Main Update Handler ───────────────────────────────────────────────
+  // Main update handler
 
   function handleOptimizationUpdate(data) {
     try {
-      var toReadable = function (sec) { return new Date(sec * 1000).toISOString().replace('T', ' ').replace('Z', ''); };
-      var newActions = data.new_action_configs || [];
-      var newRsrp = data.new_bsrv_rsrp || [];
-      var newCompliance = data.new_compliance || [];
-      var status = data.status;
-      var message = data.message;
+      var newActions    = data.new_action_configs || [];
+      var newRsrp       = data.new_bsrv_rsrp      || [];
+      var newCompliance  = data.new_compliance     || [];
+      var status        = data.status;
+      var message       = data.message;
 
-      // RSRP grid
-      var rsrpUpdated = false;
       var receiveAtSec = (performance.timeOrigin + performance.now()) / 1000;
-      var serverSendSec = data.rsrp_send_timestamp_sec;
-      if (Array.isArray(newRsrp) && newRsrp.length > 0) {
-        var latestRsrp = newRsrp[newRsrp.length - 1];
-        if (latestRsrp && latestRsrp.length > 0 && typeof window.buildOptimizationRsrpGrid === 'function') {
-          window.buildOptimizationRsrpGrid(latestRsrp);
-          rsrpUpdated = true;
-          // Record timing row when backend provides send timestamp (for latency profiling)
-          if (serverSendSec != null) {
-            rsrpTimingRows.push({
-              index: rsrpTimingRows.length + 1,
-              serverSendTime: toReadable(serverSendSec),
-              clientReceiveTime: toReadable(receiveAtSec),
-              heatmapTime: '',           // Filled when heatmap is rendered (onHeatmapShown)
-              serverToClientSec: (receiveAtSec - serverSendSec).toFixed(3),
-              receiveToHeatmapSec: '',  // Filled when heatmap is rendered
-              serverToHeatmapSec: ''    // Filled when heatmap is rendered
-            });
-          }
-        }
-      }
+      var rsrpUpdated  = applyRsrpUpdate(newRsrp, data.rsrp_send_timestamp_sec, receiveAtSec);
 
-      // Compliance — backend value owns the display during and after optimization
-      if (Array.isArray(newCompliance) && newCompliance.length > 0) {
-        var latest = newCompliance[newCompliance.length - 1];
-        if (latest !== undefined && latest !== null) {
-          var rounded = Math.round(Number(latest));
-          state.optimizationCompliancePercent = rounded;
-          state.compliancePercentFromBackend = rounded;  // blocks UIRenderers frontend calc
-          setComplianceDisplay(rounded);
-        }
-      }
+      applyComplianceUpdate(newCompliance);
 
-      // Loading overlay
       var overlay = document.getElementById('loadingOverlay');
       if (overlay && overlay.style.display !== 'none') {
         if (message) {
@@ -216,115 +246,67 @@ var OptimizationSystem = (function () {
           if (sub) sub.textContent = message;
           if (txt) txt.textContent = status === 'error' ? 'Optimization Failed' : 'Finalizing Baseline Data...';
         }
-        if (status !== 'starting' && status !== 'idle' || status === 'error') {
+        if (status === 'finished' || status === 'error') {
           overlay.style.opacity = '0';
           setTimeout(function () { overlay.style.display = 'none'; overlay.style.opacity = '1'; }, 400);
         }
       }
 
-      // Button states
-      var optimizeBtn = document.getElementById("optimizeBtn");
-      var addAPBtn = document.getElementById("addAP");
       if (status === 'starting' || status === 'running') {
-        setButtonLocked(optimizeBtn, true);
-        if (optimizeBtn) { optimizeBtn.style.cursor = 'not-allowed'; optimizeBtn.textContent = 'Running...'; }
-        setButtonLocked(addAPBtn, true);
-        if (addAPBtn) addAPBtn.style.pointerEvents = 'none';
-        state.isOptimizing = true;
+        setOptimizeButtons(true);
       } else if (status === 'finished' || status === 'error' || status === 'idle') {
-        setButtonLocked(optimizeBtn, false);
-        if (optimizeBtn) { optimizeBtn.style.cursor = 'pointer'; optimizeBtn.textContent = 'Optimize'; }
-        setButtonLocked(addAPBtn, false);
-        if (addAPBtn) addAPBtn.style.pointerEvents = 'auto';
-        state.isOptimizing = false;
+        setOptimizeButtons(false);
       }
 
-      // Footer status
-      var footerBadge = document.getElementById('footerBadge');
+      var footerBadge   = document.getElementById('footerBadge');
       var footerMessage = document.getElementById('footerMessage');
+      setFooter(footerBadge, footerMessage, status, message || null);
 
-      if (status === 'starting') {
-        setFooter(footerBadge, footerMessage, 'STARTING', message, 'optimizing');
-      } else if (status === 'running') {
-        setFooter(footerBadge, footerMessage, 'OPTIMIZING', message || 'Running...', 'optimizing');
-      } else if (status === 'finished') {
-        setFooter(footerBadge, footerMessage, 'COMPLETED', message || 'Completed', 'completed');
-      } else if (status === 'error') {
-        setFooter(footerBadge, footerMessage, 'ERROR', message || 'Error occurred');
-      } else {
-        setFooter(footerBadge, footerMessage, 'READY', message || 'Ready');
+      var changesMade = false;
+      for (var i = 0; i < newActions.length; i++) {
+        if (newActions[i]) { updateSingleAntennaFromAction(newActions[i]); changesMade = true; }
       }
 
-      // No actions — refresh heatmap if RSRP arrived, handle terminal status, exit
-      // if (!Array.isArray(newActions) || newActions.length === 0) {
-      //   if (rsrpUpdated) refreshHeatmap();
-      //   handleTerminalStatus(status, data, footerBadge, footerMessage);
-      //   return;
-      // }
-
-      // Show latest action in footer
-      if (footerMessage) {
+      if (footerMessage && newActions.length) {
         footerMessage.textContent = getFriendlyActionMessage(newActions[newActions.length - 1]);
       }
 
-      if (data.last_index !== undefined) {
-        window.optimizationLastIndex = data.last_index;
-      }
-
-      if (data.optimization_bounds) {
-        window.optimizationBounds = data.optimization_bounds;
-      }
-
-      // Apply antenna updates
-      var changesMade = false;
-      for (var i = 0; i < newActions.length; i++) {
-        if (newActions[i]) {
-          updateSingleAntennaFromAction(newActions[i]);
-          changesMade = true;
-        }
-      }
+      if (data.last_index !== undefined) window.optimizationLastIndex = data.last_index;
+      if (data.optimization_bounds)      window.optimizationBounds    = data.optimization_bounds;
 
       if (changesMade || rsrpUpdated) {
         if (changesMade) {
           if (window.saveState) window.saveState();
           if (window.renderAPs) window.renderAPs();
         }
-        var onHeatmapShown = rsrpUpdated && rsrpTimingRows.length > 0 ? function () {
+        var onHeatmapShown = (rsrpUpdated && rsrpTimingRows.length) ? function () {
           var heatmapSec = (performance.timeOrigin + performance.now()) / 1000;
           var last = rsrpTimingRows[rsrpTimingRows.length - 1];
-          last.heatmapTime = toReadable(heatmapSec);
-          last.receiveToHeatmapSec = (heatmapSec - receiveAtSec).toFixed(3);  // Client receive → heatmap render
-          last.serverToHeatmapSec = (heatmapSec - serverSendSec).toFixed(3); // End-to-end: server → heatmap
+          last.heatmapTime         = new Date(heatmapSec * 1000).toISOString().replace('T', ' ').replace('Z', '');
+          last.receiveToHeatmapSec = (heatmapSec - receiveAtSec).toFixed(3);
+          last.serverToHeatmapSec  = (heatmapSec - data.rsrp_send_timestamp_sec).toFixed(3);
         } : null;
         refreshHeatmap(onHeatmapShown);
       }
 
       handleTerminalStatus(status, data, footerBadge, footerMessage);
-    } catch (error) {
-      console.error("Error handling optimization update:", error);
+    } catch (err) {
+      console.error("[OptimizationSystem] handleOptimizationUpdate error:", err);
       stopOptimizationPolling();
     }
   }
 
-  // ── Antenna Update ────────────────────────────────────────────────────
-
-  function pickField(obj, keys) {
-    for (var i = 0; i < keys.length; i++) {
-      if (obj[keys[i]] !== undefined && obj[keys[i]] !== null) return obj[keys[i]];
-    }
-    return undefined;
-  }
+  // Antenna update from action
 
   function updateSingleAntennaFromAction(action) {
     try {
-      var antennaId = action.antenna_id || action.id;
-      var backendX = Number(pickField(action, ['X_antenna', 'X', 'x']));
-      var backendY = Number(pickField(action, ['Y_antenna', 'Y', 'y']));
-
+      var antennaId  = action.antenna_id || action.id;
+      var backendX   = +pickField(action, ['X_antenna', 'X', 'x']);
+      var backendY   = +pickField(action, ['Y_antenna', 'Y', 'y']);
       var enabledRaw = pickField(action, ['is_turnning_on', 'on', 'enabled']);
 
-      if (!antennaId || !Number.isFinite(backendX) || !Number.isFinite(backendY)) {
-        console.warn("Invalid action config:", action);
+      if (!antennaId || !isFinite(backendX) || !isFinite(backendY)) {
+        console.warn("[OptimizationSystem] Invalid action config:", action);
         return;
       }
 
@@ -340,60 +322,93 @@ var OptimizationSystem = (function () {
         var oldX = existing.x, oldY = existing.y;
         existing.x = canvasX;
         existing.y = canvasY;
-        
-        if (enabledRaw !== undefined) {
-          existing.enabled = enabledRaw === "True" || enabledRaw === true ||
-                             enabledRaw === "true" || enabledRaw === 1 || enabledRaw === "1";
-        }
-
-        if (Math.abs(oldX - canvasX) > 0.01 || Math.abs(oldY - canvasY) > 0.01) {
-          if (typeof window.logAntennaPositionChange === 'function') {
-            window.logAntennaPositionChange(antennaId, antennaId, oldX, oldY, canvasX, canvasY, false);
-          }
+        if (enabledRaw !== undefined) existing.enabled = parseEnabled(enabledRaw);
+        if ((Math.abs(oldX - canvasX) > 0.01 || Math.abs(oldY - canvasY) > 0.01) &&
+            typeof window.logAntennaPositionChange === 'function') {
+          window.logAntennaPositionChange(antennaId, antennaId, oldX, oldY, canvasX, canvasY, false);
         }
       } else {
         var defaultPattern = typeof window.getDefaultAntennaPattern === 'function'
           ? window.getDefaultAntennaPattern() : null;
-        var isNewEnabled = true;
-        if (enabledRaw !== undefined) {
-          isNewEnabled = enabledRaw === "True" || enabledRaw === true ||
-                         enabledRaw === "true" || enabledRaw === 1 || enabledRaw === "1";
-        }
         var ap = {
           id: antennaId, x: canvasX, y: canvasY, z: 0,
-          tx: action.power !== undefined ? action.power : 15,
-          gt: 5, ch: 1,
-          azimuth: action.azimuth !== undefined ? action.azimuth : 0,
-          tilt: action.tilt !== undefined ? action.tilt : 0,
-          enabled: isNewEnabled,
+          tx:      action.power   != null ? action.power   : 15,
+          gt: 5,   ch: 1,
+          azimuth: action.azimuth != null ? action.azimuth : 0,
+          tilt:    action.tilt    != null ? action.tilt    : 0,
+          enabled: enabledRaw !== undefined ? parseEnabled(enabledRaw) : true,
           antennaPatternFile: null, antennaPatternFileName: null
         };
         if (defaultPattern) ap.antennaPattern = defaultPattern;
         state.aps.push(ap);
-
         if (typeof window.logAntennaPositionChange === 'function') {
           window.logAntennaPositionChange(antennaId, antennaId, 0, 0, canvasX, canvasY, false);
         }
       }
-    } catch (error) {
-      console.error("Error updating single antenna:", error);
+    } catch (err) {
+      console.error("[OptimizationSystem] updateSingleAntennaFromAction error:", err);
     }
   }
 
-  // ── Public API ────────────────────────────────────────────────────────
+  // Timing XLSX export
 
-  window.getFriendlyActionMessage = getFriendlyActionMessage;
-  window.startOptimizationPolling = startOptimizationPolling;
-  window.stopOptimizationPolling = stopOptimizationPolling;
-  window.handleOptimizationUpdate = handleOptimizationUpdate;
-  window.handleBaselineRsrpUpdate = handleBaselineRsrpUpdate;
+  function exportTimingRowsAsXlsx(rows) {
+    if (!rows || !rows.length) return;
+
+    var HEADERS = ['#', 'Server Send Time', 'Client Receive Time', 'Heatmap Render Time',
+                   'Server->Client (s)', 'Receive->Heatmap (s)', 'Server->Heatmap (s)'];
+
+    function rowToArray(r) {
+      return [r.index, r.serverSendTime, r.clientReceiveTime, r.heatmapTime,
+              r.serverToClientSec, r.receiveToHeatmapSec, r.serverToHeatmapSec];
+    }
+
+    function doExport(XLSX) {
+      var wsData = [HEADERS].concat(rows.map(rowToArray));
+      var ws = XLSX.utils.aoa_to_sheet(wsData);
+      ws['!cols'] = HEADERS.map(function (h) { return { wch: Math.max(h.length + 2, 18) }; });
+      var wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'RSRP Timing');
+      var filename = 'rsrp_timing_' + nowTimestamp() + '.xlsx';
+      XLSX.writeFile(wb, filename);
+      console.log('[Timing] Exported', rows.length, 'row(s) ->', filename);
+    }
+
+    function csvFallback() {
+      var lines = [HEADERS.join(',')].concat(rows.map(function (r) { return rowToArray(r).join(','); }));
+      var a = document.createElement('a');
+      a.href     = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' }));
+      a.download = 'rsrp_timing_' + nowTimestamp() + '.csv';
+      a.click();
+      console.warn('[Timing] SheetJS unavailable - exported as CSV fallback');
+    }
+
+    if (typeof XLSX !== 'undefined') {
+      doExport(XLSX);
+    } else {
+      var s = document.createElement('script');
+      s.src     = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload  = function () { doExport(window.XLSX); };
+      s.onerror = csvFallback;
+      document.head.appendChild(s);
+    }
+  }
+
+  // Public API
+
+  window.getFriendlyActionMessage      = getFriendlyActionMessage;
+  window.startOptimizationPolling      = startOptimizationPolling;
+  window.stopOptimizationPolling       = stopOptimizationPolling;
+  window.handleOptimizationUpdate      = handleOptimizationUpdate;
+  window.handleBaselineRsrpUpdate      = handleBaselineRsrpUpdate;
   window.updateSingleAntennaFromAction = updateSingleAntennaFromAction;
 
   return {
-    startOptimizationPolling: startOptimizationPolling,
-    stopOptimizationPolling: stopOptimizationPolling,
-    handleOptimizationUpdate: handleOptimizationUpdate,
+    startOptimizationPolling:      startOptimizationPolling,
+    stopOptimizationPolling:       stopOptimizationPolling,
+    handleOptimizationUpdate:      handleOptimizationUpdate,
+    handleBaselineRsrpUpdate:      handleBaselineRsrpUpdate,
     updateSingleAntennaFromAction: updateSingleAntennaFromAction,
-    getFriendlyActionMessage: getFriendlyActionMessage
+    getFriendlyActionMessage:      getFriendlyActionMessage
   };
 })();
