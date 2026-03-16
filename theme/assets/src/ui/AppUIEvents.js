@@ -71,10 +71,10 @@
       img.onload = function () {
         window.state.backgroundImage = img;
         window.state.floorPlanImage = img; // Store as floor plan image
-        
+
         var imgAspectRatio = img.width / img.height;
         var canvasAspectRatio = window.state.w / window.state.h;
-        
+
         if (imgAspectRatio > canvasAspectRatio) {
           window.state.backgroundImageDisplayWidth = window.state.w;
           window.state.backgroundImageDisplayHeight = window.state.w / imgAspectRatio;
@@ -83,7 +83,7 @@
           window.state.backgroundImageDisplayHeight = window.state.h;
         }
         window.state.backgroundImageAspectRatio = imgAspectRatio;
-        
+
         updateDeleteImageButton();
         window.draw();
       };
@@ -134,10 +134,10 @@
         window.state.xdImageBase64 = event.target.result;
 
         window.state.backgroundImage = img;
-        
+
         var imgAspectRatio = img.width / img.height;
         var canvasAspectRatio = window.state.w / window.state.h;
-        
+
         if (imgAspectRatio > canvasAspectRatio) {
           window.state.backgroundImageDisplayWidth = window.state.w;
           window.state.backgroundImageDisplayHeight = window.state.w / imgAspectRatio;
@@ -146,7 +146,7 @@
           window.state.backgroundImageDisplayHeight = window.state.h;
         }
         window.state.backgroundImageAspectRatio = imgAspectRatio;
-        
+
         updateDeleteImageButton(); 
         updateDeleteXdImageButton();
         window.draw();
@@ -287,6 +287,29 @@
     }
   }
 
+  function sendParseDxfRequest(content, filename) {
+    var targetW = document.getElementById("dxfTargetWidthM");
+    var targetH = document.getElementById("dxfTargetHeightM");
+    var overlay = document.getElementById("loadingOverlay");
+    var loadingText = document.getElementById("loadingText");
+    var subtext = document.getElementById("loadingSubtext");
+    if (overlay) overlay.style.display = "flex";
+    if (loadingText) loadingText.textContent = "Parsing DXF...";
+    if (subtext) subtext.textContent = "Extracting walls and structures from your CAD file.";
+
+    var payload = {
+      type: "parse_dxf_request",
+      content: content,
+      filename: filename,
+      requestId: "parse_" + Date.now()
+    };
+    if (targetW && targetH && targetW.value && targetH.value) {
+      payload.targetWidthM = +targetW.value;
+      payload.targetHeightM = +targetH.value;
+    }
+    window.parent.postMessage(payload, "*");
+  }
+
   var dxfLdr = document.getElementById("dxfLoader");
   if (dxfLdr) dxfLdr.addEventListener("change", function (e) {
     updateDeleteDxfButton();
@@ -295,21 +318,14 @@
       var file = e.target.files[0];
       var reader = new FileReader();
       reader.onload = function (event) {
-        var overlay = document.getElementById("loadingOverlay");
-        var loadingText = document.getElementById("loadingText");
-        var subtext = document.getElementById("loadingSubtext");
-        if (overlay) overlay.style.display = "flex";
-        if (loadingText) loadingText.textContent = "Parsing DXF...";
-        if (subtext) subtext.textContent = "Extracting walls and structures from your CAD file.";
-
-        window.parent.postMessage({
-          type: "parse_dxf_request",
-          content: event.target.result,
-          filename: file.name,
-          requestId: "parse_" + Date.now()
-        }, "*");
+        window.state.dxfFileContent = event.target.result;
+        window.state.dxfFileName = file.name;
+        sendParseDxfRequest(event.target.result, file.name);
       };
       reader.readAsDataURL(file);
+    } else {
+      window.state.dxfFileContent = null;
+      window.state.dxfFileName = null;
     }
   });
 
@@ -330,6 +346,15 @@
     }
   });
 
+  var dxfCalibrateBtn = document.getElementById("dxfCalibrateScaleBtn");
+  if (dxfCalibrateBtn) dxfCalibrateBtn.addEventListener("click", function () {
+    if (!window.state.dxfFileContent || !window.state.dxfFileName) {
+      NotificationSystem.warning("Please upload a DXF file first.");
+      return;
+    }
+    sendParseDxfRequest(window.state.dxfFileContent, window.state.dxfFileName);
+  });
+
   var delDxfBtn = document.getElementById("deleteDxfBtn");
   if (delDxfBtn) delDxfBtn.addEventListener("click", function (e) {
     e.stopPropagation();
@@ -338,6 +363,8 @@
         var dxfLoader = document.getElementById("dxfLoader");
         if (dxfLoader) dxfLoader.value = "";
 
+        window.state.dxfFileContent = null;
+        window.state.dxfFileName = null;
         window.state.walls = [];
         window.state.floorPlanes = [];
 
@@ -366,7 +393,7 @@
       window.state.addingWall = false;
       window.state.addingAP = false;
       window.state.addingFloorPlane = false;
-      
+
       var addAPBtn = document.getElementById("addAP");
       if (addAPBtn) {
         var label = addAPBtn.querySelector("#addAPBtnLabel");
@@ -375,10 +402,10 @@
 
       var addBtn = document.getElementById("addWall");
       if (addBtn) addBtn.textContent = "Add Wall";
-      
+
       var addFloorPlaneBtn = document.getElementById("addFloorPlane");
       if (addFloorPlaneBtn) addFloorPlaneBtn.textContent = "Add Floor Plane";
-      
+
       document.getElementById("calibrateBtn").textContent = "Cancel Calibration";
       document.getElementById("calibrateBtn").classList.add("toggled");
       document.getElementById("calibrationControls").style.display = "block";
@@ -615,7 +642,7 @@
     var maxEl = document.getElementById("maxVal");
     if (minEl) minEl.value = window.state.minVal;
     if (maxEl) maxEl.value = window.state.maxVal;
-    
+
     if (typeof window.invalidateHeatmapCache === "function") window.invalidateHeatmapCache();
     window.draw();
   });
@@ -825,26 +852,26 @@
   }
 
   // Get button text based on selected element type
-    function getAddButtonText(isDrawing) {
-      if (isDrawing) {
-        return "Drawing...";
-      }
-      var elementNames = {
-        wall: "Add Wall",
-        door: "Add Door",
-        doubleDoor: "Add Double Door",
-        window: "Add Window",
-        floorPlane: "Add Floor Plane",
-      };
-      return elementNames[state.selectedElementType] || "";
+  function getAddButtonText(isDrawing) {
+    if (isDrawing) {
+      return "Drawing...";
     }
-  
-    function setAddAPBtnText(text) {
-      var addAPBtn = document.getElementById("addAP");
-      if (!addAPBtn) return;
-      var label = addAPBtn.querySelector("#addAPBtnLabel");
-      if (label) label.textContent = text; else addAPBtn.textContent = text;
-    }
+    var elementNames = {
+      wall: "Add Wall",
+      door: "Add Door",
+      doubleDoor: "Add Double Door",
+      window: "Add Window",
+      floorPlane: "Add Floor Plane",
+    };
+    return elementNames[state.selectedElementType] || "";
+  }
+
+  function setAddAPBtnText(text) {
+    var addAPBtn = document.getElementById("addAP");
+    if (!addAPBtn) return;
+    var label = addAPBtn.querySelector("#addAPBtnLabel");
+    if (label) label.textContent = text; else addAPBtn.textContent = text;
+  }
 
   function updateEditorButtonsUI() {
     var state = window.state;
