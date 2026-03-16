@@ -213,7 +213,7 @@ var DataExportSystem = (function () {
         console.error('DataExportSystem not initialized.');
         return;
       }
-      var grid = _state.optimizationRsrpGrid;
+      var grid = _state.backendRsrpGrid;
       if (!grid || !grid.data) {
         console.warn('No backend RSRP grid data available to export.');
         return;

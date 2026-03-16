@@ -121,8 +121,8 @@ var OptimizationSystem = (function () {
   // ── Backend RSRP Grid ─────────────────────────────────────────────────
 
   function getBackendRsrpAt(x, y) {
-    if (!state.optimizationRsrpGrid) return null;
-    var bgrid = state.optimizationRsrpGrid;
+    if (!state.backendRsrpGrid) return null;
+    var bgrid = state.backendRsrpGrid;
     
     var bx = x / bgrid.dx;
     var by = y / bgrid.dy;
@@ -180,7 +180,7 @@ var OptimizationSystem = (function () {
       }
     }
 
-    state.optimizationRsrpGrid = {
+    state.backendRsrpGrid = {
       data: gridData, cols: cols, rows: rows,
       dx: state.w / cols, dy: state.h / rows
     };

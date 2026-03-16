@@ -1,4 +1,4 @@
-// 03-BACKEND-SYNC.js - Handles communication with the Python backend (Anvil Integration)
+// AntennaBackendSync.js - Antenna config sync, live RSRP cache, and backend communication (Anvil)
 // Depends on: global state, draw(), renderAPs(), renderApDetails(), NotificationSystem, CoordinateSystem (worldToCanvasPixels)
 
 var BackendSync = (function () {
@@ -467,6 +467,96 @@ var BackendSync = (function () {
     }
   }
 
+  // ── Live RSRP cache (best-server merge for antenna placement only) ─────
+  function cacheLiveRsrpAndMergeBestServer(ant_id, rsrpValues, config) {
+    state.backendRsrpPerAntenna = state.backendRsrpPerAntenna || {};
+    if (rsrpValues == null || !Array.isArray(rsrpValues) || rsrpValues.length === 0) {
+      delete state.backendRsrpPerAntenna[ant_id];
+    } else {
+      state.backendRsrpPerAntenna[ant_id] = { rsrp: rsrpValues.slice(), config: config || {} };
+    }
+    mergeLiveRsrpToBestServerGrid();
+  }
+
+  function mergeLiveRsrpToBestServerGrid() {
+    var cache = state.backendRsrpPerAntenna;
+    if (!cache || Object.keys(cache).length === 0) {
+      state.backendRsrpGrid = null;
+      return;
+    }
+    var apIds = {};
+    for (var i = 0; i < state.aps.length; i++) {
+      if (state.aps[i].enabled !== false) apIds[state.aps[i].id] = true;
+    }
+    for (var aid in cache) { if (!apIds[aid]) delete cache[aid]; }
+    if (Object.keys(cache).length === 0) {
+      state.backendRsrpGrid = null;
+      return;
+    }
+    var totalBins = 0;
+    for (var aid in cache) {
+      var entry = cache[aid];
+      if (entry.rsrp && entry.rsrp.length > 0) {
+        totalBins = entry.rsrp.length;
+        break;
+      }
+    }
+    if (totalBins === 0) return;
+
+    var cols = Math.round(state.w);
+    var rows = Math.round(state.h);
+    if (cols * rows !== totalBins) {
+      var aspectRatio = state.w / state.h;
+      cols = Math.round(Math.sqrt(totalBins * aspectRatio));
+      rows = Math.round(totalBins / cols);
+    }
+    if (cols * rows !== totalBins) return;
+
+    var gridData = new Float32Array(totalBins);
+    var dataMin = Infinity, dataMax = -Infinity;
+    for (var i = 0; i < totalBins; i++) {
+      var best = -Infinity;
+      for (var aid in cache) {
+        if (!apIds[aid]) continue;
+        var val = Number(cache[aid].rsrp[i]);
+        if (!isNaN(val) && val !== 0 && val >= -140 && val < 0 && val > best) best = val;
+      }
+      gridData[i] = best === -Infinity ? 0 : best;
+      if (best > -Infinity) {
+        if (best < dataMin) dataMin = best;
+        if (best > dataMax) dataMax = best;
+      }
+    }
+
+    state.backendRsrpGrid = {
+      data: gridData, cols: cols, rows: rows,
+      dx: state.w / cols, dy: state.h / rows
+    };
+
+    if (dataMin !== Infinity && dataMax !== -Infinity && state.view === "rssi") {
+      if (state.viewMinMax && state.viewMinMax["rssi"]) {
+        state.viewMinMax["rssi"].min = Math.floor(dataMin);
+        state.viewMinMax["rssi"].max = Math.ceil(dataMax);
+      }
+      state.minVal = Math.floor(dataMin);
+      state.maxVal = Math.ceil(dataMax);
+      var el;
+      el = document.getElementById("legendMin"); if (el) el.textContent = state.minVal;
+      el = document.getElementById("legendMax"); if (el) el.textContent = state.maxVal;
+      el = document.getElementById("minVal"); if (el) el.value = state.minVal;
+      el = document.getElementById("maxVal"); if (el) el.value = state.maxVal;
+      if (typeof window.updateLegendBar === 'function') window.updateLegendBar();
+    }
+  }
+
+  function clearLiveRsrpCache() {
+    state.backendRsrpPerAntenna = {};
+    state.backendRsrpGrid = null;
+  }
+
+  window.mergeBackendRsrpFromCache = mergeLiveRsrpToBestServerGrid;
+  window.clearBackendRsrpCache = clearLiveRsrpCache;
+
   // Set up message listener for Anvil events
   window.addEventListener("message", function (event) {
     if (event.data && event.data.type === "anvil_ready") {
@@ -516,15 +606,14 @@ var BackendSync = (function () {
       }
     }
 
-    // Live RSRP from backend (Sionna) after antenna add/update
+    // Live RSRP from backend (Sionna) after antenna add/update. Cache per antenna, merge as best-server.
+    // rsrp=null when antenna turned off — evicts from cache and re-merges.
     if (event.data && event.data.type === "live_rsrp") {
       var rsrp = event.data.rsrp;
-      console.log("[RSRP] Received live_rsrp from backend:", event.data.ant_id, "| len:", rsrp ? rsrp.length : 0);
-      if (!rsrp || !Array.isArray(rsrp) || rsrp.length === 0) return;
-
-      if (typeof window.buildBackendRsrpGrid === "function") {
-        window.buildBackendRsrpGrid(rsrp);
-      }
+      var ant_id = event.data.ant_id;
+      var config = event.data.config;
+      console.log("[RSRP] Received live_rsrp:", ant_id, "| len:", rsrp ? rsrp.length : "null");
+      cacheLiveRsrpAndMergeBestServer(ant_id, rsrp, config);
       if (state.showVisualization && typeof window.generateHeatmapAsync === "function") {
         window.generateHeatmapAsync(null, true);
       }

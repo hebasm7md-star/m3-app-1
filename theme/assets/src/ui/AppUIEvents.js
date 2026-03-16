@@ -501,9 +501,39 @@
     });
   }
 
+  var VIEW_OPTIONS_ALL = [
+    { value: "rssi", label: "RSSI (Signal Strength)" },
+    { value: "snr", label: "SNR (Signal-to-Noise)" },
+    { value: "sinr", label: "SINR (Signal-to-Interference+Noise)" },
+    { value: "cci", label: "CCI (Co-Channel Interference)" },
+    { value: "thr", label: "Throughput (Mbps)" },
+    { value: "best", label: "Best Server" },
+    { value: "servch", label: "Serving Channel" }
+  ];
+
+  function updateViewModeForEngine(model) {
+    var viewEl = document.getElementById("view");
+    if (!viewEl) return;
+    if (model === "accurateEngine") {
+      viewEl.innerHTML = '<option value="rssi">RSSI (Signal Strength)</option>';
+      viewEl.value = "rssi";
+      if (window.state) window.state.view = "rssi";
+    } else {
+      viewEl.innerHTML = VIEW_OPTIONS_ALL.map(function (o) {
+        return '<option value="' + o.value + '">' + o.label + '</option>';
+      }).join("");
+      var v = (window.state && window.state.view) || "rssi";
+      if (VIEW_OPTIONS_ALL.some(function (o) { return o.value === v; })) viewEl.value = v;
+      else viewEl.value = "rssi";
+    }
+  }
+
   function syncLiveRsrpFromModel() {
     var model = (window.state && window.state.model) || (document.getElementById("model") || {}).value || "p25d";
     var enabled = model === "accurateEngine";
+    // if (!enabled && typeof window.clearBackendRsrpCache === "function") window.clearBackendRsrpCache();
+    // only rssi map is supported for accurate engine
+    updateViewModeForEngine(model);
     if (window.parent !== window) {
       window.parent.postMessage({ type: "set_send_live_rsrp", enabled: enabled }, "*");
       console.log("[RSRP] Accurate Engine:", enabled ? "ON" : "OFF", "| model:", model);
@@ -523,6 +553,8 @@
     });
     syncLiveRsrpFromModel();
   }
+
+  window.updateViewModeForEngine = updateViewModeForEngine;
 
   var vw = document.getElementById("view");
   if (vw) vw.addEventListener("change", function () {
