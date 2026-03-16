@@ -497,9 +497,6 @@
     if (loadingText) loadingText.textContent = "Calculating Accurate Baseline...";
     if (subtext) subtext.textContent = "Processing antenna configurations with the accurate engine. This may take a moment.";
 
-    if (typeof window.requestRsrpForCurrentConfigs === "function") {
-      window.requestRsrpForCurrentConfigs();
-    }
     window.parent.postMessage({
       type: "start_accurate_baseline",
       requestId: "baseline_" + Date.now()
