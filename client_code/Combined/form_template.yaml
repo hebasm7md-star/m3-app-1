@@ -1,12 +1,17 @@
 components:
-- components: []
+- components:
+  - event_bindings: {}
+    layout_properties: {grid_position: 'EKHOJO,JGWRSG'}
+    name: ant_rsrp_timer
+    properties: {}
+    type: Timer
   layout_properties: {slot: default}
   name: content_panel
   properties: {col_widths: '{}'}
   type: ColumnPanel
 - components:
   - layout_properties: {}
-    name: timer_1
+    name: opt_timer
     properties: {interval: 0.001}
     type: Timer
   layout_properties: {slot: nav-right}

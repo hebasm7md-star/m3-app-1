@@ -350,8 +350,8 @@ class Combined(CombinedTemplate):
     else:
       self._send_error("baseline_error", result.get("message", "Error calculating accurate baseline"))
 
-  @handle("timer_1", "tick")
-  def timer_1_tick(self, **event_args):
+  @handle("opt_timer", "tick")
+  def opt_timer_tick(self, **event_args):
     if self.opt_running:
       self.poll_optimization_data(**event_args)
 
@@ -540,3 +540,8 @@ class Combined(CombinedTemplate):
       except:
         print(".", end="")
         time.sleep(1)
+
+  @handle("ant_rsrp_timer", "tick")
+  def ant_rsrp_timer_tick(self, **event_args):
+    """This method is called Every [interval] seconds. Does not trigger if [interval] is 0."""
+    pass
