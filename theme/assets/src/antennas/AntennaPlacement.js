@@ -378,6 +378,14 @@
       logAntennaPositionChange(ap.id, ap.id, ap.x, ap.y, ap.x, ap.y);
     }
 
+    // Clear heatmap and backend RSRP so we recalc based on current engine (2.5D, IUT, or accurate)
+    state.optimizationRsrpGrid = null;
+    state.accurateEngineRsrpGrid = null;
+    state.cachedHeatmap = null;
+    state.heatmapUpdatePending = false;
+    if (typeof window.clearBackendRsrpCache === 'function') window.clearBackendRsrpCache();
+    if (typeof window.invalidateHeatmapCache === 'function') window.invalidateHeatmapCache();
+
     notifyParentOfBatchUpdate();
     refreshCanvas();
 

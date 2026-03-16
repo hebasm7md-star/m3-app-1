@@ -124,7 +124,7 @@ var OptimizationSystem = (function () {
     if (isAccurateBaseline && typeof DataExportSystem !== 'undefined' && DataExportSystem.exportDetailedCoverageData) {
       setTimeout(function () {
         var ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-        DataExportSystem.exportDetailedCoverageData('accurate_bl_rsrp_' + ts + '.csv', 1.0, { silent: true });
+        DataExportSystem.exportDetailedCoverageData('accurate_bl_cm_' + ts + '.csv', 1.0, { silent: true });
       }, 500);
     }
   }
@@ -140,9 +140,10 @@ var OptimizationSystem = (function () {
           DataExportSystem.exportDetailedCoverageData('after_opt_cm_' + ts2 + '.csv', 1.0, { silent: true });
         }, 1000);
       }
-      if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportRsrpTimingCsv) {
+      // Timing export only after optimization completes (rsrpTimingRows populated during optimization only)
+      if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportRsrpTimingCsv && rsrpTimingRows.length > 0) {
         setTimeout(function () {
-          if (rsrpTimingRows.length > 0) DataExportSystem.exportRsrpTimingCsv(rsrpTimingRows);
+          DataExportSystem.exportRsrpTimingCsv(rsrpTimingRows);
         }, 2000);  // Export RSRP latency metrics (server→client→heatmap) for profiling
       }
     } else {

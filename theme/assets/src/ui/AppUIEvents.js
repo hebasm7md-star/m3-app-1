@@ -547,6 +547,12 @@
       window.state.model = mdl.value;
       var nel = document.getElementById("N");
       if (nel) nel.value = window.state.N;
+      // Reset heatmap when swapping models — use frontend calc (2.5D/ITU) or backend RSRP (accurate) for the new model
+      window.state.optimizationRsrpGrid = null;
+      window.state.accurateEngineRsrpGrid = null;
+      window.state.cachedHeatmap = null;
+      window.state.heatmapUpdatePending = false;
+      if (typeof window.clearBackendRsrpCache === "function") window.clearBackendRsrpCache();
       if (typeof window.invalidateHeatmapCache === "function") window.invalidateHeatmapCache();
       window.draw();
       syncLiveRsrpFromModel();
