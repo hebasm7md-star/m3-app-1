@@ -287,6 +287,7 @@ class Combined(CombinedTemplate):
         self._send_to_iframe("live_rsrp", ant_id=ant_id, rsrp=None, config=ant_config)
         print(f"[RSRP] Antenna {ant_id} turned OFF — sent null RSRP to UI")
       else:
+        self._pending_rsrp = True  # Signal poll_live_rsrp to run
         self._pending_rsrp_ant_id = ant_id
         self._pending_rsrp_timestamp = time.time()
         print(f"[RSRP] Pending RSRP fetch for ant_id={ant_id} (enable_live_rsrp={self.enable_live_rsrp})")
@@ -329,7 +330,7 @@ class Combined(CombinedTemplate):
       print(f"[RSRP] Sent accurate baseline for batch ({len(ants_ids)} antennas)")
 
     # ========== Optimization ==========
-  def get_accurate_baseline(self, event=None):
+  def get_accurate_baseline(self, event):
     if self.opt_running:
       self._send_to_iframe("baseline_error", success=False, message="Optimization is currently running")
       return
@@ -375,6 +376,7 @@ class Combined(CombinedTemplate):
     if elapsed > 15:
       print(f"[RSRP] Poll timeout after {elapsed:.1f}s")
       self._pending_rsrp = False
+      self._pending_rsrp_ant_id = None
       self._pending_rsrp_timestamp = None
       return
     last_rsrp = getattr(self, "_last_rsrp_idx", 0)
@@ -386,6 +388,7 @@ class Combined(CombinedTemplate):
       new_comp = result.get("new_compliance", [])
       if new_rsrp or new_comp:
         self._pending_rsrp = False
+        self._pending_rsrp_ant_id = None
         self._pending_rsrp_timestamp = None
         self._last_rsrp_idx = result.get("last_rsrp_idx", last_rsrp)
         self._last_compliance_idx = result.get("last_compliance_idx", last_comp)
@@ -572,6 +575,7 @@ class Combined(CombinedTemplate):
   def reset_session(self, event=None):
     self.opt_running = False
     self.enable_live_rsrp = False
+    self._pending_rsrp = False
     self._pending_rsrp_ant_id = None
     self._pending_rsrp_timestamp = None
     self._reset_indexes()
