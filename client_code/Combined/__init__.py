@@ -217,7 +217,8 @@ class Combined(CombinedTemplate):
         self._send_error("upload_antenna_pattern_response", result.get("message", "Unknown error during upload"))
 
 
-  # ========== Antenna Config / Batch ==========
+    # ========== Antenna Config / Batch ==========
+
   def _transform_antenna_data(self, antenna_data):
     enabled_value = antenna_data.get("enabled", True)
     if isinstance(enabled_value, str):

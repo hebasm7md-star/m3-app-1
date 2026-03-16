@@ -3,7 +3,7 @@ components:
   - event_bindings: {}
     layout_properties: {grid_position: 'EKHOJO,JGWRSG'}
     name: ant_rsrp_timer
-    properties: {interval: 0.02}
+    properties: {interval: 0.002}
     type: Timer
   layout_properties: {slot: default}
   name: content_panel
