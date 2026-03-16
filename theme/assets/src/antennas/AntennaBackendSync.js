@@ -468,12 +468,12 @@ var BackendSync = (function () {
   }
 
   // ── Live RSRP cache (best-server merge for antenna placement only) ─────
-  function cacheLiveRsrpAndMergeBestServer(ant_id, rsrpValues, config) {
+  function cacheLiveRsrpAndMergeBestServer(ant_id, rsrpValues) {
     state.backendRsrpPerAntenna = state.backendRsrpPerAntenna || {};
     if (rsrpValues == null || !Array.isArray(rsrpValues) || rsrpValues.length === 0) {
       delete state.backendRsrpPerAntenna[ant_id];
     } else {
-      state.backendRsrpPerAntenna[ant_id] = { rsrp: rsrpValues.slice(), config: config || {} };
+      state.backendRsrpPerAntenna[ant_id] = rsrpValues.slice();
     }
     mergeLiveRsrpToBestServerGrid();
   }
@@ -495,9 +495,9 @@ var BackendSync = (function () {
     }
     var totalBins = 0;
     for (var aid in cache) {
-      var entry = cache[aid];
-      if (entry.rsrp && entry.rsrp.length > 0) {
-        totalBins = entry.rsrp.length;
+      var rsrp = cache[aid];
+      if (rsrp && rsrp.length > 0) {
+        totalBins = rsrp.length;
         break;
       }
     }
@@ -518,7 +518,7 @@ var BackendSync = (function () {
       var best = -Infinity;
       for (var aid in cache) {
         if (!apIds[aid]) continue;
-        var val = Number(cache[aid].rsrp[i]);
+        var val = Number(cache[aid][i]);
         if (!isNaN(val) && val !== 0 && val >= -140 && val < 0 && val > best) best = val;
       }
       gridData[i] = best === -Infinity ? 0 : best;
@@ -594,13 +594,17 @@ var BackendSync = (function () {
       }
     }
 
+    // Handle baseline RSRP (Calculate Accurate Baseline, batch antennas, auto-place with accurate engine)
+    if (event.data && event.data.type === "baseline_rsrp") {
+      console.log("Received baseline RSRP from Anvil");
+      if (typeof window.handleBaselineRsrpUpdate === 'function') {
+        window.handleBaselineRsrpUpdate(event.data);
+      }
+    }
+
     // Handle optimization status updates (for streaming mode)
     if (event.data && event.data.type === "optimization_update") {
-      // console.log("[HTML] Received optimization_update:", {
-      //   actionCount: (event.data.new_action_configs || []).length,
-      //   state: event.data.state,
-      //   lastIndex: event.data.last_index
-      // });
+      console.log("Received optimization update from Anvil");
       if (typeof window.handleOptimizationUpdate === 'function') {
         window.handleOptimizationUpdate(event.data);
       }
@@ -611,9 +615,8 @@ var BackendSync = (function () {
     if (event.data && event.data.type === "live_rsrp") {
       var rsrp = event.data.rsrp;
       var ant_id = event.data.ant_id;
-      var config = event.data.config;
       console.log("[RSRP] Received live_rsrp:", ant_id, "| len:", rsrp ? rsrp.length : "null");
-      cacheLiveRsrpAndMergeBestServer(ant_id, rsrp, config);
+      cacheLiveRsrpAndMergeBestServer(ant_id, rsrp);
       if (state.showVisualization && typeof window.generateHeatmapAsync === "function") {
         window.generateHeatmapAsync(null, true);
       }
@@ -626,16 +629,10 @@ var BackendSync = (function () {
         calculateBaselineBtn.innerHTML = 'Calculate Accurate Baseline';
 
         if (event.data.type === "baseline_completed") {
-          // Keep disabled after successful baseline completion
+          // Keep disabled after successful baseline completion (export handled by baseline_rsrp)
           calculateBaselineBtn.disabled = true;
           calculateBaselineBtn.style.opacity = '0.5';
           calculateBaselineBtn.style.cursor = 'not-allowed';
-          if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportDetailedCoverageData) {
-            setTimeout(function () {
-              var ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-              DataExportSystem.exportDetailedCoverageData('accurate_bl_cm_' + ts + '.csv', 1.0, { silent: true });
-            }, 500);
-          }
         } else {
           // Re-enable on baseline errors (including no baseline initialized)
           calculateBaselineBtn.disabled = false;

@@ -99,6 +99,36 @@ var OptimizationSystem = (function () {
     state.compliancePercentFromBackend = null;
   }
 
+  /** Handle baseline RSRP update (place/move or get_accurate_baseline). Full grid replaces per-antenna cache. */
+  function handleBaselineRsrpUpdate(data) {
+    var newRsrp = data.new_bsrv_rsrp || [];
+    var newCompliance = data.new_compliance || [];
+    if (typeof window.clearBackendRsrpCache === 'function') window.clearBackendRsrpCache();
+    if (Array.isArray(newRsrp) && newRsrp.length > 0) {
+      var latestRsrp = newRsrp[newRsrp.length - 1];
+      if (latestRsrp && latestRsrp.length > 0) {
+        buildOptimizationRsrpGrid(latestRsrp);
+      }
+    }
+    if (Array.isArray(newCompliance) && newCompliance.length > 0) {
+      var latest = newCompliance[newCompliance.length - 1];
+      if (latest !== undefined && latest !== null) {
+        var rounded = Math.round(Number(latest));
+        state.optimizationCompliancePercent = rounded;
+        state.compliancePercentFromBackend = rounded;
+        setComplianceDisplay(rounded);
+      }
+    }
+    refreshHeatmap();
+    var isAccurateBaseline = (data.message || '').indexOf('Accurate baseline') >= 0;
+    if (isAccurateBaseline && typeof DataExportSystem !== 'undefined' && DataExportSystem.exportDetailedCoverageData) {
+      setTimeout(function () {
+        var ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+        DataExportSystem.exportDetailedCoverageData('accurate_bl_rsrp_' + ts + '.csv', 1.0, { silent: true });
+      }, 500);
+    }
+  }
+
   function handleTerminalStatus(status, data, footerBadge, footerMessage) {
     if (status !== 'finished' && status !== 'error') return;
     stopOptimizationPolling();
@@ -113,7 +143,7 @@ var OptimizationSystem = (function () {
       if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportRsrpTimingCsv) {
         setTimeout(function () {
           if (rsrpTimingRows.length > 0) DataExportSystem.exportRsrpTimingCsv(rsrpTimingRows);
-        }, 1500);  // Export RSRP latency metrics (server→client→heatmap) for profiling
+        }, 2000);  // Export RSRP latency metrics (server→client→heatmap) for profiling
       }
     } else {
       setFooter(footerBadge, footerMessage, 'ERROR', "Error: " + (data.error || "Optimization failed."));
@@ -441,6 +471,7 @@ var OptimizationSystem = (function () {
   window.startOptimizationPolling = startOptimizationPolling;
   window.stopOptimizationPolling = stopOptimizationPolling;
   window.handleOptimizationUpdate = handleOptimizationUpdate;
+  window.handleBaselineRsrpUpdate = handleBaselineRsrpUpdate;
   window.updateSingleAntennaFromAction = updateSingleAntennaFromAction;
   window.getBackendRsrpAt = getBackendRsrpAt;
   window.buildOptimizationRsrpGrid = buildOptimizationRsrpGrid;

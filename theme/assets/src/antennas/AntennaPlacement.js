@@ -392,7 +392,7 @@
       setTimeout(function () {
         var ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
         DataExportSystem.exportDetailedCoverageData('auto_placed_cm_' + ts + '.csv', 1.0, { silent: true });
-      }, 1000);
+      }, 1500);
     }
   }
 

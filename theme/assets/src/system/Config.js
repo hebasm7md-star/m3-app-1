@@ -124,7 +124,7 @@ var state = {
   accurateEngineRsrpGrid: null,
   optimizationRsrpGrid: null,
   optimizationCompliancePercent: null,
-  /** Per-antenna RSRP cache (accurateEngine): ant_id -> { rsrp, config }. Enables best-server merge. */
+  /** Per-antenna RSRP cache (accurateEngine): ant_id -> rsrp (array). Enables best-server merge. */
   backendRsrpPerAntenna: {},
 };
 

@@ -97,6 +97,73 @@ var DataExportSystem = (function () {
       });
     },
 
+    // EXPORT DETAILED RSRP DATA
+    // Extended coverage data with multiple metrics per point
+    // 
+    exportDetailedCoverageData: function (finalFileName, spacing, opts) {
+      if (!_state) {
+        console.error('DataExportSystem not initialized. Call DataExportSystem.init() first.');
+        return;
+      }
+
+      spacing = spacing || 1.0;
+      var rows = ['X,Y,best_ap_id,rssi_dbm,snr_db,cci_dbm,sinr_db,throughput_mbps'];
+      var count = 0;
+
+      for (var y = 0; y <= _state.h + 1e-9; y += spacing) {
+        for (var x = 0; x <= _state.w + 1e-9; x += spacing) {
+          // var xx = (x + 0.5) * grid.dx;
+          // var yy = (y + 0.5) * grid.dy;
+          var xx = Math.round(x * 1000) / 1000;
+          var yy = Math.round(y * 1000) / 1000;
+
+          var best = RadioCalculations.bestApAt(xx, yy);
+          if (!best || !best.ap) continue;
+
+          var ap = best.ap;
+          var rssiVal = best.rssiDbm;
+          var snrVal = RadioCalculations.snrAt(rssiVal);
+          var cciVal = RadioCalculations.cciAt(xx, yy, ap);
+          var sinrVal = RadioCalculations.sinrAt(rssiVal, cciVal);
+          var thrVal = RadioCalculations.throughputFromSinr(sinrVal);
+
+          rows.push(
+            xx + ',' + yy + ',' +
+            (ap.id || 'AP-' + ap.antennaId) + ',' +
+            rssiVal.toFixed(2) + ',' +
+            snrVal.toFixed(2) + ',' +
+            cciVal.toFixed(2) + ',' +
+            sinrVal.toFixed(2) + ',' +
+            thrVal.toFixed(3)
+          );
+          count++;
+        }
+      }
+
+      var csvData = rows.join('\n');
+      var finalFileName = finalFileName || ('cm_' + getCurrentTimestamp() + '.csv');
+
+      downloadCSV(csvData, finalFileName);
+
+      if (!opts || !opts.silent) {
+        NotificationSystem.toast(' Detailed coverage data exported (' + count + ' points)', 'success');
+      }
+    },
+    // EXPORT RSRP TIMING DATA
+    exportRsrpTimingCsv: function (rows, fileName) {
+      if (!rows || rows.length === 0) return;
+      var cols = ['#', 'Server Send Time', 'Client Receive Time', 'Heatmap Time', 'Server Client Time (sec)', 'Receive Heatmap Time (sec)', 'Server Heatmap Time (sec)'];
+      var csvRows = [cols.join(',')];
+      for (var i = 0; i < rows.length; i++) {
+        var r = rows[i];
+        csvRows.push([r.index, r.serverSendTime, r.clientReceiveTime, r.heatmapTime, r.serverToClientSec, r.receiveToHeatmapSec, r.serverToHeatmapSec].join(','));
+      }
+      var csvData = csvRows.join('\n');
+      var finalFileName = fileName || ('rsrp_timing_' + getCurrentTimestamp() + '.csv');
+      downloadCSV(csvData, finalFileName);
+      NotificationSystem.toast('RSRP timing exported (' + rows.length + ' rows)', 'success');
+    },
+    
     // 
     // EXPORT COVERAGE MAP (Combined Antennas - Best Signal)
     // 
@@ -156,58 +223,6 @@ var DataExportSystem = (function () {
       });
     },*/
 
-    // EXPORT DETAILED RSRP DATA
-    // Extended coverage data with multiple metrics per point
-    // 
-    exportDetailedCoverageData: function (finalFileName, spacing, opts) {
-      if (!_state) {
-        console.error('DataExportSystem not initialized. Call DataExportSystem.init() first.');
-        return;
-      }
-
-      spacing = spacing || 1.0;
-      var rows = ['X,Y,best_ap_id,rssi_dbm,snr_db,cci_dbm,sinr_db,throughput_mbps'];
-      var count = 0;
-
-      for (var y = 0; y <= _state.h + 1e-9; y += spacing) {
-        for (var x = 0; x <= _state.w + 1e-9; x += spacing) {
-          // var xx = (x + 0.5) * grid.dx;
-          // var yy = (y + 0.5) * grid.dy;
-          var xx = Math.round(x * 1000) / 1000;
-          var yy = Math.round(y * 1000) / 1000;
-
-          var best = RadioCalculations.bestApAt(xx, yy);
-          if (!best || !best.ap) continue;
-
-          var ap = best.ap;
-          var rssiVal = best.rssiDbm;
-          var snrVal = RadioCalculations.snrAt(rssiVal);
-          var cciVal = RadioCalculations.cciAt(xx, yy, ap);
-          var sinrVal = RadioCalculations.sinrAt(rssiVal, cciVal);
-          var thrVal = RadioCalculations.throughputFromSinr(sinrVal);
-
-          rows.push(
-            xx + ',' + yy + ',' +
-            (ap.id || 'AP-' + ap.antennaId) + ',' +
-            rssiVal.toFixed(2) + ',' +
-            snrVal.toFixed(2) + ',' +
-            cciVal.toFixed(2) + ',' +
-            sinrVal.toFixed(2) + ',' +
-            thrVal.toFixed(3)
-          );
-          count++;
-        }
-      }
-
-      var csvData = rows.join('\n');
-      var finalFileName = finalFileName || ('cm_' + getCurrentTimestamp() + '.csv');
-
-      downloadCSV(csvData, finalFileName);
-
-      if (!opts || !opts.silent) {
-        NotificationSystem.toast(' Detailed coverage data exported (' + count + ' points)', 'success');
-      }
-    },
     /** Export optimization RSRP grid only (not accurateEngine/placing grid). */
     /*exportBackendRsrpGrid: function (fileName) {
       if (!_state) {
@@ -235,21 +250,6 @@ var DataExportSystem = (function () {
       NotificationSystem.toast('RSRP grid exported (' + grid.data.length + ' points)', 'success');
       // console.log('Optimization RSRP exported:', { cols: grid.cols, rows: grid.rows, points: grid.data.length, filename: finalFileName });
     },*/
-
-    // EXPORT RSRP TIMING DATA
-    exportRsrpTimingCsv: function (rows, fileName) {
-      if (!rows || rows.length === 0) return;
-      var cols = ['#', 'Server Send Time', 'Client Receive Time', 'Heatmap Time', 'Server→Client (sec)', 'Receive→Heatmap (sec)', 'Server→Heatmap (sec)'];
-      var csvRows = [cols.join(',')];
-      for (var i = 0; i < rows.length; i++) {
-        var r = rows[i];
-        csvRows.push([r.index, r.serverSendTime, r.clientReceiveTime, r.heatmapTime, r.serverToClientSec, r.receiveToHeatmapSec, r.serverToHeatmapSec].join(','));
-      }
-      var csvData = csvRows.join('\n');
-      var finalFileName = fileName || ('rsrp_timing_' + getCurrentTimestamp() + '.csv');
-      downloadCSV(csvData, finalFileName);
-      NotificationSystem.toast('RSRP timing exported (' + rows.length + ' rows)', 'success');
-    },
 
     // 
     // EXPORT ANTENNA POSITIONS & STATUS
