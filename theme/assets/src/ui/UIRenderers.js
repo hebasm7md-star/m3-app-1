@@ -587,6 +587,7 @@
         delBtn.textContent = "Delete";
         delBtn.onclick = function (e) {
           if (e) e.stopPropagation();
+          var antId = a.id;
           state.aps.splice(idx, 1);
           if (state.selectedApId === a.id) {
             state.selectedApId = null;
@@ -604,6 +605,10 @@
           state.cachedHeatmapAntennaCount = 0;
           state.heatmapUpdatePending = true; // Set to true to prevent using any stale cache
           state.heatmapWorkerCallback = null; // Clear any pending worker callback
+          // Remove deleted antenna from cache (backendRsrpPerAntenna)
+          if (typeof window.evictAntennaAndRefreshHeatmap === "function") {
+            window.evictAntennaAndRefreshHeatmap(antId);
+          }
           
           renderAPs();
           updateActiveAntennaStats(); // Update active antenna stats

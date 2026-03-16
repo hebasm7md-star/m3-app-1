@@ -1997,8 +1997,8 @@
             state.cachedHeatmapAntennaCount = 0;
             state.heatmapUpdatePending = true; // Set to true to prevent using any stale cache
             state.heatmapWorkerCallback = null; // Clear any pending worker callback
-            // Accurate engine: remove deleted antenna from backend cache and recalc merge heatmap
-            if ((state.model || "p25d") === "accurateEngine" && typeof window.evictAntennaAndRefreshHeatmap === "function") {
+            // Remove deleted antenna from cache (backendRsrpPerAntenna) and recalc merge heatmap
+            if (typeof window.evictAntennaAndRefreshHeatmap === "function") {
               window.evictAntennaAndRefreshHeatmap(antennaToDelete);
             }
             deleted = true;

@@ -565,7 +565,7 @@ var BackendSync = (function () {
     }
   }
 
-  /** Call when antenna is deleted in accurate engine mode. Removes from cache and recalc merge heatmap. */
+  /** Call when antenna is deleted. Removes from cache (backendRsrpPerAntenna) and recalc merge heatmap. */
   function evictAntennaAndRefreshHeatmap(antId) {
     state.backendRsrpPerAntenna = state.backendRsrpPerAntenna || {};
     delete state.backendRsrpPerAntenna[antId];
