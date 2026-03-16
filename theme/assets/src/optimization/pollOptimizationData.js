@@ -74,6 +74,14 @@ var OptimizationSystem = (function () {
     // if (typeof draw === 'function') draw();
   }
 
+  function hideLoadingOverlay() {
+    var overlay = document.getElementById('loadingOverlay');
+    if (overlay && overlay.style.display !== 'none') {
+      overlay.style.opacity = '0';
+      setTimeout(function () { overlay.style.display = 'none'; overlay.style.opacity = '1'; }, 400);
+    }
+  }
+
   // ── Compliance Display ─────────────────────────────────────────────────
 
   function setComplianceDisplay(value) {
@@ -114,6 +122,7 @@ var OptimizationSystem = (function () {
       var latestRsrp = newRsrp[newRsrp.length - 1];
       if (latestRsrp && latestRsrp.length > 0 && typeof window.buildOptimizationRsrpGrid === 'function') {
         window.buildOptimizationRsrpGrid(latestRsrp);
+        hideLoadingOverlay();
       }
     } else if (Array.isArray(newCompliance) && newCompliance.length > 0 && typeof window.mergeBackendRsrpFromCache === 'function') {
       window.mergeBackendRsrpFromCache();
@@ -132,7 +141,7 @@ var OptimizationSystem = (function () {
       setTimeout(function () {
         var ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
         DataExportSystem.exportDetailedCoverageData('accurate_bl_cm_' + ts + '.csv', 1.0, { silent: true });
-      }, 1000);
+      }, 500);
     }
   }
 
@@ -181,6 +190,7 @@ var OptimizationSystem = (function () {
         if (latestRsrp && latestRsrp.length > 0 && typeof window.buildOptimizationRsrpGrid === 'function') {
           window.buildOptimizationRsrpGrid(latestRsrp);
           rsrpUpdated = true;
+          hideLoadingOverlay();
           // Record timing row when backend provides send timestamp (for latency profiling)
           if (serverSendSec != null) {
             rsrpTimingRows.push({
