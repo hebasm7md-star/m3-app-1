@@ -504,7 +504,7 @@
   function syncLiveRsrpFromModel() {
     var model = (window.state && window.state.model) || (document.getElementById("model") || {}).value || "p25d";
     if (window.parent !== window)
-      window.parent.postMessage({ type: "set_send_live_rsrp", enabled: model === "accurateEngine" }, "*");
+      window.parent.postMessage({ type: "set_enable_live_rsrp_flag", enabled: model === "accurateEngine" }, "*");
   }
   window.syncLiveRsrpFromModel = syncLiveRsrpFromModel;
 
