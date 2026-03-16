@@ -550,6 +550,7 @@
         // Update UI
         if (document.getElementById("view")) document.getElementById("view").value = state.view;
         if (document.getElementById("model")) document.getElementById("model").value = state.model;
+        if (window.syncLiveRsrpFromModel) window.syncLiveRsrpFromModel();
         if (document.getElementById("minVal")) document.getElementById("minVal").value = state.minVal;
         if (document.getElementById("maxVal")) document.getElementById("maxVal").value = state.maxVal;
         if (document.getElementById("complianceThreshold")) document.getElementById("complianceThreshold").value = state.complianceThreshold !== undefined ? state.complianceThreshold : state.minVal;
@@ -747,6 +748,8 @@
       if (typeof renderFloorPlanes === 'function') {
         renderFloorPlanes();
       }
+      if (document.getElementById("model")) document.getElementById("model").value = state.model;
+      if (window.syncLiveRsrpFromModel) window.syncLiveRsrpFromModel();
       draw();
     } catch (error) {
       console.error("Error loading project data:", error);

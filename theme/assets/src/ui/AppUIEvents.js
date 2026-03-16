@@ -501,14 +501,25 @@
     });
   }
 
+  function syncLiveRsrpFromModel() {
+    var model = (window.state && window.state.model) || (document.getElementById("model") || {}).value || "p25d";
+    if (window.parent !== window)
+      window.parent.postMessage({ type: "set_send_live_rsrp", enabled: model === "accurateEngine" }, "*");
+  }
+  window.syncLiveRsrpFromModel = syncLiveRsrpFromModel;
+
   var mdl = document.getElementById("model");
-  if (mdl) mdl.addEventListener("change", function () {
-    window.state.model = document.getElementById("model").value;
-    var nel = document.getElementById("N");
-    if (nel) nel.value = window.state.N;
-    if (typeof window.invalidateHeatmapCache === "function") window.invalidateHeatmapCache();
-    window.draw();
-  });
+  if (mdl) {
+    mdl.addEventListener("change", function () {
+      window.state.model = mdl.value;
+      var nel = document.getElementById("N");
+      if (nel) nel.value = window.state.N;
+      if (typeof window.invalidateHeatmapCache === "function") window.invalidateHeatmapCache();
+      window.draw();
+      syncLiveRsrpFromModel();
+    });
+    syncLiveRsrpFromModel();
+  }
 
   var vw = document.getElementById("view");
   if (vw) vw.addEventListener("change", function () {

@@ -27,9 +27,9 @@ var OptimizationSystem = (function () {
   }
 
   // ── Polling ────────────────────────────────────────────────────────────
-
+  /** RSRP timing rows for performance profiling: server send → client receive → heatmap render. Exported to CSV when optimization finishes. */
   function startOptimizationPolling() {
-    rsrpTimingRows = [];
+    rsrpTimingRows = [];  // Reset timing data for new optimization run
     if (optimizationPollingInterval) clearInterval(optimizationPollingInterval);
     optimizationPollingInterval = setInterval(function () {
       window.parent.postMessage({
@@ -110,7 +110,7 @@ var OptimizationSystem = (function () {
       if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportRsrpTimingCsv) {
         setTimeout(function () {
           if (rsrpTimingRows.length > 0) DataExportSystem.exportRsrpTimingCsv(rsrpTimingRows);
-        }, 1500);
+        }, 1500);  // Export RSRP latency metrics (server→client→heatmap) for profiling
       }
     } else {
       setFooter(footerBadge, footerMessage, 'ERROR', "Error: " + (data.error || "Optimization failed."));
@@ -232,6 +232,18 @@ var OptimizationSystem = (function () {
         if (latestRsrp && latestRsrp.length > 0) {
           buildBackendRsrpGrid(latestRsrp);
           rsrpUpdated = true;
+          // Record timing row when backend provides send timestamp (for latency profiling)
+          if (serverSendSec != null) {
+            rsrpTimingRows.push({
+              index: rsrpTimingRows.length + 1,
+              serverSendTime: toReadable(serverSendSec),
+              clientReceiveTime: toReadable(receiveAtSec),
+              heatmapTime: '',           // Filled when heatmap is rendered (onHeatmapShown)
+              serverToClientSec: (receiveAtSec - serverSendSec).toFixed(3),
+              receiveToHeatmapSec: '',  // Filled when heatmap is rendered
+              serverToHeatmapSec: ''    // Filled when heatmap is rendered
+            });
+          }
         }
       }
 
@@ -328,17 +340,12 @@ var OptimizationSystem = (function () {
           if (window.saveState) window.saveState();
           if (window.renderAPs) window.renderAPs();
         }
-        var onHeatmapShown = rsrpUpdated && serverSendSec != null ? function () {
+        var onHeatmapShown = rsrpUpdated && rsrpTimingRows.length > 0 ? function () {
           var heatmapSec = (performance.timeOrigin + performance.now()) / 1000;
-          rsrpTimingRows.push({
-            index: rsrpTimingRows.length + 1,
-            serverSendTime: toReadable(serverSendSec),
-            clientReceiveTime: toReadable(receiveAtSec),
-            heatmapTime: toReadable(heatmapSec),
-            serverToClientSec: (receiveAtSec - serverSendSec).toFixed(3),
-            receiveToHeatmapSec: (heatmapSec - receiveAtSec).toFixed(3),
-            serverToHeatmapSec: (heatmapSec - serverSendSec).toFixed(3)
-          });
+          var last = rsrpTimingRows[rsrpTimingRows.length - 1];
+          last.heatmapTime = toReadable(heatmapSec);
+          last.receiveToHeatmapSec = (heatmapSec - receiveAtSec).toFixed(3);  // Client receive → heatmap render
+          last.serverToHeatmapSec = (heatmapSec - serverSendSec).toFixed(3); // End-to-end: server → heatmap
         } : null;
         refreshHeatmap(onHeatmapShown);
       }
@@ -432,6 +439,7 @@ var OptimizationSystem = (function () {
   window.handleOptimizationUpdate = handleOptimizationUpdate;
   window.updateSingleAntennaFromAction = updateSingleAntennaFromAction;
   window.getBackendRsrpAt = getBackendRsrpAt;
+  window.buildBackendRsrpGrid = buildBackendRsrpGrid;
 
   return {
     startOptimizationPolling: startOptimizationPolling,

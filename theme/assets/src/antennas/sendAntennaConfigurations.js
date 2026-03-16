@@ -516,6 +516,19 @@ var BackendSync = (function () {
       }
     }
 
+    // Live RSRP from backend (Sionna) after antenna add/update
+    if (event.data && event.data.type === "live_rsrp") {
+      var rsrp = event.data.rsrp;
+      if (!rsrp || !Array.isArray(rsrp) || rsrp.length === 0) return;
+
+      if (typeof window.buildBackendRsrpGrid === "function") {
+        window.buildBackendRsrpGrid(rsrp);
+      }
+      if (state.showVisualization && typeof window.generateHeatmapAsync === "function") {
+        window.generateHeatmapAsync(null, true);
+      }
+    }
+
     // Handle baseline calculation
     if (event.data && (event.data.type === "baseline_completed" || event.data.type === "baseline_error")) {
       var calculateBaselineBtn = document.getElementById("calculateBaselineBtn");
