@@ -1,4 +1,4 @@
-﻿//
+//
 // ThreeJSRenderer.js
 // Sets up and manages the Three.js 3D scene - camera, lights, wall/floor/
 // antenna meshes, and 3D mouse interaction (pan, rotate, zoom, select).
@@ -302,16 +302,20 @@
         };
         state.isDraggingAntenna = true;
         
-        // Invalidate cached heatmap IMMEDIATELY when drag starts to prevent deformed pattern flash
-        // The heatmap will be recalculated in real-time during drag in the draw() function
+        // In accurate engine mode: keep cached heatmap to hold last accurate engine heatmap during drag
+        // In 2.5D/ITU mode: clear cache so heatmap recalculates in real-time during drag
+        var isAccurateEngine = (state.model || "p25d") === "accurateEngine";
+        var hasAccurateGrid = !!(state.optimizationRsrpGrid || state.accurateEngineRsrpGrid);
         if (state.heatmapUpdateRequestId !== null) {
           cancelAnimationFrame(state.heatmapUpdateRequestId);
           state.heatmapUpdateRequestId = null;
         }
-        state.cachedHeatmap = null; // Clear cache to prevent using stale heatmap with old positions
-        state.cachedHeatmapAntennaCount = 0; // Reset validation count
-        state.heatmapUpdatePending = true; // Set pending to prevent using any stale cache
-        state.heatmapWorkerCallback = null; // Clear any pending worker callback
+        if (!(isAccurateEngine && hasAccurateGrid)) {
+          state.cachedHeatmap = null;
+          state.cachedHeatmapAntennaCount = 0;
+        }
+        state.heatmapUpdatePending = true;
+        state.heatmapWorkerCallback = null;
         
         e.preventDefault();
         e.stopPropagation();

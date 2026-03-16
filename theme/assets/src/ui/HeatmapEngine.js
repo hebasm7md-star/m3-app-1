@@ -478,11 +478,15 @@
 
     var off = null;
     if (state.showVisualization) {
-      // During antenna dragging: recalculate heatmap in real-time at optimized resolution for smooth movement
+      // During antenna dragging: hold last accurate engine heatmap when in accurate engine mode
       // When not dragging: use cache if available, or generate at full resolution
       if (state.isDraggingAntenna) {
-        // OPTIMIZATION: Balanced resolution + simplified calculations during drag for speed
-        if (state.aps.length > 0) {
+        var model = (state.model || "p25d");
+        var hasAccurateGrid = !!(state.optimizationRsrpGrid || state.accurateEngineRsrpGrid);
+        if (model === "accurateEngine" && hasAccurateGrid && state.cachedHeatmap && state.cachedHeatmapAntennaCount === state.aps.length) {
+          off = state.cachedHeatmap;
+        } else if (state.aps.length > 0) {
+        // OPTIMIZATION: Balanced resolution + simplified calculations during drag for speed (2.5D/ITU)
           // Use 0.75x resolution multiplier for good balance between speed and quality
           var resolutionMultiplier = 1.6;
           // Use normal grid step size for maximum detail during drag
