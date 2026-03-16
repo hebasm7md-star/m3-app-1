@@ -554,8 +554,20 @@ var BackendSync = (function () {
     state.accurateEngineRsrpGrid = null;
   }
 
+  /** Call when user selects 2.5D or IUT (local model). Clears backend caches and re-renders heatmap with local calc. */
+  function resetHeatmapForLocalModel() {
+    state.backendRsrpPerAntenna = {};
+    state.accurateEngineRsrpGrid = null;
+    state.optimizationRsrpGrid = null;
+    state.cachedHeatmap = null;
+    if (typeof window.generateHeatmapAsync === "function") {
+      window.generateHeatmapAsync(null, true);
+    }
+  }
+
   window.mergeBackendRsrpFromCache = mergeLiveRsrpToBestServerGrid;
   window.clearBackendRsrpCache = clearLiveRsrpCache;
+  window.resetHeatmapForLocalModel = resetHeatmapForLocalModel;
 
   // Set up message listener for Anvil events
   window.addEventListener("message", function (event) {
@@ -768,6 +780,7 @@ var BackendSync = (function () {
     scheduleInputChange: scheduleInputChange,
     applyInputChangeImmediately: applyInputChangeImmediately,
     sendAllAntennaConfigs: sendAllAntennaConfigs,
-    updateAntennasFromConfigs: updateAntennasFromConfigs
+    updateAntennasFromConfigs: updateAntennasFromConfigs,
+    resetHeatmapForLocalModel: resetHeatmapForLocalModel
   };
 })();

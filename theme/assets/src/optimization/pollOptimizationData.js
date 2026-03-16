@@ -99,8 +99,16 @@ var OptimizationSystem = (function () {
     state.compliancePercentFromBackend = null;
   }
 
-  /** Handle baseline RSRP update (place/move or get_accurate_baseline). When new_bsrv_rsrp present, use merged grid; else UI uses per-antenna cache. */
+  /** Handle baseline RSRP update (place/move or get_accurate_baseline). 
+    * When new_bsrv_rsrp null, clear backend grids (antenna turned off). */
   function handleBaselineRsrpUpdate(data) {
+    if (data.new_bsrv_rsrp === null) {
+      if (typeof window.clearBackendRsrpCache === 'function') window.clearBackendRsrpCache();
+      state.optimizationRsrpGrid = null;
+      state.accurateEngineRsrpGrid = null;
+      refreshHeatmap();
+      return;
+    }
     var newRsrp = data.new_bsrv_rsrp || [];
     var newCompliance = data.new_compliance || [];
     if (Array.isArray(newRsrp) && newRsrp.length > 0) {
@@ -123,7 +131,7 @@ var OptimizationSystem = (function () {
       }
     }
     refreshHeatmap();
-    var isAccurateBaseline = (data.message || '').indexOf('Accurate baseline') >= 0;
+    var isAccurateBaseline = data.isAccurateBaseline === true || (data.message || '').indexOf('Accurate baseline') >= 0;
     if (isAccurateBaseline && typeof DataExportSystem !== 'undefined' && DataExportSystem.exportDetailedCoverageData) {
       setTimeout(function () {
         var ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
@@ -143,11 +151,13 @@ var OptimizationSystem = (function () {
           DataExportSystem.exportDetailedCoverageData('after_opt_cm_' + ts2 + '.csv', 1.0, { silent: true });
         }, 1000);
       }
-      // Timing export only after optimization completes (rsrpTimingRows populated during optimization only)
-      if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportRsrpTimingCsv && rsrpTimingRows.length > 0) {
+      // Timing export only after optimization completes (snapshot & clear immediately to avoid re-export on re-entry)
+      if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportTimingRowsAsXlsx && rsrpTimingRows.length > 0) {
+        var rowsSnapshot = rsrpTimingRows.slice();
+        rsrpTimingRows = [];
         setTimeout(function () {
-          DataExportSystem.exportRsrpTimingCsv(rsrpTimingRows);
-        }, 2000);  // Export RSRP latency metrics (server→client→heatmap) for profiling
+          DataExportSystem.exportTimingRowsAsXlsx(rowsSnapshot);
+        }, 2000);
       }
     } else {
       setFooter(footerBadge, footerMessage, 'ERROR', "Error: " + (data.error || "Optimization failed."));

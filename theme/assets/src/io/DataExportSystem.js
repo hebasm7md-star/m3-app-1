@@ -149,8 +149,8 @@ var DataExportSystem = (function () {
         NotificationSystem.toast(' Detailed coverage data exported (' + count + ' points)', 'success');
       }
     },
-    // EXPORT RSRP TIMING DATA (xlsx format)
-    exportRsrpTimingCsv: function (rows, fileName) {
+    /** Export RSRP timing as .xlsx. Loads SheetJS from cdnjs on demand; falls back to CSV if unreachable. */
+    exportTimingRowsAsXlsx: function (rows, fileName) {
       if (!rows || rows.length === 0) return;
       var cols = ['#', 'Server Send Time', 'Client Receive Time', 'Heatmap Time', 'Server Client Time (sec)', 'Receive Heatmap Time (sec)', 'Server Heatmap Time (sec)'];
       var dataRows = [cols];
@@ -159,16 +159,38 @@ var DataExportSystem = (function () {
         dataRows.push([r.index, r.serverSendTime, r.clientReceiveTime, r.heatmapTime, r.serverToClientSec, r.receiveToHeatmapSec, r.serverToHeatmapSec]);
       }
       var finalFileName = fileName || ('rsrp_timing_' + getCurrentTimestamp() + '.xlsx');
+      var doExport = function () {
+        if (typeof XLSX !== 'undefined') {
+          try {
+            var ws = XLSX.utils.aoa_to_sheet(dataRows);
+            var wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Timing');
+            XLSX.writeFile(wb, finalFileName);
+            NotificationSystem.toast('RSRP timing exported (' + rows.length + ' rows)', 'success');
+          } catch (e) {
+            var csvData = dataRows.map(function (row) { return row.join(','); }).join('\n');
+            downloadCSV(csvData, finalFileName.replace(/\.xlsx$/, '.csv'));
+            NotificationSystem.toast('RSRP timing exported as CSV (XLSX failed)', 'success');
+          }
+        } else {
+          var csvData = dataRows.map(function (row) { return row.join(','); }).join('\n');
+          downloadCSV(csvData, finalFileName.replace(/\.xlsx$/, '.csv'));
+          NotificationSystem.toast('RSRP timing exported as CSV (SheetJS unavailable)', 'success');
+        }
+      };
       if (typeof XLSX !== 'undefined') {
-        var ws = XLSX.utils.aoa_to_sheet(dataRows);
-        var wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Timing');
-        XLSX.writeFile(wb, finalFileName);
-      } else {
+        doExport();
+        return;
+      }
+      var script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      script.onload = doExport;
+      script.onerror = function () {
         var csvData = dataRows.map(function (row) { return row.join(','); }).join('\n');
         downloadCSV(csvData, finalFileName.replace(/\.xlsx$/, '.csv'));
-      }
-      NotificationSystem.toast('RSRP timing exported (' + rows.length + ' rows)', 'success');
+        NotificationSystem.toast('RSRP timing exported as CSV (CDN unreachable)', 'success');
+      };
+      document.head.appendChild(script);
     },
     
     // 
