@@ -99,16 +99,19 @@ var OptimizationSystem = (function () {
     state.compliancePercentFromBackend = null;
   }
 
-  /** Handle baseline RSRP update (place/move or get_accurate_baseline). Full grid replaces per-antenna cache. */
+  /** Handle baseline RSRP update (place/move or get_accurate_baseline). When new_bsrv_rsrp present, use merged grid; else UI uses per-antenna cache. */
   function handleBaselineRsrpUpdate(data) {
     var newRsrp = data.new_bsrv_rsrp || [];
     var newCompliance = data.new_compliance || [];
-    if (typeof window.clearBackendRsrpCache === 'function') window.clearBackendRsrpCache();
     if (Array.isArray(newRsrp) && newRsrp.length > 0) {
+      if (typeof window.clearBackendRsrpCache === 'function') window.clearBackendRsrpCache();
       var latestRsrp = newRsrp[newRsrp.length - 1];
       if (latestRsrp && latestRsrp.length > 0) {
         buildOptimizationRsrpGrid(latestRsrp);
       }
+    } else if (Array.isArray(newCompliance) && newCompliance.length > 0 && typeof window.mergeBackendRsrpFromCache === 'function') {
+      // Per-antenna cache in use; ensure merged grid is up to date
+      window.mergeBackendRsrpFromCache();
     }
     if (Array.isArray(newCompliance) && newCompliance.length > 0) {
       var latest = newCompliance[newCompliance.length - 1];
