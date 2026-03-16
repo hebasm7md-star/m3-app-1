@@ -475,6 +475,13 @@
       }
     }
 
+    var overlay = document.getElementById("loadingOverlay");
+    var loadingText = document.getElementById("loadingText");
+    var subtext = document.getElementById("loadingSubtext");
+    if (overlay) overlay.style.display = "flex";
+    if (loadingText) loadingText.textContent = "Optimizing...";
+    if (subtext) subtext.textContent = "AI is tuning antenna parameters. This may take a moment.";
+
     window.parent.postMessage({
       type: "start_optimization_and_poll",
       requestId: "optimize_" + Date.now()
@@ -483,9 +490,12 @@
 
   var calculateBaselineBtn = document.getElementById("calculateBaselineBtn");
   if (calculateBaselineBtn) calculateBaselineBtn.addEventListener("click", function () {
-    // if (typeof window.NotificationSystem !== "undefined") {
-    //   window.NotificationSystem.warning("No baseline initialized or baseline error.");
-    // }
+    var overlay = document.getElementById("loadingOverlay");
+    var loadingText = document.getElementById("loadingText");
+    var subtext = document.getElementById("loadingSubtext");
+    if (overlay) overlay.style.display = "flex";
+    if (loadingText) loadingText.textContent = "Calculating Accurate Baseline...";
+    if (subtext) subtext.textContent = "Processing antenna configurations with the accurate engine. This may take a moment.";
 
     window.parent.postMessage({
       type: "start_accurate_baseline",
