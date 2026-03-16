@@ -299,7 +299,7 @@ class Combined(CombinedTemplate):
       if new_rsrp:
         rsrp_grid = new_rsrp[-1]  # last entry is always this antenna's fresh grid
         self._send_to_iframe("live_rsrp", ant_id=ant_id, rsrp=rsrp_grid)
-        print(f"[RSRP] Sent live_rsrp: ant_id={ant_id}, bins={len(rsrp_grid) if rsrp_grid else 0}")
+        print(f"Sent live_rsrp: ant_id={ant_id}, bins={len(rsrp_grid) if rsrp_grid else 0}")
       else:
         print(f"get_live_rsrp returned empty for ant_id={ant_id}")
     except Exception as e:
@@ -361,8 +361,6 @@ class Combined(CombinedTemplate):
       self._send_to_iframe("baseline_rsrp",
                            new_bsrv_rsrp=live_baseline.get("new_bsrv_rsrp", []),
                            new_compliance=live_baseline.get("new_compliance", []),
-                           success=True,
-                           isAccurateBaseline=True,
                            message="Accurate baseline calculated successfully")
     else:
       self._send_error("baseline_error", result.get("message", "Error calculating accurate baseline"))
