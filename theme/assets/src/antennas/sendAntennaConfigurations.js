@@ -128,7 +128,7 @@ var BackendSync = (function () {
 
     // Generate a unique request ID
     var requestId = "antenna_status_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
-    console.log("Sending antenna status update to backend:", antennaDetails);
+    console.log("[RSRP] Sending antenna status update to backend:", antennaDetails.id, antennaDetails);
 
     // Send message to parent window (Anvil app)
     window.parent.postMessage(
@@ -150,7 +150,7 @@ var BackendSync = (function () {
         window.removeEventListener("message", messageHandler);
 
         if (event.data.success) {
-          console.log("Antenna status update confirmed by backend:", event.data);
+          console.log("[RSRP] Antenna status update confirmed by backend:", event.data);
         } else {
           console.error("Backend error updating antenna status:", event.data.error);
         }
@@ -519,6 +519,7 @@ var BackendSync = (function () {
     // Live RSRP from backend (Sionna) after antenna add/update
     if (event.data && event.data.type === "live_rsrp") {
       var rsrp = event.data.rsrp;
+      console.log("[RSRP] Received live_rsrp from backend:", event.data.ant_id, "| len:", rsrp ? rsrp.length : 0);
       if (!rsrp || !Array.isArray(rsrp) || rsrp.length === 0) return;
 
       if (typeof window.buildBackendRsrpGrid === "function") {
