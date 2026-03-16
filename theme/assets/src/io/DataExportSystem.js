@@ -159,7 +159,7 @@ var DataExportSystem = (function () {
     // EXPORT DETAILED RSRP DATA
     // Extended coverage data with multiple metrics per point
     // 
-    exportDetailedCoverageData: function (finalFileName, spacing) {
+    exportDetailedCoverageData: function (finalFileName, spacing, opts) {
       if (!_state) {
         console.error('DataExportSystem not initialized. Call DataExportSystem.init() first.');
         return;
@@ -204,11 +204,12 @@ var DataExportSystem = (function () {
 
       downloadCSV(csvData, finalFileName);
 
-      NotificationSystem.toast(' Detailed coverage data exported (' + count + ' points)', 'success');
-      // console.log('Detailed coverage exported:', { points: count, filename: finalFileName });
+      if (!opts || !opts.silent) {
+        NotificationSystem.toast(' Detailed coverage data exported (' + count + ' points)', 'success');
+      }
     },
     /** Export optimization RSRP grid only (not accurateEngine/placing grid). */
-    exportBackendRsrpGrid: function (fileName) {
+    /*exportBackendRsrpGrid: function (fileName) {
       if (!_state) {
         console.error('DataExportSystem not initialized.');
         return;
@@ -233,7 +234,7 @@ var DataExportSystem = (function () {
 
       NotificationSystem.toast('RSRP grid exported (' + grid.data.length + ' points)', 'success');
       // console.log('Optimization RSRP exported:', { cols: grid.cols, rows: grid.rows, points: grid.data.length, filename: finalFileName });
-    },
+    },*/
 
     // EXPORT RSRP TIMING DATA
     exportRsrpTimingCsv: function (rows, fileName) {

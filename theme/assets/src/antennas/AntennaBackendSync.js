@@ -633,7 +633,7 @@ var BackendSync = (function () {
           if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportDetailedCoverageData) {
             setTimeout(function () {
               var ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-              DataExportSystem.exportDetailedCoverageData('accurate_bl_cm_' + ts + '.csv', 1.0);
+              DataExportSystem.exportDetailedCoverageData('accurate_bl_cm_' + ts + '.csv', 1.0, { silent: true });
             }, 500);
           }
         } else {
