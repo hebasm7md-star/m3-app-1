@@ -23,12 +23,13 @@
     }
   }
 
-  /** Return the active RSRP grid: optimizationRsrpGrid during opt, accurateEngineRsrpGrid for Sionna, fastRsrpGrid for p25d/ITU. */
+  /** Return the active RSRP grid: optimizationRsrpGrid during opt, accurateEngineRsrpGrid for Sionna, p25RsrpGrid/ituRsrpGrid for p25d/ITU. */
   function getActiveRsrpGrid() {
     if (state.isOptimizing && state.optimizationRsrpGrid) return state.optimizationRsrpGrid;
     var model = state.model || "p25d";
     if (model === "accurateEngine" && state.accurateEngineRsrpGrid) return state.accurateEngineRsrpGrid;
-    if (model !== "accurateEngine" && state.fastRsrpGrid) return state.fastRsrpGrid;
+    if (model === "p25d" && state.p25RsrpGrid) return state.p25RsrpGrid;
+    if (model === "p525" && state.ituRsrpGrid) return state.ituRsrpGrid;
     return null;
   }
 
@@ -104,11 +105,19 @@
       "| RSRP:", result.dataMin.toFixed(1), "to", result.dataMax.toFixed(1));
   }
 
-  /** Build fast RSRP grid for p25d/ITU from flat array. */
-  function buildFastRsrpGrid(rsrpValues) {
+  /** Build p25d RSRP grid from flat array. */
+  function buildP25RsrpGrid(rsrpValues) {
     var result = buildRsrpGridFromValues(rsrpValues);
     if (!result) return;
-    state.fastRsrpGrid = result.grid;
+    state.p25RsrpGrid = result.grid;
+    updateLegendFromRsrpRange(result.dataMin, result.dataMax);
+  }
+
+  /** Build ITU (p525) RSRP grid from flat array. */
+  function buildItuRsrpGrid(rsrpValues) {
+    var result = buildRsrpGridFromValues(rsrpValues);
+    if (!result) return;
+    state.ituRsrpGrid = result.grid;
     updateLegendFromRsrpRange(result.dataMin, result.dataMax);
   }
 
@@ -187,7 +196,8 @@
     state.backendRsrpPerAntenna = {};
     state.optimizationRsrpGrid = null;
     state.accurateEngineRsrpGrid = null;
-    state.fastRsrpGrid = null;
+    state.p25RsrpGrid = null;
+    state.ituRsrpGrid = null;
   }
 
   /** Clear optimization grid only (call when optimization ends). */
@@ -223,7 +233,8 @@
   window.getActiveRsrpGrid = getActiveRsrpGrid;
   window.getBackendRsrpAt = getBackendRsrpAt;
   window.buildOptimizationRsrpGrid = buildOptimizationRsrpGrid;
-  window.buildFastRsrpGrid = buildFastRsrpGrid;
+  window.buildP25RsrpGrid = buildP25RsrpGrid;
+  window.buildItuRsrpGrid = buildItuRsrpGrid;
   window.cacheLiveRsrpAndMergeBestServer = cacheLiveRsrpAndMergeBestServer;
   window.mergeBackendRsrpFromCache = mergeLiveRsrpToBestServerGrid;
   window.clearBackendRsrpCache = clearBackendRsrpCache;

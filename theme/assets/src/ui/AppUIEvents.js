@@ -537,6 +537,9 @@
     if (window.parent !== window) {
       window.parent.postMessage({ type: "set_send_live_rsrp", enabled: enabled }, "*");
       console.log("[RSRP] Accurate Engine:", enabled ? "ON" : "OFF", "| model:", model);
+      if (enabled && typeof window.requestRsrpForCurrentConfigs === "function") {
+        window.requestRsrpForCurrentConfigs();
+      }
     }
   }
   window.syncLiveRsrpFromModel = syncLiveRsrpFromModel;

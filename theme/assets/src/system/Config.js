@@ -123,7 +123,8 @@ var state = {
   currentProjectFileName: null,
   accurateEngineRsrpGrid: null,
   optimizationRsrpGrid: null,
-  fastRsrpGrid: null,
+  p25RsrpGrid: null,
+  ituRsrpGrid: null,
   optimizationCompliancePercent: null,
   /** Per-antenna RSRP cache (accurateEngine): ant_id -> rsrp (array). Enables best-server merge. */
   backendRsrpPerAntenna: {},

@@ -261,6 +261,28 @@ var BackendSync = (function () {
     applyInputChange(antennaId);
   }
 
+  /** When switching to accurate engine: send current antenna configs so backend computes and returns RSRP.
+   *  One antenna: send individually. Multiple: send as batch (like auto-place). */
+  function requestRsrpForCurrentConfigs() {
+    if (window.parent === window) return;
+    var aps = (state.aps || []).filter(function (ap) { return ap.enabled !== false; });
+    if (aps.length === 0) return;
+
+    if (aps.length === 1) {
+      sendAntennaStatusUpdate(aps[0]);
+      console.log("[RSRP] Model switch to accurate: sent 1 antenna for RSRP");
+    } else {
+      var requestId = "antennas_batch_status_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+      window.parent.postMessage({
+        type: "antennas_batch_status_update",
+        requestId: requestId,
+        antennas: state.aps,
+        source: "model_switch"
+      }, "*");
+      console.log("[RSRP] Model switch to accurate: sent batch of", aps.length, "antennas for RSRP");
+    }
+  }
+
   // Function to send all antenna configs to backend (including enabled status)
   function sendAllAntennaConfigs() {
     var fileName = getAntennaDataFileName();
@@ -672,6 +694,7 @@ var BackendSync = (function () {
   window.scheduleInputChange = scheduleInputChange;
   window.applyInputChangeImmediately = applyInputChangeImmediately;
   window.sendAllAntennaConfigs = sendAllAntennaConfigs;
+  window.requestRsrpForCurrentConfigs = requestRsrpForCurrentConfigs;
   window.updateAntennasFromConfigs = updateAntennasFromConfigs;
 
   return {
