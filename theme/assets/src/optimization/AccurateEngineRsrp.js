@@ -23,6 +23,14 @@
     }
   }
 
+  /** Return per-antenna RSRP grid for accurate engine when highlighting one antenna. Null if not available. */
+  function getRsrpGridForAntenna(antId) {
+    var cache = state.backendRsrpPerAntenna;
+    if (!cache || !antId || !cache[antId] || !Array.isArray(cache[antId])) return null;
+    var result = buildRsrpGridFromValues(cache[antId]);
+    return result ? result.grid : null;
+  }
+
   /** Return the active RSRP grid: optimizationRsrpGrid during opt, accurateEngineRsrpGrid for Sionna, p25RsrpGrid/ituRsrpGrid for p25d/ITU. */
   function getActiveRsrpGrid() {
     if (state.isOptimizing && state.optimizationRsrpGrid) return state.optimizationRsrpGrid;
@@ -33,35 +41,37 @@
     return null;
   }
 
-  /** Lookup RSRP at (x,y) from the active grid (optimization/accurateEngine/fast). */
-  function getBackendRsrpAt(x, y) {
-    var bgrid = getActiveRsrpGrid();
+  /** Lookup RSRP at (x,y) from a grid. */
+  function lookupRsrpInGrid(bgrid, x, y) {
     if (!bgrid) return null;
-
     var bx = x / bgrid.dx;
     var by = y / bgrid.dy;
-
     var gx0 = Math.max(0, Math.min(bgrid.cols - 1, Math.floor(bx - 0.5)));
     var gx1 = Math.max(0, Math.min(bgrid.cols - 1, gx0 + 1));
     var gy0 = Math.max(0, Math.min(bgrid.rows - 1, Math.floor(by - 0.5)));
     var gy1 = Math.max(0, Math.min(bgrid.rows - 1, gy0 + 1));
-
     var tx = (bx - 0.5) - gx0;
     var ty = (by - 0.5) - gy0;
-
     var v00 = bgrid.data[gy0 * bgrid.cols + gx0];
     var v10 = bgrid.data[gy0 * bgrid.cols + gx1];
     var v01 = bgrid.data[gy1 * bgrid.cols + gx0];
     var v11 = bgrid.data[gy1 * bgrid.cols + gx1];
-
     var v0 = v00 * (1 - tx) + v10 * tx;
     var v1 = v01 * (1 - tx) + v11 * tx;
     var bval = v0 * (1 - ty) + v1 * ty;
+    return (!isNaN(bval) && bval !== 0) ? bval : null;
+  }
 
-    if (!isNaN(bval) && bval !== 0) {
-      return bval;
-    }
-    return null;
+  /** Lookup RSRP at (x,y) from the active grid (optimization/accurateEngine/fast). */
+  function getBackendRsrpAt(x, y) {
+    var bgrid = getActiveRsrpGrid();
+    return lookupRsrpInGrid(bgrid, x, y);
+  }
+
+  /** Lookup RSRP at (x,y) for a specific antenna (accurate engine per-antenna cache). */
+  function getBackendRsrpAtForAntenna(x, y, antId) {
+    var bgrid = getRsrpGridForAntenna(antId);
+    return lookupRsrpInGrid(bgrid, x, y);
   }
 
   /** Shared: build RSRP grid from flat array. Returns { grid, dataMin, dataMax } or null. */
@@ -231,7 +241,9 @@
 
   // Expose on window for global access
   window.getActiveRsrpGrid = getActiveRsrpGrid;
+  window.getRsrpGridForAntenna = getRsrpGridForAntenna;
   window.getBackendRsrpAt = getBackendRsrpAt;
+  window.getBackendRsrpAtForAntenna = getBackendRsrpAtForAntenna;
   window.buildOptimizationRsrpGrid = buildOptimizationRsrpGrid;
   window.buildP25RsrpGrid = buildP25RsrpGrid;
   window.buildItuRsrpGrid = buildItuRsrpGrid;

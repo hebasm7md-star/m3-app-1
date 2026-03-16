@@ -1784,14 +1784,13 @@
             state.selectedApId = null;
             state.highlight = false;
             // Cancel any pending heatmap updates
-            // NOTE: Don't clear cache - antenna count hasn't changed, so cache is still valid
-            // This allows smooth transition without disappearing
             if (state.heatmapUpdateRequestId !== null) {
               cancelAnimationFrame(state.heatmapUpdateRequestId);
               state.heatmapUpdateRequestId = null;
             }
             state.heatmapUpdatePending = true; // Set to true to trigger regeneration
             state.heatmapWorkerCallback = null; // Clear any pending worker callback
+            state.cachedHeatmap = null; // Clear cache (was showing selected-only; now need merged view)
             state.selectedApForDetail = null;
             document.getElementById("apDetailSidebar").classList.remove("visible");
           } else {
@@ -1799,14 +1798,13 @@
             state.selectedApId = ap.id;
             state.highlight = true; // Enable highlight to show only this antenna's pattern
             // Cancel any pending heatmap updates
-            // NOTE: Don't clear cache - antenna count hasn't changed, so cache is still valid
-            // This allows smooth transition without disappearing
             if (state.heatmapUpdateRequestId !== null) {
               cancelAnimationFrame(state.heatmapUpdateRequestId);
               state.heatmapUpdateRequestId = null;
             }
             state.heatmapUpdatePending = true; // Set to true to trigger regeneration
             state.heatmapWorkerCallback = null; // Clear any pending worker callback
+            state.cachedHeatmap = null; // Clear cache so we don't show merged view (critical for accurate engine select)
 
             state.selectedApForDetail = ap;
 

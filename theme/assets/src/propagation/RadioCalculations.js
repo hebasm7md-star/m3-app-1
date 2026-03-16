@@ -126,8 +126,22 @@ var RadioCalculations = (function () {
 
   function getValueAt(x, y) {
     // If active RSRP grid is present (opt/accurateEngine/fast) and we're viewing RSSI, use it
-    if (_state && _state.view === "rssi" && typeof window.getActiveRsrpGrid === 'function' && window.getActiveRsrpGrid() && typeof window.getBackendRsrpAt === 'function') {
-      var bval = window.getBackendRsrpAt(x, y);
+    if (_state && _state.view === "rssi") {
+      var model = _state.model || "p25d";
+      var useOnlySelected = _state.highlight && _state.selectedApId;
+      var selectedAP = null;
+      if (useOnlySelected && _state.aps) {
+        for (var k = 0; k < _state.aps.length; k++) {
+          if (_state.aps[k].id === _state.selectedApId) { selectedAP = _state.aps[k]; break; }
+        }
+      }
+      var bval = null;
+      if (useOnlySelected && selectedAP && model === "accurateEngine" && typeof window.getBackendRsrpAtForAntenna === "function") {
+        bval = window.getBackendRsrpAtForAntenna(x, y, selectedAP.id);
+      }
+      if (bval == null && typeof window.getActiveRsrpGrid === 'function' && window.getActiveRsrpGrid() && typeof window.getBackendRsrpAt === 'function') {
+        bval = window.getBackendRsrpAt(x, y);
+      }
       if (bval !== null && bval !== undefined) {
         return bval;
       }

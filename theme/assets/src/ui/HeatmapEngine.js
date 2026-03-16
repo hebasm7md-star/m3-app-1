@@ -111,8 +111,13 @@
     }
 
     // Skip worker when backend RSRP grid is active — worker has no access to it
+    // Also skip when highlighting one antenna in accurate engine (per-antenna grid)
     var activeGrid = typeof window.getActiveRsrpGrid === 'function' ? window.getActiveRsrpGrid() : null;
-    if (state.heatmapWorker && !state.isDraggingAntenna && !activeGrid) {
+    var usePerAntennaGrid = false;
+    if (state.highlight && state.selectedApId && (state.model || "p25d") === "accurateEngine" && typeof window.getRsrpGridForAntenna === "function") {
+      usePerAntennaGrid = !!window.getRsrpGridForAntenna(state.selectedApId);
+    }
+    if (state.heatmapWorker && !state.isDraggingAntenna && !activeGrid && !usePerAntennaGrid) {
       state.heatmapUpdatePending = true;
 
       var resolutionMultiplier = useLowRes === true ? 1 : 1.5;
@@ -269,7 +274,15 @@
               var idx = 4 * (r * cols + c);
 
               // Use active RSRP grid when available (optimization/accurateEngine/fast)
-              var bgrid = typeof window.getActiveRsrpGrid === 'function' ? window.getActiveRsrpGrid() : null;
+              // When highlighting one antenna in accurate engine, use per-antenna grid if available
+              var bgrid = null;
+              if (state.view === "rssi") {
+                var model = state.model || "p25d";
+                if (useOnlySelected && selectedAP && model === "accurateEngine" && typeof window.getRsrpGridForAntenna === "function") {
+                  bgrid = window.getRsrpGridForAntenna(selectedAP.id);
+                }
+                if (!bgrid && typeof window.getActiveRsrpGrid === "function") bgrid = window.getActiveRsrpGrid();
+              }
               if (bgrid && state.view === "rssi") {
                 
                 var bx = x / bgrid.dx;
@@ -708,7 +721,15 @@
               var idx = 4 * (r * cols + c);
 
               // Use active RSRP grid when available
-              var bgrid = typeof window.getActiveRsrpGrid === 'function' ? window.getActiveRsrpGrid() : null;
+              // When highlighting one antenna in accurate engine, use per-antenna grid if available
+              var bgrid = null;
+              if (state.view === "rssi") {
+                var model = state.model || "p25d";
+                if (useOnlySelected && selectedAP && model === "accurateEngine" && typeof window.getRsrpGridForAntenna === "function") {
+                  bgrid = window.getRsrpGridForAntenna(selectedAP.id);
+                }
+                if (!bgrid && typeof window.getActiveRsrpGrid === "function") bgrid = window.getActiveRsrpGrid();
+              }
               if (bgrid && state.view === "rssi") {
                 
                 var bx = x / bgrid.dx;
