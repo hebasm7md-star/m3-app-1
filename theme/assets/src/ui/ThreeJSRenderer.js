@@ -313,6 +313,7 @@
         if (!(isAccurateEngine && hasAccurateGrid)) {
           state.cachedHeatmap = null;
           state.cachedHeatmapAntennaCount = 0;
+          state.cachedHeatmapModel = null;
         }
         state.heatmapUpdatePending = true;
         state.heatmapWorkerCallback = null;
@@ -433,8 +434,9 @@
         cancelAnimationFrame(state.heatmapUpdateRequestId);
         state.heatmapUpdateRequestId = null;
       }
-      state.cachedHeatmap = null; // Invalidate cache
-      state.cachedHeatmapAntennaCount = 0; // Reset validation count
+      state.cachedHeatmap = null;
+      state.cachedHeatmapAntennaCount = 0;
+      state.cachedHeatmapModel = null;
       state.heatmapUpdatePending = true; // Set pending to prevent using stale cache
       state.heatmapWorkerCallback = null; // Clear any pending worker callback
       // Use setTimeout with 0 delay to ensure it runs after current execution

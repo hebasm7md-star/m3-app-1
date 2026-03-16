@@ -48,6 +48,7 @@ var state = {
   isDraggingAntenna: false,
   cachedHeatmap: null,
   cachedHeatmapAntennaCount: 0,
+  cachedHeatmapModel: null,
   heatmapUpdatePending: false,
   heatmapUpdateRequestId: null,
   heatmapWorker: null,

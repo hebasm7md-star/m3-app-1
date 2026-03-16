@@ -26,6 +26,7 @@
     }
     // state.cachedHeatmap = null;
     state.cachedHeatmapAntennaCount = 0;
+    state.cachedHeatmapModel = null;
     state.heatmapUpdatePending = true;
     state.heatmapWorkerCallback = null;
     /* TRIAL: keep backend RSRP grid alive during optimization */
@@ -36,7 +37,8 @@
         window.mergeBackendRsrpFromCache();
       }
       state.compliancePercentFromBackend = null;
-      state.cachedHeatmap = null; // Only clear cache when NOT optimizing
+      state.cachedHeatmap = null;
+      state.cachedHeatmapModel = null;
     }
     if (state.showVisualization) {
       generateHeatmapAsync(null, true); // low-res first for fast feedback
@@ -65,7 +67,8 @@
           offCtx.putImageData(imgData, 0, 0);
 
           state.cachedHeatmap = off;
-          state.cachedHeatmapAntennaCount = state.aps.length; // Store antenna count for validation
+          state.cachedHeatmapAntennaCount = state.aps.length;
+          state.cachedHeatmapModel = state.model || "p25d";
           state.heatmapUpdatePending = false;
 
           // Call stored callback if any
@@ -423,7 +426,8 @@
             offCtx.putImageData(img, 0, 0);
 
             state.cachedHeatmap = off;
-            state.cachedHeatmapAntennaCount = state.aps.length; // Store antenna count for validation
+            state.cachedHeatmapAntennaCount = state.aps.length;
+            state.cachedHeatmapModel = state.model || "p25d";
 
             // If this was a low-res update, immediately start high-res update
             if (useLowRes === true) {
@@ -496,7 +500,8 @@
       if (state.isDraggingAntenna) {
         var model = (state.model || "p25d");
         var hasAccurateGrid = model === "accurateEngine" && state.accurateEngineRsrpGrid;
-        if (hasAccurateGrid && state.cachedHeatmap && state.cachedHeatmapAntennaCount === state.aps.length) {
+        var cacheValid = state.cachedHeatmap && state.cachedHeatmapAntennaCount === state.aps.length && state.cachedHeatmapModel === model;
+        if (hasAccurateGrid && cacheValid) {
           off = state.cachedHeatmap;
         } else if (state.aps.length > 0) {
         // OPTIMIZATION: Balanced resolution + simplified calculations during drag for speed (2.5D/ITU)
@@ -862,7 +867,8 @@
           offCtx.putImageData(img, 0, 0);
 
           state.cachedHeatmap = off;
-          state.cachedHeatmapAntennaCount = state.aps.length; // Store antenna count for validation
+          state.cachedHeatmapAntennaCount = state.aps.length;
+          state.cachedHeatmapModel = state.model || "p25d";
         } else {
           // No antennas yet, no need to generate heatmap
           off = null;
@@ -870,28 +876,30 @@
       } else if (state.heatmapUpdatePending) {
         // Update is pending - use cached heatmap ONLY if it's still valid (same antenna count)
         // This prevents disappearing while keeping the display smooth during updates
-        // If antenna count changed (e.g., deletion), cache is invalid and we show nothing
-        if (state.cachedHeatmap && state.cachedHeatmapAntennaCount === state.aps.length) {
-          // Cache is still valid - use it to prevent disappearing
+        // Cache invalid if antenna count or model changed
+        var model = state.model || "p25d";
+        var cacheValid = state.cachedHeatmap && state.cachedHeatmapAntennaCount === state.aps.length && state.cachedHeatmapModel === model;
+        if (cacheValid) {
           off = state.cachedHeatmap;
         } else {
-          // Cache is invalid or doesn't exist - clear it and show nothing
-          if (state.cachedHeatmap && state.cachedHeatmapAntennaCount !== state.aps.length) {
+          if (state.cachedHeatmap && (state.cachedHeatmapAntennaCount !== state.aps.length || state.cachedHeatmapModel !== model)) {
             state.cachedHeatmap = null;
             state.cachedHeatmapAntennaCount = 0;
+            state.cachedHeatmapModel = null;
           }
           off = null;
         }
       } else {
-        // No update pending - use cached heatmap ONLY if it's valid
-        // Validate cached heatmap matches current antenna count
-        if (state.cachedHeatmap && state.cachedHeatmapAntennaCount === state.aps.length) {
+        // No update pending - use cached heatmap ONLY if it's valid (antenna count + model match)
+        var model = state.model || "p25d";
+        var cacheValid = state.cachedHeatmap && state.cachedHeatmapAntennaCount === state.aps.length && state.cachedHeatmapModel === model;
+        if (cacheValid) {
           off = state.cachedHeatmap;
         } else {
-          // Cached heatmap is invalid - clear it immediately
-          if (state.cachedHeatmap && state.cachedHeatmapAntennaCount !== state.aps.length) {
+          if (state.cachedHeatmap && (state.cachedHeatmapAntennaCount !== state.aps.length || state.cachedHeatmapModel !== model)) {
             state.cachedHeatmap = null;
             state.cachedHeatmapAntennaCount = 0;
+            state.cachedHeatmapModel = null;
           }
           off = null;
           
