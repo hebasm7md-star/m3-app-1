@@ -8,7 +8,6 @@ from anvil import js
 import json
 import base64
 import time
-import threading
 
 
 class Combined(CombinedTemplate):
@@ -114,9 +113,6 @@ class Combined(CombinedTemplate):
     js.window.addEventListener("anvilAntennaStatusUpdate", self.send_antenna_config)
     js.window.addEventListener("anvilAntennasBatchStatusUpdate", self.add_batch_antennas)
     js.window.addEventListener("anvilUploadAntennaPattern", self.send_pattern_to_server)
-    # js.window.addEventListener("anvilAlert",                    self.show_alert)
-    # js.window.addEventListener("anvilNotification",             self.show_notification)
-    # js.window.addEventListener("anvilConfirm",                  self.show_confirm)
     js.window.addEventListener("anvilGenerateDxf", self.generate_dxf)
     js.window.addEventListener("anvilParseDxf", self.parse_dxf)
     js.window.addEventListener("anvilComplianceSettings", self.update_compliance_settings)
@@ -134,13 +130,20 @@ class Combined(CombinedTemplate):
     js.window.sendMessageToIframe(data)
 
   def set_send_live_rsrp(self, event):
-    """Called when JS sends set_send_live_rsrp (e.g. Live Sionna RSRP checkbox)."""
+    """Called when JS sends set_send_live_rsrp (e.g. Accurate Engine model selected)."""
     enabled = False
     if hasattr(event, "detail") and event.detail:
       enabled = event.detail.get("enabled", False)
+    self.enable_live_rsrp = enabled
+    if not enabled:
+      return
     try:
-      anvil.server.call("set_send_live_rsrp", enabled)
-      self.send_live_rsrp = enabled
+      with anvil.server.no_loading_indicator:
+        result = anvil.server.call("set_enable_live_rsrp_flag", enabled)
+        if result.get("status") == "success":
+          print(f"Enable live rsrp in backend")
+        else:
+          print(f"set_send_live_rsrp failed: {result.get('message', 'Unknown error')}")
     except Exception as e:
       print(f"[RSRP] set_send_live_rsrp failed: {e}")
 
@@ -244,6 +247,8 @@ class Combined(CombinedTemplate):
   def send_antenna_config(self, event):
     antenna_data = event.detail.get("antenna") if hasattr(event, "detail") else event.detail
     request_id = event.detail.get("requestId") if hasattr(event, "detail") else None
+    ant_id = antenna_data.get("id") if antenna_data else None
+    print(f"[RSRP] send_antenna_config received ant_id={ant_id} enable_live_rsrp={getattr(self, 'enable_live_rsrp', False)}")
 
     if not antenna_data:
       self._send_error("antenna_status_response", "No antenna data in status update", request_id=request_id)
@@ -275,23 +280,14 @@ class Combined(CombinedTemplate):
     print(f"[SUCCESS] Antenna {ant_id} {state}")
     self._send_to_iframe("antenna_status_response", success=True, requestId=request_id)
 
-    # If Sionna live RSRP is on, fetch once when ready (background will have filled bl_ant_data)
-    if self.send_live_rsrp and state in ("added", "updated"):
-      def _fetch_rsrp_later():
-        time.sleep(2)
-        try:
-          result = anvil.server.call("get_live_rsrp", ant_id, evict=True)
-          if result and ant_id in result:
-            self._send_to_iframe(
-              "live_rsrp",
-              ant_id=ant_id,
-              rsrp=result[ant_id]["rsrp"],
-              config=result[ant_id].get("config"),
-            )
-        except Exception as e:
-          print(f"[RSRP] get_live_rsrp failed: {e}")
-
-      threading.Thread(target=_fetch_rsrp_later, daemon=True).start()
+    # Live RSRP only for single-ant config (ant-by-ant), not for batch
+    if self.enable_live_rsrp and state in ("added", "updated"):
+      self._pending_rsrp_ant_id = ant_id
+      self._pending_rsrp_timestamp = time.time()
+      print(f"[RSRP] Pending RSRP fetch for ant_id={ant_id} (enable_live_rsrp={self.enable_live_rsrp})")
+    else:
+      if state in ("added", "updated"):
+        print(f"[RSRP] Skipped pending (enable_live_rsrp={self.enable_live_rsrp})")
 
   def add_batch_antennas(self, event):
     print("Iframe sent batch antenna configs...")
@@ -352,8 +348,44 @@ class Combined(CombinedTemplate):
 
   @handle("opt_timer", "tick")
   def opt_timer_tick(self, **event_args):
+    """Optimization polling: fetches live actions/RSRP/compliance while optimization runs."""
     if self.opt_running:
       self.poll_optimization_data(**event_args)
+
+  @handle("ant_rsrp_timer", "tick")
+  def ant_rsrp_timer_tick(self, **event_args):
+    if self.enable_live_rsrp:
+      self.poll_live_rsrp(**event_args)
+
+  def poll_live_rsrp(self, **event_args):
+    """Poll backend for live RSRP: when RSRP arrives, send to iframe and clear pending."""
+    ant_id = getattr(self, "_pending_rsrp_ant_id", None)
+    if not ant_id:
+      return
+    ts = getattr(self, "_pending_rsrp_timestamp", 0)
+    elapsed = time.time() - ts
+    if elapsed > 10:
+      print(f"[RSRP] Poll timeout for ant_id={ant_id} after {elapsed:.1f}s")
+      self._pending_rsrp_ant_id = None
+      self._pending_rsrp_timestamp = None
+      return
+    try:
+      with anvil.server.no_loading_indicator:
+        result = anvil.server.call("get_live_rsrp", ant_id, evict=True)
+      if result and ant_id in result:
+        rsrp_len = len(result[ant_id].get("rsrp", []))
+        print(f"[RSRP] Got RSRP for ant_id={ant_id} ({rsrp_len} values), sending to iframe")
+        self._pending_rsrp_ant_id = None
+        self._pending_rsrp_timestamp = None
+        self._send_to_iframe(
+          "live_rsrp",
+          ant_id=ant_id,
+          rsrp=result[ant_id]["rsrp"],
+          config=result[ant_id].get("config"),
+        )
+        # else: backend not ready yet, will retry next tick
+    except Exception as e:
+      print(f"[RSRP] get_live_rsrp failed: {e}")
 
   def start_optimization(self, event):
     if self.opt_running:
@@ -491,7 +523,6 @@ class Combined(CombinedTemplate):
 
 
     # ========== Compliance ==========
-
   def update_compliance_settings(self, event):
     request_id = event.detail.get("requestId") if hasattr(event, "detail") else None
     data = event.detail
@@ -529,7 +560,9 @@ class Combined(CombinedTemplate):
 
   def reset_session(self, event=None):
     self.opt_running = False
-    self.send_live_rsrp = False
+    self.enable_live_rsrp = False
+    self._pending_rsrp_ant_id = None
+    self._pending_rsrp_timestamp = None
     self._reset_indexes()
     print("Resetting backend session...")
     while True:
@@ -540,8 +573,3 @@ class Combined(CombinedTemplate):
       except:
         print(".", end="")
         time.sleep(1)
-
-  @handle("ant_rsrp_timer", "tick")
-  def ant_rsrp_timer_tick(self, **event_args):
-    """This method is called Every [interval] seconds. Does not trigger if [interval] is 0."""
-    pass
