@@ -549,16 +549,32 @@ var BackendSync = (function () {
     }
   }
 
-  function clearLiveRsrpCache() {
-    state.backendRsrpPerAntenna = {};
-    state.accurateEngineRsrpGrid = null;
-  }
+  // function clearLiveRsrpCache() {
+  //   state.backendRsrpPerAntenna = {};
+  //   state.accurateEngineRsrpGrid = null;
+  // }
 
   /** Call when user selects 2.5D or IUT (local model). Clears backend caches and re-renders heatmap with local calc. */
   function resetHeatmapForLocalModel() {
     state.backendRsrpPerAntenna = {};
     state.accurateEngineRsrpGrid = null;
-    state.optimizationRsrpGrid = null;
+    // state.optimizationRsrpGrid = null;
+    state.cachedHeatmap = null;
+    if (typeof window.generateHeatmapAsync === "function") {
+      window.generateHeatmapAsync(null, true);
+    }
+  }
+
+  /** Call when antenna is deleted in accurate engine mode. Removes from cache and recalc merge heatmap. */
+  function evictAntennaAndRefreshHeatmap(antId) {
+    state.backendRsrpPerAntenna = state.backendRsrpPerAntenna || {};
+    delete state.backendRsrpPerAntenna[antId];
+    if (Object.keys(state.backendRsrpPerAntenna).length > 0) {
+      mergeLiveRsrpToBestServerGrid();
+    } else {
+      state.accurateEngineRsrpGrid = null;
+      state.optimizationRsrpGrid = null;
+    }
     state.cachedHeatmap = null;
     if (typeof window.generateHeatmapAsync === "function") {
       window.generateHeatmapAsync(null, true);
@@ -566,8 +582,9 @@ var BackendSync = (function () {
   }
 
   window.mergeBackendRsrpFromCache = mergeLiveRsrpToBestServerGrid;
-  window.clearBackendRsrpCache = clearLiveRsrpCache;
+  // window.clearBackendRsrpCache = clearLiveRsrpCache;
   window.resetHeatmapForLocalModel = resetHeatmapForLocalModel;
+  window.evictAntennaAndRefreshHeatmap = evictAntennaAndRefreshHeatmap;
 
   // Set up message listener for Anvil events
   window.addEventListener("message", function (event) {
@@ -781,6 +798,7 @@ var BackendSync = (function () {
     applyInputChangeImmediately: applyInputChangeImmediately,
     sendAllAntennaConfigs: sendAllAntennaConfigs,
     updateAntennasFromConfigs: updateAntennasFromConfigs,
-    resetHeatmapForLocalModel: resetHeatmapForLocalModel
+    resetHeatmapForLocalModel: resetHeatmapForLocalModel,
+    evictAntennaAndRefreshHeatmap: evictAntennaAndRefreshHeatmap
   };
 })();
