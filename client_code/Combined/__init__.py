@@ -8,6 +8,7 @@ from anvil import js
 import json
 import base64
 import time
+import logging
 
 
 class Combined(CombinedTemplate):
@@ -309,7 +310,6 @@ class Combined(CombinedTemplate):
       print(f"get_live_rsrp failed for ant_id={ant_id}: {e}")
 
   def add_batch_antennas(self, event):
-    # print("Iframe sent batch antenna configs...")
     request_id = event.detail.get("requestId") if hasattr(event, "detail") else None
     antennas = event.detail.get("antennas") if hasattr(event, "detail") else []
 
@@ -332,15 +332,24 @@ class Combined(CombinedTemplate):
       self._send_error("antennas_batch_status_response", "No valid antennas or pattern for batch update", request_id=request_id)
       return
 
+    now = time.time()
+    last = getattr(self, "_last_batch_time", 0)
+    if now - last < 2.0 and getattr(self, "_last_batch_count", 0) == len(ants_ids):
+      logging.warning("[BATCH] Skipping duplicate batch (%s antennas) within 2s", len(ants_ids))
+      self._send_to_iframe("antennas_batch_status_response", success=True, requestId=request_id)
+      return
+
+    self._last_batch_time = now
+    self._last_batch_count = len(ants_ids)
+
     with anvil.server.no_loading_indicator:
       anvil.server.call("process_batch_antennas", pattern, ants_ids, ants_configs)
 
     self._send_to_iframe("antennas_batch_status_response", success=True, requestId=request_id)
-    print(f"[INFO] Added {len(ants_ids)} antenna(s) from batch update")
+    logging.warning("[BATCH] Added %s antenna(s) from batch update", len(ants_ids))
 
     if self.enable_live_rsrp and ants_ids:
       self.get_accurate_baseline()
-      print(f"[SET PARAM] Sent accurate baseline for batch ({len(ants_ids)} antennas)")
 
     # ========== Optimization ==========
   def get_accurate_baseline(self, event=None):
@@ -435,7 +444,7 @@ class Combined(CombinedTemplate):
 
     if status == "finished":
       if new_actions or new_bsrv_rsrp or new_compliance:
-        print(f"     - Final batch: {len(new_actions)} action(s), {len(new_bsrv_rsrp)} rsrp, {len(new_compliance)} compliance")
+        print(f"     final batch: {len(new_actions)} action(s), {len(new_bsrv_rsrp)} rsrp, {len(new_compliance)} compliance")
         print("[BACK] last compliance: ", new_compliance[-1])
       self._send_to_iframe("optimization_update", new_action_configs=new_actions, new_bsrv_rsrp=new_bsrv_rsrp, new_compliance=new_compliance, status=status, message=message, rsrp_send_timestamp_sec=result.get("rsrp_send_timestamp_sec"))
       _update_indexes()
@@ -452,7 +461,7 @@ class Combined(CombinedTemplate):
       return
 
     if new_actions or new_bsrv_rsrp or new_compliance:
-      print(f"     - Sending {len(new_actions)} action(s), {len(new_bsrv_rsrp)} rsrp, {len(new_compliance)} compliance to HTML display")
+      print(f"[DEBUG] Sending {len(new_actions)} action(s), {len(new_bsrv_rsrp)} rsrp, {len(new_compliance)} compliance to HTML display")
 
     self._send_to_iframe("optimization_update", new_action_configs=new_actions, new_bsrv_rsrp=new_bsrv_rsrp, new_compliance=new_compliance, status=status, message=message, rsrp_send_timestamp_sec=result.get("rsrp_send_timestamp_sec"))
     _update_indexes()
@@ -499,8 +508,11 @@ class Combined(CombinedTemplate):
 
     dxf_media = anvil.BlobMedia("application/dxf", decoded, filename)
 
+    target_w = data.get("targetWidthM")
+    target_h = data.get("targetHeightM")
+
     with anvil.server.no_loading_indicator:
-      project_data = anvil.server.call("parse_dxf_file", dxf_media)
+      project_data = anvil.server.call("parse_dxf_file", dxf_media, target_w, target_h)
 
     if not project_data:
       self._send_error("dxf_parsed_response", "Backend failed to parse DXF", request_id=request_id)
@@ -514,7 +526,6 @@ class Combined(CombinedTemplate):
     request_id = event.detail.get("requestId") if hasattr(event, "detail") else None
     data = event.detail if hasattr(event, "detail") else {}
     opt_params = data.get("opt_params") or {}
-    print(f"[SET PARAM] set_optimization_params received: {opt_params}")
     try:
       with anvil.server.no_loading_indicator:
         result = anvil.server.call("set_optimization_params", opt_params)
