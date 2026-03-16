@@ -290,10 +290,10 @@ class Combined(CombinedTemplate):
         self._pending_rsrp = True  # Signal poll_live_rsrp to run
         self._pending_rsrp_ant_id = ant_id
         self._pending_rsrp_timestamp = time.time()
-        print(f"[RSRP] Pending RSRP fetch for ant_id={ant_id} (enable_live_rsrp={self.enable_live_rsrp})")
+        print(f"Pending RSRP fetch for ant_id={ant_id} (enable_live_rsrp={self.enable_live_rsrp})")
     else:
       if state in ("added", "updated"):
-        print(f"[RSRP] Skipped pending (enable_live_rsrp={self.enable_live_rsrp})")
+        print(f"Skipped pending (enable_live_rsrp={self.enable_live_rsrp})")
 
   def add_batch_antennas(self, event):
     print("Iframe sent batch antenna configs...")
