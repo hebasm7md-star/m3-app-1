@@ -134,11 +134,16 @@ class Combined(CombinedTemplate):
     enabled = False
     if hasattr(event, "detail") and event.detail:
       enabled = event.detail.get("enabled", False)
-    print(f"[RSRP] set_send_live_rsrp called: enabled={enabled}")
+    self.enable_live_rsrp = enabled
+    if not enabled:
+      return
     try:
-      anvil.server.call("set_enable_live_rsrp_flag", enabled)
-      self.enable_live_rsrp = enabled
-      print(f"[RSRP] Backend flag set OK, enable_live_rsrp={self.enable_live_rsrp}")
+      with anvil.server.no_loading_indicator:
+        result = anvil.server.call("set_enable_live_rsrp_flag", enabled)
+        if result.get("status") == "success":
+          print(f"Enable live rsrp in backend")
+        else:
+          print(f"set_send_live_rsrp failed: {result.get('message', 'Unknown error')}")
     except Exception as e:
       print(f"[RSRP] set_send_live_rsrp failed: {e}")
 
