@@ -8,6 +8,7 @@ from anvil import js
 import json
 import base64
 import time
+import threading
 
 
 class Combined(CombinedTemplate):
@@ -85,6 +86,8 @@ class Combined(CombinedTemplate):
                             window.dispatchEvent(new CustomEvent('anvilRestartSession', {{detail: event.data}}));
                         if (event.data && event.data.type === 'request_app_version')
                             window.dispatchEvent(new CustomEvent('anvilGetAppVersion', {{detail: event.data}}));
+                        if (event.data && event.data.type === 'set_send_live_rsrp')
+                            window.dispatchEvent(new CustomEvent('anvilSetSendLiveRsrp', {{detail: event.data}}));
                     }});
 
                     function triggerMessageCheck() {{
@@ -119,6 +122,7 @@ class Combined(CombinedTemplate):
     js.window.addEventListener("anvilComplianceSettings", self.update_compliance_settings)
     js.window.addEventListener("anvilRestartSession", self.reset_session)
     js.window.addEventListener("anvilGetAppVersion", self.send_app_version)
+    js.window.addEventListener("anvilSetSendLiveRsrp", self.set_send_live_rsrp)
 
     # ========== Core Iframe Communication ==========
   def _send_to_iframe(self, msg_type, success=None, **kwargs):
@@ -128,6 +132,17 @@ class Combined(CombinedTemplate):
       data["success"] = success
     data.update(kwargs)
     js.window.sendMessageToIframe(data)
+
+  def set_send_live_rsrp(self, event):
+    """Called when JS sends set_send_live_rsrp (e.g. Live Sionna RSRP checkbox)."""
+    enabled = False
+    if hasattr(event, "detail") and event.detail:
+      enabled = event.detail.get("enabled", False)
+    try:
+      anvil.server.call("set_send_live_rsrp", enabled)
+      self.send_live_rsrp = enabled
+    except Exception as e:
+      print(f"[RSRP] set_send_live_rsrp failed: {e}")
 
   def _send_error(self, msg_type, technical_error, request_id=None):
     """Log raw error to console, send friendly message to iframe."""
@@ -259,6 +274,24 @@ class Combined(CombinedTemplate):
 
     print(f"[SUCCESS] Antenna {ant_id} {state}")
     self._send_to_iframe("antenna_status_response", success=True, requestId=request_id)
+
+    # If Sionna live RSRP is on, fetch once when ready (background will have filled bl_ant_data)
+    if self.send_live_rsrp and state in ("added", "updated"):
+      def _fetch_rsrp_later():
+        time.sleep(2)
+        try:
+          result = anvil.server.call("get_live_rsrp", ant_id, evict=True)
+          if result and ant_id in result:
+            self._send_to_iframe(
+              "live_rsrp",
+              ant_id=ant_id,
+              rsrp=result[ant_id]["rsrp"],
+              config=result[ant_id].get("config"),
+            )
+        except Exception as e:
+          print(f"[RSRP] get_live_rsrp failed: {e}")
+
+      threading.Thread(target=_fetch_rsrp_later, daemon=True).start()
 
   def add_batch_antennas(self, event):
     print("Iframe sent batch antenna configs...")
@@ -496,6 +529,7 @@ class Combined(CombinedTemplate):
 
   def reset_session(self, event=None):
     self.opt_running = False
+    self.send_live_rsrp = False
     self._reset_indexes()
     print("Resetting backend session...")
     while True:
