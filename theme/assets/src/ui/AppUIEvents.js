@@ -186,11 +186,15 @@
     }, {danger: true, confirmLabel: 'Delete', icon: '🗑️'});
   });
 
-  var xdEnableSahi = document.getElementById("xdEnableSahi");
-  if (xdEnableSahi) xdEnableSahi.addEventListener("change", function () {
+  var xdInferenceMode = document.getElementById("xdInferenceMode");
+  if (xdInferenceMode) xdInferenceMode.addEventListener("change", function () {
+    var mode = this.value;
     var xdSahiOptions = document.getElementById("xdSahiOptions");
-    if (xdSahiOptions) xdSahiOptions.style.display = this.checked ? "block" : "none";
+    var xdSplitOptions = document.getElementById("xdSplitOptions");
+    if (xdSahiOptions) xdSahiOptions.style.display = mode === "sahi" ? "block" : "none";
+    if (xdSplitOptions) xdSplitOptions.style.display = mode === "split" ? "block" : "none";
   });
+  if (xdInferenceMode) xdInferenceMode.dispatchEvent(new Event("change"));
 
   var xdAdvToggle = document.getElementById("xdAdvancedToggle");
   if (xdAdvToggle) xdAdvToggle.addEventListener("change", function () {
@@ -222,13 +226,13 @@
 
     var params = {
       confidence: +document.getElementById("xdConfidence").value,
+      inferenceMode: document.getElementById("xdInferenceMode").value,
+      sliceSize: +document.getElementById("xdSliceSize").value,
+      overlapRatio: +document.getElementById("xdOverlapRatio").value,
+      nmsIou: +document.getElementById("xdNmsIou").value,
       splitParts: +document.getElementById("xdSplitParts").value,
-      wallRemovalThreshold: +document.getElementById("xdWallRemovalThreshold").value,
-      gapFillSize: +document.getElementById("xdGapFillSize").value,
-      enableSahi: document.getElementById("xdEnableSahi").checked,
-      sahiSliceSize: +document.getElementById("xdSahiSliceSize").value,
-      sahiOverlapRatio: +document.getElementById("xdSahiOverlapRatio").value,
-      sahiNmsThreshold: +document.getElementById("xdSahiNmsThreshold").value
+      wallHeight: +document.getElementById("xdWallHeight").value,
+      doorHeight: +document.getElementById("xdDoorHeight").value
     };
 
     window.parent.postMessage({

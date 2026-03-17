@@ -472,41 +472,44 @@
                   <label>Confidence</label>
                   <input type="number" id="xdConfidence" value="0.25" step="0.05" min="0" max="1" />
                 </div>
-                <div class="form-group">
-                  <label>Split Parts</label>
-                  <input type="number" id="xdSplitParts" value="1" step="1" min="1" max="100" />
-                </div>
 
                 <div class="form-group xd-form-group-spacing-12">
-                  <label>Wall Removal Threshold</label>
-                  <input type="number" id="xdWallRemovalThreshold" value="0.3" step="0.05" min="0" max="1" />
+                  <label>Inference Mode</label>
+                  <select id="xdInferenceMode">
+                    <option value="sahi">SAHI (overlapping slices)</option>
+                    <option value="split">Split (vertical strips)</option>
+                  </select>
                 </div>
 
-                <div class="form-group xd-form-group-spacing-12">
-                  <label>Gap Fill Size</label>
-                  <input type="number" id="xdGapFillSize" value="5" step="1" min="0" max="100" />
-                </div>
-
-                <div class="form-group xd-form-group-spacing-12">
-                  <label class="checkbox-label">
-                    <input type="checkbox" id="xdEnableSahi" />
-                    <span>Enable SAHI</span>
-                  </label>
-                </div>
-
-                <div class="xd-sahi-options">
+                <div id="xdSahiOptions" class="xd-sahi-options">
                   <div class="form-group">
                     <label>Slice Size</label>
-                    <input type="number" id="xdSahiSliceSize" value="512" step="64" />
+                    <input type="number" id="xdSliceSize" value="512" step="64" min="128" />
                   </div>
                   <div class="form-group xd-sahi-spacing">
                     <label>Overlap Ratio</label>
-                    <input type="number" id="xdSahiOverlapRatio" value="0.2" step="0.05" />
+                    <input type="number" id="xdOverlapRatio" value="0.2" step="0.05" min="0" max="1" />
                   </div>
                   <div class="form-group xd-sahi-spacing">
-                    <label>NMS Threshold</label>
-                    <input type="number" id="xdSahiNmsThreshold" value="0.4" step="0.05" />
+                    <label>NMS IoU</label>
+                    <input type="number" id="xdNmsIou" value="0.4" step="0.05" min="0" max="1" />
                   </div>
+                </div>
+
+                <div id="xdSplitOptions" class="xd-sahi-options" style="display:none;">
+                  <div class="form-group">
+                    <label>Split Parts</label>
+                    <input type="number" id="xdSplitParts" value="2" step="1" min="1" max="20" />
+                  </div>
+                </div>
+
+                <div class="form-group xd-form-group-spacing-12">
+                  <label>Wall Height (DXF)</label>
+                  <input type="number" id="xdWallHeight" value="100" step="5" min="10" />
+                </div>
+                <div class="form-group xd-form-group-spacing-12">
+                  <label>Door Height (DXF)</label>
+                  <input type="number" id="xdDoorHeight" value="80" step="5" min="10" />
                 </div>
               </div>
 
