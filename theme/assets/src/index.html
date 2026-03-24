@@ -477,7 +477,8 @@
                   <label>Inference Mode</label>
                   <select id="xdInferenceMode">
                     <option value="sahi">SAHI (overlapping slices)</option>
-                    <option value="split">Split (vertical strips)</option>
+                    <option value="split">Split (grid tiles)</option>
+                    <option value="split+sahi">Split + SAHI (grid then slices)</option>
                   </select>
                 </div>
 
@@ -498,8 +499,12 @@
 
                 <div id="xdSplitOptions" class="xd-sahi-options" style="display:none;">
                   <div class="form-group">
-                    <label>Split Parts</label>
-                    <input type="number" id="xdSplitParts" value="2" step="1" min="1" max="20" />
+                    <label>Split Columns</label>
+                    <input type="number" id="xdSplitCols" value="2" step="1" min="1" max="10" />
+                  </div>
+                  <div class="form-group xd-sahi-spacing">
+                    <label>Split Rows</label>
+                    <input type="number" id="xdSplitRows" value="1" step="1" min="1" max="10" />
                   </div>
                 </div>
 

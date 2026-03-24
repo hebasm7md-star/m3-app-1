@@ -191,8 +191,10 @@
     var mode = this.value;
     var xdSahiOptions = document.getElementById("xdSahiOptions");
     var xdSplitOptions = document.getElementById("xdSplitOptions");
-    if (xdSahiOptions) xdSahiOptions.style.display = mode === "sahi" ? "block" : "none";
-    if (xdSplitOptions) xdSplitOptions.style.display = mode === "split" ? "block" : "none";
+    var showSahi = mode === "sahi" || mode === "split+sahi";
+    var showSplit = mode === "split" || mode === "split+sahi";
+    if (xdSahiOptions) xdSahiOptions.style.display = showSahi ? "block" : "none";
+    if (xdSplitOptions) xdSplitOptions.style.display = showSplit ? "block" : "none";
   });
   if (xdInferenceMode) xdInferenceMode.dispatchEvent(new Event("change"));
 
@@ -230,7 +232,8 @@
       sliceSize: +document.getElementById("xdSliceSize").value,
       overlapRatio: +document.getElementById("xdOverlapRatio").value,
       nmsIou: +document.getElementById("xdNmsIou").value,
-      splitParts: +document.getElementById("xdSplitParts").value,
+      splitCols: +document.getElementById("xdSplitCols").value,
+      splitRows: +document.getElementById("xdSplitRows").value,
       wallHeight: +document.getElementById("xdWallHeight").value,
       doorHeight: +document.getElementById("xdDoorHeight").value
     };
