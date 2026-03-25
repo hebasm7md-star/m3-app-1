@@ -525,7 +525,7 @@
                       Split Rows
                       <span class="param-hint">ℹ️<span class="param-hint-text">Number of horizontal divisions. Increase for tall images to keep tile sizes manageable for the detector.</span></span>
                     </label>
-                    <input type="number" id="xdSplitRows" value="1" step="1" min="1" max="10" />
+                    <input type="number" id="xdSplitRows" value="2" step="1" min="1" max="10" />
                   </div>
                 </div>
 
@@ -545,9 +545,26 @@
                 </div>
               </div>
 
-              <button id="generateDxfBtn" class="action-btn generate-dxf-btn">
-                Generate Floorplan
-              </button>
+              <div class="xd-button-row">
+                <button id="previewDxfBtn" class="action-btn preview-dxf-btn">
+                  Preview Detection
+                </button>
+                <button id="generateDxfBtn" class="action-btn generate-dxf-btn" disabled>
+                  Generate DXF
+                </button>
+              </div>
+
+              <div id="xdPreviewContainer" class="xd-preview-container" style="display:none;">
+                <div class="xd-preview-header">
+                  <span class="xd-preview-title">Results</span>
+                  <div class="xd-preview-legend">
+                    <span class="xd-legend-item xd-legend-wall"></span> Walls
+                    <span class="xd-legend-item xd-legend-door"></span> Doors
+                    <span class="xd-legend-item xd-legend-window"></span> Windows
+                  </div>
+                </div>
+                <div id="xdPreviewStats" class="xd-preview-stats"></div>
+              </div>
             </div>
           </div>
         </div>

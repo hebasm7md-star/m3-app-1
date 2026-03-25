@@ -76,6 +76,8 @@ class Combined(CombinedTemplate):
                             window.dispatchEvent(new CustomEvent('anvilAlert', {{detail: event.data}}));
                         if (event.data && event.data.type === 'anvil_confirm')
                             window.dispatchEvent(new CustomEvent('anvilConfirm', {{detail: event.data}}));
+                        if (event.data && event.data.type === 'preview_dxf')
+                            window.dispatchEvent(new CustomEvent('anvilPreviewDxf', {{detail: event.data}}));
                         if (event.data && event.data.type === 'generate_dxf')
                             window.dispatchEvent(new CustomEvent('anvilGenerateDxf', {{detail: event.data}}));
                         if (event.data && event.data.type === 'parse_dxf_request')
@@ -116,6 +118,7 @@ class Combined(CombinedTemplate):
     js.window.addEventListener("anvilAntennaStatusUpdate", self.send_antenna_config)
     js.window.addEventListener("anvilAntennasBatchStatusUpdate", self.add_batch_antennas)
     js.window.addEventListener("anvilUploadAntennaPattern", self.send_pattern_to_server)
+    js.window.addEventListener("anvilPreviewDxf", self.preview_dxf)
     js.window.addEventListener("anvilGenerateDxf", self.generate_dxf)
     js.window.addEventListener("anvilParseDxf", self.parse_dxf)
     js.window.addEventListener("anvilComplianceSettings", self.update_compliance_settings)
@@ -467,27 +470,61 @@ class Combined(CombinedTemplate):
     _update_indexes()
 
     # ========== DXF ==========
-  def generate_dxf(self, event):
-    print("Iframe sent DXF generation request...")
+  def preview_dxf(self, event):
+    print("Iframe sent DXF preview request...")
     request_id = event.detail.get("requestId") if hasattr(event, "detail") else None
     data = event.detail
     image_base64 = data.get("image")
     params = data.get("params")
 
     if not image_base64:
+      self._send_error("dxf_preview_error", "No image provided for preview", request_id=request_id)
+      return
+
+    try:
+      with anvil.server.no_loading_indicator:
+        result = anvil.server.call("preview_floorplan", image_base64, params)
+
+      if not result:
+        self._send_error("dxf_preview_error", "Backend returned no preview data", request_id=request_id)
+        return
+
+      self._send_to_iframe("dxf_preview_result",
+                           requestId=request_id,
+                           predictions=result["predictions"],
+                           counts=result["counts"],
+                           vizImage=result["viz_image"],
+                           imageHeight=result["image_height"]
+                          )
+    except Exception as e:
+      self._send_error("dxf_preview_error", str(e), request_id=request_id)
+
+  def generate_dxf(self, event):
+    print("Iframe sent DXF generation request...")
+    request_id = event.detail.get("requestId") if hasattr(event, "detail") else None
+    data = event.detail
+    image_base64 = data.get("image")
+    params = data.get("params")
+    predictions = data.get("predictions")
+    image_height = data.get("imageHeight")
+
+    if not image_base64 and not predictions:
       self._send_error("dxf_error", "No image provided for DXF generation", request_id=request_id)
       return
 
-    with anvil.server.no_loading_indicator:
-      dxf_media = anvil.server.call("generate_dxf_from_floorplan", image_base64, params)
+    try:
+      with anvil.server.no_loading_indicator:
+        dxf_media = anvil.server.call("generate_dxf_from_floorplan", image_base64, params, predictions, image_height)
 
-    if not dxf_media:
-      self._send_error("dxf_error", "Backend failed to generate DXF", request_id=request_id)
-      return
+      if not dxf_media:
+        self._send_error("dxf_error", "Backend failed to generate DXF", request_id=request_id)
+        return
 
-    self._send_to_iframe("dxf_generated", requestId=request_id, fileName=dxf_media.name or "floorplan.dxf")
-    from anvil.media import download
-    download(dxf_media)
+      self._send_to_iframe("dxf_generated", requestId=request_id, fileName=dxf_media.name or "floorplan.dxf")
+      from anvil.media import download
+      download(dxf_media)
+    except Exception as e:
+      self._send_error("dxf_error", str(e), request_id=request_id)
 
   def parse_dxf(self, event):
     print("Iframe sent DXF parsing request...")
