@@ -71,10 +71,10 @@
       img.onload = function () {
         window.state.backgroundImage = img;
         window.state.floorPlanImage = img; // Store as floor plan image
-
+        
         var imgAspectRatio = img.width / img.height;
         var canvasAspectRatio = window.state.w / window.state.h;
-
+        
         if (imgAspectRatio > canvasAspectRatio) {
           window.state.backgroundImageDisplayWidth = window.state.w;
           window.state.backgroundImageDisplayHeight = window.state.w / imgAspectRatio;
@@ -83,7 +83,7 @@
           window.state.backgroundImageDisplayHeight = window.state.h;
         }
         window.state.backgroundImageAspectRatio = imgAspectRatio;
-
+        
         updateDeleteImageButton();
         window.draw();
       };
@@ -135,10 +135,10 @@
         window.state.xdImageBase64 = event.target.result;
 
         window.state.backgroundImage = img;
-
+        
         var imgAspectRatio = img.width / img.height;
         var canvasAspectRatio = window.state.w / window.state.h;
-
+        
         if (imgAspectRatio > canvasAspectRatio) {
           window.state.backgroundImageDisplayWidth = window.state.w;
           window.state.backgroundImageDisplayHeight = window.state.w / imgAspectRatio;
@@ -147,7 +147,7 @@
           window.state.backgroundImageDisplayHeight = window.state.h;
         }
         window.state.backgroundImageAspectRatio = imgAspectRatio;
-
+        
         updateDeleteImageButton(); 
         updateDeleteXdImageButton();
         window.draw();
@@ -250,14 +250,25 @@
     var loadingText = document.getElementById("loadingText");
     var subtext = document.getElementById("loadingSubtext");
     if (overlay) overlay.style.display = "flex";
-    if (loadingText) loadingText.textContent = "Detecting Floorplan...";
-    if (subtext) subtext.textContent = "Our AI is detecting walls, doors, and windows. You can review the results before generating the DXF.";
+    if (loadingText) loadingText.textContent = "Processing Floorplan...";
+    if (subtext) subtext.textContent = "Our AI is detecting walls, doors, and windows to generate your DXF.";
+
+    var params = {
+      confidence: +document.getElementById("xdConfidence").value,
+      inferenceMode: document.getElementById("xdInferenceMode").value,
+      sliceSize: +document.getElementById("xdSliceSize").value,
+      overlapRatio: +document.getElementById("xdOverlapRatio").value,
+      nmsIou: +document.getElementById("xdNmsIou").value,
+      splitParts: +document.getElementById("xdSplitParts").value,
+      wallHeight: +document.getElementById("xdWallHeight").value,
+      doorHeight: +document.getElementById("xdDoorHeight").value
+    };
 
     window.parent.postMessage({
-      type: "preview_dxf",
+      type: "generate_dxf",
       image: window.state.xdImageBase64,
-      params: getXdParams(),
-      requestId: "preview_" + Date.now()
+      params: params,
+      requestId: "dxf_" + Date.now()
     }, "*");
 
     var previewListener = function (event) {
@@ -364,19 +375,24 @@
         if (overlay) overlay.style.display = "none";
         btn.disabled = false;
         btn.style.opacity = "1";
+        btn.style.cursor = "pointer";
         btn.textContent = originalText;
+
         window.removeEventListener("message", dxfListener);
 
         if (event.data.fileData) {
           triggerFileDownload(event.data.fileData, event.data.fileName || "floorplan.dxf");
         }
+
         NotificationSystem.success("DXF generated successfully!");
       }
       else if (event.data.type === "dxf_error") {
         if (overlay) overlay.style.display = "none";
         btn.disabled = false;
         btn.style.opacity = "1";
+        btn.style.cursor = "pointer";
         btn.textContent = originalText;
+
         window.removeEventListener("message", dxfListener);
         NotificationSystem.error("Failed to generate DXF.\n" + (event.data.error || "Unknown error"));
       }
@@ -507,7 +523,7 @@
       window.state.addingWall = false;
       window.state.addingAP = false;
       window.state.addingFloorPlane = false;
-
+      
       var addAPBtn = document.getElementById("addAP");
       if (addAPBtn) {
         var label = addAPBtn.querySelector("#addAPBtnLabel");
@@ -516,10 +532,10 @@
 
       var addBtn = document.getElementById("addWall");
       if (addBtn) addBtn.textContent = "Add Wall";
-
+      
       var addFloorPlaneBtn = document.getElementById("addFloorPlane");
       if (addFloorPlaneBtn) addFloorPlaneBtn.textContent = "Add Floor Plane";
-
+      
       document.getElementById("calibrateBtn").textContent = "Cancel Calibration";
       document.getElementById("calibrateBtn").classList.add("toggled");
       document.getElementById("calibrationControls").style.display = "block";
@@ -836,18 +852,37 @@
     }, '*');
   });
 
-  // Optimization Advanced Params
-  var optAdvToggle = document.getElementById("optAdvancedToggle");
-  if (optAdvToggle) optAdvToggle.addEventListener("change", function () {
-    var container = document.getElementById("optAdvancedContainer");
+  // Optimization Weight Params Toggle
+  var optWeightToggle = document.getElementById("optWeightParamsToggle");
+  if (optWeightToggle) optWeightToggle.addEventListener("change", function () {
+    var container = document.getElementById("optWeightParamsContainer");
     if (container) container.style.display = this.checked ? "block" : "none";
   });
 
-  function sendOptimizationParams() {
-    var opt_params = {
+  // Optimization Algorithm Params Toggle
+  var optOptimizationToggle = document.getElementById("optOptimizationParamsToggle");
+  if (optOptimizationToggle) optOptimizationToggle.addEventListener("change", function () {
+    var container = document.getElementById("optOptimizationParamsContainer");
+    if (container) container.style.display = this.checked ? "block" : "none";
+  });
+
+  function sendWeightParams() {
+    var weight_params = {
       financial_cost_weight: window.state.optFinancialCostWeight,
       rsrp_weight: window.state.optRsrpWeight,
       homogeneity_weight: window.state.optHomogeneityWeight,
+      distribution_weight: window.state.optDistributionWeight,
+      cci_weight: window.state.optCciWeight
+    };
+    window.parent.postMessage({
+      type: "set_weight_params",
+      weight_params: weight_params,
+      requestId: "opt-" + Date.now()
+    }, "*");
+  }
+
+  function sendOptimizationParams() {
+    var opt_params = {
       num_trials: window.state.optNumTrials,
       max_changes: window.state.optMaxChanges,
       temp: window.state.optTemp,
@@ -861,7 +896,7 @@
   }
   window.sendOptimizationParams = sendOptimizationParams;
 
-  var optParamIds = ["optFinancialCostWeight", "optRsrpWeight", "optHomogeneityWeight", "optNumTrials", "optMaxChanges", "optTemp", "optMinimumTemp"];
+  var optParamIds = ["optFinancialCostWeight", "optRsrpWeight", "optHomogeneityWeight", "optDistributionWeight", "optCciWeight", "optNumTrials", "optMaxChanges", "optTemp", "optMinimumTemp"];
   optParamIds.forEach(function (id) {
     var el = document.getElementById(id);
     if (el) el.addEventListener("input", function () {
@@ -871,17 +906,44 @@
     });
   });
 
-  var optParamsSaveBtn = document.getElementById("optParamsSaveBtn");
-  if (optParamsSaveBtn) optParamsSaveBtn.addEventListener("click", function () {
+  function collectAndSendWeightParams() {
     window.state.optFinancialCostWeight = parseFloat(document.getElementById("optFinancialCostWeight").value) || window.state.optFinancialCostWeight;
     window.state.optRsrpWeight = parseFloat(document.getElementById("optRsrpWeight").value) || window.state.optRsrpWeight;
     window.state.optHomogeneityWeight = parseFloat(document.getElementById("optHomogeneityWeight").value) || window.state.optHomogeneityWeight;
+    window.state.optDistributionWeight = parseFloat(document.getElementById("optDistributionWeight").value) || window.state.optDistributionWeight;
+    window.state.optCciWeight = parseFloat(document.getElementById("optCciWeight").value) || window.state.optCciWeight;
+    sendWeightParams();
+
+    // Collapse container
+    var toggle = document.getElementById("optWeightParamsToggle");
+    if (toggle) toggle.checked = false;
+    var container = document.getElementById("optWeightParamsContainer");
+    if (container) container.style.display = "none";
+    
+    if (typeof NotificationSystem !== "undefined") NotificationSystem.success("Weight parameters saved successfully");
+  }
+
+  function collectAndSendOptParams() {
     window.state.optNumTrials = parseInt(document.getElementById("optNumTrials").value, 10) || window.state.optNumTrials;
     window.state.optMaxChanges = parseInt(document.getElementById("optMaxChanges").value, 10) || window.state.optMaxChanges;
     window.state.optTemp = parseFloat(document.getElementById("optTemp").value) || window.state.optTemp;
     window.state.optMinimumTemp = parseFloat(document.getElementById("optMinimumTemp").value) || window.state.optMinimumTemp;
     sendOptimizationParams();
-  });
+
+    // Collapse container
+    var toggle = document.getElementById("optOptimizationParamsToggle");
+    if (toggle) toggle.checked = false;
+    var container = document.getElementById("optOptimizationParamsContainer");
+    if (container) container.style.display = "none";
+    
+    if (typeof NotificationSystem !== "undefined") NotificationSystem.success("Optimization parameters saved successfully");
+  }
+
+  var optWeightSaveBtn = document.getElementById("optWeightParamsSaveBtn");
+  if (optWeightSaveBtn) optWeightSaveBtn.addEventListener("click", collectAndSendWeightParams);
+
+  var optOptimizationSaveBtn = document.getElementById("optOptimizationParamsSaveBtn");
+  if (optOptimizationSaveBtn) optOptimizationSaveBtn.addEventListener("click", collectAndSendOptParams);
 
   var sc = document.getElementById("showContours");
   if (sc) sc.addEventListener("change", function () {

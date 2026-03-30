@@ -492,7 +492,7 @@
     for (i = 0; i < state.aps.length; i++) {
       var ap = state.aps[i];
       var antennaHeight = ap.z || 2.5;
-      var coverageHeight = 1.5; // Height of coverage pattern plane
+      var coverageHeight = antennaHeight; // Hit test at actual physical height
 
       // Calculate antenna screen position
       var apScreenX, apScreenY;
@@ -979,6 +979,82 @@
       var dx = p.x - state.wallDrag.p.x;
       var dy = p.y - state.wallDrag.p.y;
 
+      var isDoorOrWindow =
+        wall.elementType === "door" ||
+        wall.elementType === "doubleDoor" ||
+        wall.elementType === "window";
+
+      if (isDoorOrWindow) {
+        var minWallDist = Infinity;
+        var closestSeg = null;
+        var projP = null;
+
+        for (var i = 0; i < state.walls.length; i++) {
+          var w = state.walls[i];
+          if (
+            w.elementType === "door" ||
+            w.elementType === "doubleDoor" ||
+            w.elementType === "window" ||
+            w.id === wall.id
+          ) continue;
+
+          var wallSegments = [];
+          if (w.points && w.points.length >= 2) {
+            for (var j = 0; j < w.points.length - 1; j++) {
+              wallSegments.push({ p1: w.points[j], p2: w.points[j + 1] });
+            }
+          } else if (w.p1 && w.p2) {
+            wallSegments.push({ p1: w.p1, p2: w.p2 });
+          } else {
+            continue;
+          }
+
+          for (var j = 0; j < wallSegments.length; j++) {
+            var seg = wallSegments[j];
+            var dx_seg = seg.p2.x - seg.p1.x;
+            var dy_seg = seg.p2.y - seg.p1.y;
+            var l2 = dx_seg * dx_seg + dy_seg * dy_seg;
+            if (l2 === 0) continue;
+
+            var t = ((p.x - seg.p1.x) * dx_seg + (p.y - seg.p1.y) * dy_seg) / l2;
+            t = Math.max(0, Math.min(1, t));
+
+            var proj = {
+              x: seg.p1.x + t * dx_seg,
+              y: seg.p1.y + t * dy_seg,
+            };
+            var dist = hypot(p.x - proj.x, p.y - proj.y);
+
+            if (dist < minWallDist && dist < 20) {
+              minWallDist = dist;
+              closestSeg = seg;
+              projP = proj;
+            }
+          }
+        }
+
+        if (projP && closestSeg) {
+          var halfWidth = state.wallDrag.originalLength / 2;
+          var segDx = closestSeg.p2.x - closestSeg.p1.x;
+          var segDy = closestSeg.p2.y - closestSeg.p1.y;
+          var segLen = hypot(segDx, segDy);
+
+          if (segLen > 0) {
+            var dirX = segDx / segLen;
+            var dirY = segDy / segLen;
+
+            wall.p1.x = projP.x - dirX * halfWidth;
+            wall.p1.y = projP.y - dirY * halfWidth;
+            wall.p2.x = projP.x + dirX * halfWidth;
+            wall.p2.y = projP.y + dirY * halfWidth;
+          }
+        }
+        
+        state.wallDrag.p = p;
+        draw();
+        return;
+      }
+
       // Calculate new positions (both points move together to maintain orientation)
       var newP1 = { x: wall.p1.x + dx, y: wall.p1.y + dy };
       var newP2 = { x: wall.p2.x + dx, y: wall.p2.y + dy };
@@ -1239,8 +1315,8 @@
         var targetScreenY = e.clientY - rect.top;
 
         // Use coverage height for dragging to match visual representation
-        // The antenna dot is displayed at coverage height to align with coverage pattern
-        var coverageHeight = 1.5;
+        // The antenna dot is displayed at its height to align with coverage pattern
+        var coverageHeight = (state.drag && state.drag.z !== undefined ? state.drag.z : 2.5);
 
         // Start with the initial world position
         var worldX = state.dragStartWorld.x;

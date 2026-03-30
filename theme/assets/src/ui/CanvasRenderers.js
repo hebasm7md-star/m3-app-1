@@ -2069,16 +2069,13 @@ var CanvasRenderers = (function () {
           ctx.globalAlpha = 1.0;
         }
         var antennaHeight = ap2.z || 2.5; // Default antenna height 2.5m if not specified
-        var coverageHeight = 1.5; // Height of coverage pattern plane
+        var coverageHeight = antennaHeight; // Render AP icon at its actual physical height
 
         // Calculate position based on view mode
         var px, py;
         if (transition > 0) {
           // 3D view - project antenna to align with coverage pattern center
-          // The coverage pattern is rendered at 1.5m, so we project the antenna's
-          // (x, y) position at coverage height to align with the pattern center
           var ap2d = { x: mx(ap2.x), y: my(ap2.y) };
-          // Project at coverage height to align with coverage pattern
           var ap3d = projectToCanvas3D(ap2.x, ap2.y, coverageHeight);
           px = ap2d.x + (ap3d.x - ap2d.x) * transition;
           py = ap2d.y + (ap3d.y - ap2d.y) * transition;
@@ -2097,7 +2094,7 @@ var CanvasRenderers = (function () {
         if (isDragged && state.drag) {
           // Recalculate position using drag position
           if (transition > 0) {
-            var dragCoverageHeight = 1.5; // Coverage height for alignment
+            var dragCoverageHeight = coverageHeight; // Use same height as this antenna
             var drag2d = { x: mx(state.drag.x), y: my(state.drag.y) };
             var drag3d = projectToCanvas3D(
               state.drag.x,

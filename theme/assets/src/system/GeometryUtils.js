@@ -128,12 +128,7 @@
       if (startPoint) {
         for (var j = 0; j < wallSegments.length; j++) {
           var seg = wallSegments[j];
-          var intersection = lineIntersection(
-            startPoint,
-            p,
-            seg.p1,
-            seg.p2
-          );
+          var intersection = lineIntersection(startPoint, p, seg.p1, seg.p2);
           if (intersection) {
             var dist = hypot(p.x - intersection.x, p.y - intersection.y);
             if (dist < minDist) {
@@ -174,13 +169,10 @@
                 segs1[s1].p1,
                 segs1[s1].p2,
                 segs2[s2].p1,
-                segs2[s2].p2
+                segs2[s2].p2,
               );
               if (intersection) {
-                var dist = hypot(
-                  p.x - intersection.x,
-                  p.y - intersection.y
-                );
+                var dist = hypot(p.x - intersection.x, p.y - intersection.y);
                 if (dist < minDist) {
                   minDist = dist;
                   closestPoint = intersection;
@@ -209,9 +201,7 @@
     proj = Math.max(0, Math.min(len, proj));
     var projX = lx1 + dirX * proj;
     var projY = ly1 + dirY * proj;
-    return Math.sqrt(
-      (px - projX) * (px - projX) + (py - projY) * (py - projY)
-    );
+    return Math.sqrt((px - projX) * (px - projX) + (py - projY) * (py - projY));
   }
 
   function lineIntersectsWallWithThickness(
@@ -219,7 +209,7 @@
     lineEnd,
     wallStart,
     wallEnd,
-    thickness
+    thickness,
   ) {
     if (inter(lineStart, lineEnd, wallStart, wallEnd)) {
       return true;
@@ -240,7 +230,7 @@
       wallStart.y,
       wallDirX,
       wallDirY,
-      wallLen
+      wallLen,
     );
     var dist2 = pointToLineDistance(
       lineEnd.x,
@@ -249,7 +239,7 @@
       wallStart.y,
       wallDirX,
       wallDirY,
-      wallLen
+      wallLen,
     );
 
     var minDist = Math.min(dist1, dist2);
@@ -296,10 +286,7 @@
   }
 
   function lineIntersectsFloorPlane(ax, ay, bx, by, floorPlane) {
-    if (
-      pointInRect(ax, ay, floorPlane) ||
-      pointInRect(bx, by, floorPlane)
-    ) {
+    if (pointInRect(ax, ay, floorPlane) || pointInRect(bx, by, floorPlane)) {
       return true;
     }
 
@@ -311,9 +298,7 @@
     ];
 
     for (var i = 0; i < edges.length; i++) {
-      if (
-        inter({ x: ax, y: ay }, { x: bx, y: by }, edges[i].p1, edges[i].p2)
-      ) {
+      if (inter({ x: ax, y: ay }, { x: bx, y: by }, edges[i].p1, edges[i].p2)) {
         return true;
       }
     }
@@ -323,16 +308,8 @@
 
   function findWallAt(p) {
     var threshold = 0.5;
-    for (var i = 0; i < state.walls.length; i++) {
-      var wall = state.walls[i];
-      if (
-        wall.elementType === "door" ||
-        wall.elementType === "doubleDoor" ||
-        wall.elementType === "window"
-      ) {
-        continue;
-      }
 
+    function checkWall(wall) {
       var wallSegments = [];
       if (wall.points && wall.points.length >= 2) {
         for (var j = 0; j < wall.points.length - 1; j++) {
@@ -341,38 +318,60 @@
       } else if (wall.p1 && wall.p2) {
         wallSegments.push({ p1: wall.p1, p2: wall.p2 });
       } else {
-        continue;
+        return false;
       }
 
       for (var j = 0; j < wallSegments.length; j++) {
         var seg = wallSegments[j];
-        var p1 = seg.p1;
-        var p2 = seg.p2;
-
-        var dx = p2.x - p1.x;
-        var dy = p2.y - p1.y;
+        var dx = seg.p2.x - seg.p1.x;
+        var dy = seg.p2.y - seg.p1.y;
 
         if (dx === 0 && dy === 0) continue;
 
-        var t =
-          ((p.x - p1.x) * dx + (p.y - p1.y) * dy) / (dx * dx + dy * dy);
+        var t = ((p.x - seg.p1.x) * dx + (p.y - seg.p1.y) * dy) / (dx * dx + dy * dy);
 
         var closestPoint;
         if (t < 0) {
-          closestPoint = p1;
+          closestPoint = seg.p1;
         } else if (t > 1) {
-          closestPoint = p2;
+          closestPoint = seg.p2;
         } else {
-          closestPoint = { x: p1.x + t * dx, y: p1.y + t * dy };
+          closestPoint = { x: seg.p1.x + t * dx, y: seg.p1.y + t * dy };
         }
 
         var dist = hypot(p.x - closestPoint.x, p.y - closestPoint.y);
 
         if (dist < threshold) {
-          return wall;
+          return true;
         }
       }
+      return false;
     }
+
+    // Pass 1: doors and windows
+    for (var i = 0; i < state.walls.length; i++) {
+      var wall = state.walls[i];
+      if (
+        wall.elementType === "door" ||
+        wall.elementType === "doubleDoor" ||
+        wall.elementType === "window"
+      ) {
+        if (checkWall(wall)) return wall;
+      }
+    }
+
+    // Pass 2: regular walls
+    for (var i = 0; i < state.walls.length; i++) {
+      var wall = state.walls[i];
+      if (
+        wall.elementType !== "door" &&
+        wall.elementType !== "doubleDoor" &&
+        wall.elementType !== "window"
+      ) {
+        if (checkWall(wall)) return wall;
+      }
+    }
+
     return null;
   }
 
@@ -388,13 +387,6 @@
 
     for (var i = 0; i < state.walls.length; i++) {
       var wall = state.walls[i];
-      if (
-        wall.elementType === "door" ||
-        wall.elementType === "doubleDoor" ||
-        wall.elementType === "window"
-      ) {
-        continue;
-      }
 
       var p1 = wall.p1;
       var p2 = wall.p2;
@@ -437,13 +429,6 @@
 
     for (var i = 0; i < state.walls.length; i++) {
       var wall = state.walls[i];
-      if (
-        wall.elementType === "door" ||
-        wall.elementType === "doubleDoor" ||
-        wall.elementType === "window"
-      ) {
-        continue;
-      }
 
       var wallSegments = [];
       if (wall.points && wall.points.length >= 2) {
@@ -481,7 +466,7 @@
 
         var dotProduct = wallDirX * lineDirX + wallDirY * lineDirY;
         var angleDiff = Math.abs(
-          Math.acos(Math.max(-1, Math.min(1, dotProduct)))
+          Math.acos(Math.max(-1, Math.min(1, dotProduct))),
         );
         var isParallel =
           angleDiff < angleThreshold ||
@@ -489,13 +474,7 @@
 
         if (!isParallel) continue;
 
-        var projectPoint = function (
-          point,
-          wP1,
-          wP2,
-          wDirX,
-          wDirY
-        ) {
+        var projectPoint = function (point, wP1, wP2, wDirX, wDirY) {
           var toPointX = point.x - wP1.x;
           var toPointY = point.y - wP1.y;
           var t = toPointX * wDirX + toPointY * wDirY;
@@ -504,20 +483,8 @@
           return { x: projX, y: projY, t: t };
         };
 
-        var proj1 = projectPoint(
-          lineP1,
-          wallP1,
-          wallP2,
-          wallDirX,
-          wallDirY
-        );
-        var proj2 = projectPoint(
-          lineP2,
-          wallP1,
-          wallP2,
-          wallDirX,
-          wallDirY
-        );
+        var proj1 = projectPoint(lineP1, wallP1, wallP2, wallDirX, wallDirY);
+        var proj2 = projectPoint(lineP2, wallP1, wallP2, wallDirX, wallDirY);
 
         var withinBounds1 =
           proj1.t >= -threshold && proj1.t <= wallLength + threshold;

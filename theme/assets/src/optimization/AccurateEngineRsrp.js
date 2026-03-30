@@ -8,22 +8,24 @@
 
   // ─── Legend ──────────────────────────────────────────────────────────────────
 
-  function updateLegendFromRsrpRange(dataMin, dataMax) {
-    if (dataMin === Infinity || dataMax === -Infinity) return;
-    if (state.viewMinMax && state.viewMinMax["rssi"]) {
-      state.viewMinMax["rssi"].min = Math.floor(dataMin);
-      state.viewMinMax["rssi"].max = Math.ceil(dataMax);
-    }
-    if (state.view !== "rssi") return;
-    state.minVal = Math.floor(dataMin);
-    state.maxVal = Math.ceil(dataMax);
-    var el;
-    el = document.getElementById("legendMin"); if (el) el.textContent = state.minVal;
-    el = document.getElementById("legendMax"); if (el) el.textContent = state.maxVal;
-    el = document.getElementById("minVal");    if (el) el.value = state.minVal;
-    el = document.getElementById("maxVal");    if (el) el.value = state.maxVal;
-    if (typeof window.updateLegendBar === "function") window.updateLegendBar();
-  }
+  // function updateLegendFromRsrpRange(dataMin, dataMax) {
+    // dynamic updates disabled to keep the scale consistent regardless of grid data.
+    
+    // if (dataMin === Infinity || dataMax === -Infinity) return;
+    // if (state.viewMinMax && state.viewMinMax["rssi"]) {
+    //   state.viewMinMax["rssi"].min = Math.floor(dataMin);
+    //   state.viewMinMax["rssi"].max = Math.ceil(dataMax);
+    // }
+    // if (state.view !== "rssi") return;
+    // state.minVal = Math.floor(dataMin);
+    // state.maxVal = Math.ceil(dataMax);
+    // var el;
+    // el = document.getElementById("legendMin"); if (el) el.textContent = state.minVal;
+    // el = document.getElementById("legendMax"); if (el) el.textContent = state.maxVal;
+    // el = document.getElementById("minVal");    if (el) el.value = state.minVal;
+    // el = document.getElementById("maxVal");    if (el) el.value = state.maxVal;
+    // if (typeof window.updateLegendBar === "function") window.updateLegendBar();
+  // }
 
   // ─── Grid dimensions ─────────────────────────────────────────────────────────
 
@@ -73,7 +75,7 @@
     var result = buildRsrpGridFromValues(rsrpValues);
     if (!result) return;
     state[gridKey] = result.grid;
-    updateLegendFromRsrpRange(result.dataMin, result.dataMax);
+    // updateLegendFromRsrpRange(result.dataMin, result.dataMax);
   }
 
   // Named wrappers keep call sites readable and decouple them from state key names.
@@ -195,7 +197,7 @@
       dx: state.w / dims.cols, dy: state.h / dims.rows
     };
 
-    updateLegendFromRsrpRange(dataMin, dataMax);
+    // updateLegendFromRsrpRange(dataMin, dataMax);
   }
 
   // ─── Cache / heatmap helpers ──────────────────────────────────────────────────

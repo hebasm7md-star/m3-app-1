@@ -44,47 +44,59 @@
           if (state && state.addingAP) {
             return;
           }
-          // Toggle selection: if already selected, deselect it
-          if (a.id === state.selectedApId) {
-            // Deselect antenna
-            state.selectedApId = null;
-            state.highlight = false;
-            // Cancel any pending heatmap updates and invalidate cache
-            if (state.heatmapUpdateRequestId !== null) {
-              cancelAnimationFrame(state.heatmapUpdateRequestId);
-              state.heatmapUpdateRequestId = null;
-            }
-            state.heatmapUpdatePending = false;
-            state.cachedHeatmap = null; // Invalidate cache to regenerate heatmap
-            state.selectedApForDetail = null;
-            document.getElementById("apDetailSidebar").classList.remove("visible");
+          
+          if (state.expandedItemId === a.id) {
+            state.expandedItemId = null;
           } else {
-            // Select antenna and show only its pattern
-            state.selectedApId = a.id;
-            state.highlight = true; // Enable highlight to show only this antenna's pattern
-            // Cancel any pending heatmap updates and invalidate cache
-            if (state.heatmapUpdateRequestId !== null) {
-              cancelAnimationFrame(state.heatmapUpdateRequestId);
-              state.heatmapUpdateRequestId = null;
-            }
-            state.heatmapUpdatePending = false;
-            state.cachedHeatmap = null; // Invalidate cache to regenerate heatmap
-
-            state.selectedApForDetail = a;
-
-            if (!state.addingAP) {
-              document.getElementById("apDetailSidebar").classList.add("visible");
-              renderApDetails();
-              state.justOpenedApSidebar = true;
-              setTimeout(function () {
-                state.justOpenedApSidebar = false;
-              }, 100);
-            }
+            state.expandedItemId = a.id;
           }
 
-          renderAPs(); // Update button states
-          draw();
+          renderAPs(); 
+          if (typeof renderWalls === 'function') renderWalls();
         };
+
+        var isExpanded = (state.expandedItemId === a.id);
+
+        var expandHeader = document.createElement("div");
+        expandHeader.className = "list-item-collapsed-header";
+        expandHeader.style.display = "flex";
+        expandHeader.style.alignItems = "center";
+        expandHeader.style.justifyContent = "space-between";
+        expandHeader.style.cursor = "pointer";
+        expandHeader.style.padding = "4px 0";
+
+        var iconAndName = document.createElement("div");
+        iconAndName.style.display = "flex";
+        iconAndName.style.alignItems = "center";
+        iconAndName.style.gap = "8px";
+
+        var icon = document.createElement("span");
+        icon.className = "material-icons";
+        icon.textContent = "settings_input_antenna";
+        icon.style.fontSize = "20px";
+        icon.style.color = "inherit";
+
+        var nameSpan = document.createElement("span");
+        nameSpan.textContent = a.id;
+        nameSpan.style.fontWeight = "bold";
+
+        iconAndName.appendChild(icon);
+        iconAndName.appendChild(nameSpan);
+
+        var arrow = document.createElement("span");
+        arrow.className = "material-icons";
+        arrow.textContent = isExpanded ? "expand_more" : "chevron_right";
+        
+        expandHeader.appendChild(iconAndName);
+        expandHeader.appendChild(arrow);
+
+        var collapsibleContent = document.createElement("div");
+        collapsibleContent.className = "collapsible-content";
+        collapsibleContent.style.display = isExpanded ? "block" : "none";
+        collapsibleContent.style.marginTop = "8px";
+        
+        item.appendChild(expandHeader);
+        item.appendChild(collapsibleContent);
 
         // Create title (antenna name) - displayed first
         var title = document.createElement("div");
@@ -632,8 +644,8 @@
         }
 
         // Add title first, then buttons, then content
-        item.appendChild(title);
-        item.appendChild(actions);
+        collapsibleContent.appendChild(title);
+        collapsibleContent.appendChild(actions);
 
         var content = document.createElement("div");
         content.className = "list-item-content";
@@ -675,6 +687,7 @@
           //if (state.isOptimizing) return;
           a.id = inputs[0].value;
           title.textContent = a.id;
+          if (nameSpan) nameSpan.textContent = a.id;
           // Don't clear cache here - applyInputChange will handle it
           // Schedule debounced update (3 seconds or Enter key)
           scheduleInputChange(a, false, true, false);
@@ -874,7 +887,7 @@
 
         };
 
-        item.appendChild(content);
+        collapsibleContent.appendChild(content);
         list.appendChild(item);
       })(i);
     }
@@ -1159,22 +1172,80 @@
             }
             state.selectedWallId = w.id; // For backward compatibility
           }
+
+          if (state.expandedItemId === w.id) {
+            state.expandedItemId = null;
+          } else {
+            state.expandedItemId = w.id;
+          }
+
           renderWalls();
+          if (typeof renderAPs === 'function') renderAPs();
           scrollToSelectedWall();
           draw();
         };
+
+        var typeLabel = "Wall";
+        if (w.elementType && w.elementType !== "wall") {
+          // Convert camelCase to Title Case (e.g. doubleDoor -> Double Door)
+          typeLabel = w.elementType.replace(/([A-Z])/g, ' $1').replace(/^./, function (str) { return str.toUpperCase(); });
+        }
+        var defaultName = typeLabel + " " + (idx + 1);
+        var isExpanded = (state.expandedItemId === w.id);
+
+        var expandHeader = document.createElement("div");
+        expandHeader.className = "list-item-collapsed-header";
+        expandHeader.style.display = "flex";
+        expandHeader.style.alignItems = "center";
+        expandHeader.style.justifyContent = "space-between";
+        expandHeader.style.cursor = "pointer";
+        expandHeader.style.padding = "4px 0";
+
+        var iconAndName = document.createElement("div");
+        iconAndName.style.display = "flex";
+        iconAndName.style.alignItems = "center";
+        iconAndName.style.gap = "8px";
+
+        var icon = document.createElement("span");
+        icon.className = "material-icons";
+        if (w.elementType === "door" || w.elementType === "doubleDoor") {
+            icon.textContent = "meeting_room";
+        } else if (w.elementType === "window") {
+            icon.textContent = "window";
+        } else {
+            icon.textContent = "view_stream";
+        }
+        icon.style.fontSize = "20px";
+        icon.style.color = "inherit";
+
+        var nameSpan = document.createElement("span");
+        nameSpan.textContent = w.name || defaultName;
+        nameSpan.style.fontWeight = "bold";
+
+        iconAndName.appendChild(icon);
+        iconAndName.appendChild(nameSpan);
+
+        var arrow = document.createElement("span");
+        arrow.className = "material-icons";
+        arrow.textContent = isExpanded ? "expand_more" : "chevron_right";
+        
+        expandHeader.appendChild(iconAndName);
+        expandHeader.appendChild(arrow);
+
+        var collapsibleContent = document.createElement("div");
+        collapsibleContent.className = "collapsible-content";
+        collapsibleContent.style.display = isExpanded ? "block" : "none";
+        collapsibleContent.style.marginTop = "8px";
+
+        item.appendChild(expandHeader);
+        item.appendChild(collapsibleContent);
 
         var header = document.createElement("div");
         header.className = "list-item-header";
         var title = document.createElement("input");
         title.type = "text";
         title.className = "list-item-title";
-        var typeLabel = "Wall";
-        if (w.elementType && w.elementType !== "wall") {
-          // Convert camelCase to Title Case (e.g. doubleDoor -> Double Door)
-          typeLabel = w.elementType.replace(/([A-Z])/g, ' $1').replace(/^./, function (str) { return str.toUpperCase(); });
-        }
-        title.value = w.name || typeLabel + " " + (idx + 1);
+        title.value = w.name || defaultName;
         // Prevent click from closing sidebar
         title.onclick = function (e) {
           if (e) e.stopPropagation();
@@ -1184,6 +1255,7 @@
         };
         title.oninput = function () {
           w.name = title.value;
+          nameSpan.textContent = title.value || defaultName;
         };
 
         var delBtn = document.createElement("button");
@@ -1203,44 +1275,49 @@
         content.className = "list-item-content";
         var typeName = w.name || (w.elementType && w.elementType !== "wall" ? typeLabel : (w.type ? wallTypes[w.type].name : "Wall"));
 
-        // Build content HTML based on element type
-        var contentHTML =
+        var isDoorOrWindow =
+          w.elementType === "door" ||
+          w.elementType === "doubleDoor" ||
+          w.elementType === "window";
+
+        // Initialize defaults
+        if (isDoorOrWindow && !w.width) {
+          w.width = w.elementType === "window" ? 1.5 : w.elementType === "doubleDoor" ? 2.4 : 1.2;
+        }
+        if (!isDoorOrWindow && !w.height) {
+          w.height = 2.5;
+        }
+
+        // Type label (original style)
+        var typeHTML =
           '<label style="font-size:12px;">Type: <span style="color:' +
           (w.color || "#60a5fa") +
           '; font-weight:bold;">' +
           typeName +
-          "</span></label>";
+          '</span></label>';
 
-        // For doors and windows, add width input
-        if (
-          w.elementType === "door" ||
-          w.elementType === "doubleDoor" ||
-          w.elementType === "window"
-        ) {
-          // Initialize width if not set
-          if (!w.width) {
-            w.width =
-              w.elementType === "window"
-                ? 1.5
-                : w.elementType === "doubleDoor"
-                  ? 2.4
-                  : 1.2;
-          }
-          var currentWidth = w.width;
-          contentHTML +=
-            '<label style="font-size:12px; margin-top:4px; display:block;">Width (m):</label>' +
-            '<input type="number" id="widthInput_' +
-            idx +
-            '" step="0.1" min="0.1" value="' +
-            currentWidth +
-            '" title="Width in meters" style="margin-bottom:8px;">';
-        }
+        // Fields grid – col 1 is width or height, col 2 is loss
+        var col1HTML = isDoorOrWindow
+          ? '<div style="display:flex;flex-direction:column;gap:3px;">' +
+            '<label style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.5px;">Width (m)</label>' +
+            '<input type="number" id="widthInput_' + idx + '" step="0.1" min="0.1" value="' + (w.width || 1.2) + '" title="Width in meters" style="width:100%;box-sizing:border-box;">' +
+            '</div>'
+          : '<div style="display:flex;flex-direction:column;gap:3px;">' +
+            '<label style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.5px;">Height (m)</label>' +
+            '<input type="number" id="heightInput_' + idx + '" step="0.1" min="0.1" value="' + (w.height || 2.5) + '" title="Wall height in meters" style="width:100%;box-sizing:border-box;">' +
+            '</div>';
 
-        contentHTML +=
-          '<label style="font-size:12px; margin-top:4px;">Loss (dB):</label>' +
-          '<input type="number" step="1" value="' +
-          w.loss +
-          '" title="Attenuation (dB)">';
+        var col2HTML =
+          '<div style="display:flex;flex-direction:column;gap:3px;">' +
+          '<label style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.5px;">Loss (dB)</label>' +
+          '<input type="number" id="lossInput_' + idx + '" step="1" value="' + w.loss + '" title="Attenuation (dB)" style="width:100%;box-sizing:border-box;">' +
+          '</div>';
+
+        var contentHTML =
+          typeHTML +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+          col1HTML + col2HTML +
+          '</div>';
 
         content.innerHTML = contentHTML;
 
@@ -1293,14 +1370,30 @@
           }
         }
 
-        var inp = content.getElementsByTagName("input");
-        // Find the loss input (last input if width exists, or first input if not)
-        var lossInput =
-          w.elementType === "door" ||
-            w.elementType === "doubleDoor" ||
-            w.elementType === "window"
-            ? inp[inp.length - 1]
-            : inp[0];
+        // Handle height input for regular walls
+        if (!w.elementType || w.elementType === "wall") {
+          var heightInput = content.querySelector("#heightInput_" + idx);
+          if (heightInput) {
+            heightInput.onclick = function (e) { if (e) e.stopPropagation(); };
+            heightInput.onmousedown = function (e) { if (e) e.stopPropagation(); };
+            heightInput.oninput = function () {
+              var newH = +heightInput.value;
+              if (newH > 0) {
+                w.height = newH;
+                draw();
+              }
+            };
+            heightInput.onblur = function () {
+              var newH = +heightInput.value;
+              if (!newH || newH <= 0) {
+                w.height = 2.5;
+                heightInput.value = "2.5";
+              }
+            };
+          }
+        }
+
+        var lossInput = content.querySelector("#lossInput_" + idx);
         if (lossInput) {
           // Prevent click from closing sidebar
           lossInput.onclick = function (e) {
@@ -1347,8 +1440,8 @@
           };
         }
 
-        item.appendChild(header);
-        item.appendChild(content);
+        collapsibleContent.appendChild(header);
+        collapsibleContent.appendChild(content);
         list.appendChild(item);
       })(i);
     }
@@ -1459,16 +1552,21 @@
       (ap.tilt || 0) + '"' + dis + '>' +
       "</div></div>" +
       '<h3 class="ap-detail-section-title" style="margin-top: 20px;">Position</h3>' +
-      '<div style="display: flex; gap: 10px; align-items: flex-end; margin-bottom: 12px;">' +
-      '<div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 100px;">' +
-      '<label class="ap-detail-label">X Position (m)</label>' +
+      '<div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px;">' +
+      '<div style="display: flex; flex-direction: column; gap: 4px;">' +
+      '<label class="ap-detail-label">X Pos (m)</label>' +
       '<input type="number" id="apDetailX" class="ap-detail-input" step="0.1" value="' +
-      (ap.x || 0).toFixed(2) + '"' + dis + '>' +
+      (ap.x || 0).toFixed(2) + '"' + dis + ' style="width:100%; box-sizing:border-box;">' +
       "</div>" +
-      '<div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 100px;">' +
-      '<label class="ap-detail-label">Y Position (m)</label>' +
+      '<div style="display: flex; flex-direction: column; gap: 4px;">' +
+      '<label class="ap-detail-label">Y Pos (m)</label>' +
       '<input type="number" id="apDetailY" class="ap-detail-input" step="0.1" value="' +
-      (ap.y || 0).toFixed(2) + '"' + dis + '>' +
+      (ap.y || 0).toFixed(2) + '"' + dis + ' style="width:100%; box-sizing:border-box;">' +
+      "</div>" +
+      '<div style="display: flex; flex-direction: column; gap: 4px;">' +
+      '<label class="ap-detail-label">Height (m)</label>' +
+      '<input type="number" id="apDetailHeight" class="ap-detail-input" step="0.1" min="0" value="' +
+      (ap.z !== undefined ? ap.z : 2.5) + '"' + dis + ' style="width:100%; box-sizing:border-box;">' +
       "</div></div>" +
       '<h3 class="ap-detail-section-title" style="margin-top: 20px;">Antenna Pattern</h3>' +
       (function () {
@@ -1688,6 +1786,26 @@
       bindApDetail("apDetailTilt", "tilt", true);
       bindApDetail("apDetailX", "x", true);
       bindApDetail("apDetailY", "y", true);
+
+      // Height needs immediate visual update in 3D
+      var heightInput = document.getElementById("apDetailHeight");
+      if (heightInput) {
+        heightInput.addEventListener("input", function () {
+          var val = parseFloat(heightInput.value);
+          if (!isNaN(val)) {
+            ap.z = val;
+            if (window.draw) window.draw();
+            scheduleInputChange(ap, true, true, true);
+          }
+        });
+        heightInput.addEventListener("keydown", function (e) {
+          if (e.key === "Enter" || e.keyCode === 13) {
+            e.preventDefault();
+            applyInputChangeImmediately(ap.id);
+            heightInput.blur();
+          }
+        });
+      }
 
       // Bind toggle button
       var toggleBtn = document.getElementById("apDetailToggle");

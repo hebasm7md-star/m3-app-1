@@ -767,9 +767,12 @@
         var renderP1 = segmentPairs[segIdx].p1;
         var renderP2 = segmentPairs[segIdx].p2;
 
+        // Use per-wall height, fallback to global or default
+        var thisWallHeight = w.height || wallHeight;
+
         var geometry = new THREE.BoxGeometry(
           Math.hypot(renderP2.x - renderP1.x, renderP2.y - renderP1.y),
-          wallHeight,
+          thisWallHeight,
           wallThickness
         );
 
@@ -780,7 +783,7 @@
         var centerWorldY = (renderP1.y + renderP2.y) / 2;
         var centerLegacyX = centerWorldX - state.w / 2;
         var centerLegacyZ = (centerWorldY - state.h / 2); // Flip on y-axis
-        var centerLegacyY = wallHeight / 2;
+        var centerLegacyY = thisWallHeight / 2;
 
         var angle = Math.atan2(
           renderP2.y - renderP1.y,
