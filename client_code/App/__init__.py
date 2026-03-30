@@ -1,7 +1,6 @@
 # anvil_client.py
 # Handles all communication between the client and the backend (Anvil Integration)
-
-from ._anvil_designer import CombinedTemplate
+from ._anvil_designer import AppTemplate
 from anvil import *
 import anvil.server
 from anvil import js
@@ -11,8 +10,7 @@ import time
 import logging
 
 
-class Combined(CombinedTemplate):
-
+class App(AppTemplate):
   def __init__(self, **properties):
     self.init_components(**properties)
     self.reset_session()
@@ -92,6 +90,8 @@ class Combined(CombinedTemplate):
                             window.dispatchEvent(new CustomEvent('anvilSetSendLiveRsrp', {{detail: event.data}}));
                         if (event.data && event.data.type === 'set_optimization_params')
                             window.dispatchEvent(new CustomEvent('anvilSetOptimizationParams', {{detail: event.data}}));
+                        if (event.data && event.data.type === 'set_weight_params')
+                            window.dispatchEvent(new CustomEvent('anvilSetWeightParams', {{detail: event.data}}));
                     }});
 
                     function triggerMessageCheck() {{
@@ -126,6 +126,7 @@ class Combined(CombinedTemplate):
     js.window.addEventListener("anvilGetAppVersion", self.send_app_version)
     js.window.addEventListener("anvilSetSendLiveRsrp", self.set_send_live_rsrp)
     js.window.addEventListener("anvilSetOptimizationParams", self.set_optimization_params)
+    js.window.addEventListener("anvilSetWeightParams", self.set_weight_params)
 
     # ========== Core Iframe Communication ==========
   def _send_to_iframe(self, msg_type, success=None, **kwargs):
@@ -338,7 +339,7 @@ class Combined(CombinedTemplate):
     now = time.time()
     last = getattr(self, "_last_batch_time", 0)
     if now - last < 2.0 and getattr(self, "_last_batch_count", 0) == len(ants_ids):
-      logging.warning("[BATCH] Skipping duplicate batch (%s antennas) within 2s", len(ants_ids))
+      print("[BATCH] Skipping duplicate batch (%s antennas) within 2s", len(ants_ids))
       self._send_to_iframe("antennas_batch_status_response", success=True, requestId=request_id)
       return
 
@@ -349,7 +350,7 @@ class Combined(CombinedTemplate):
       anvil.server.call("process_batch_antennas", pattern, ants_ids, ants_configs)
 
     self._send_to_iframe("antennas_batch_status_response", success=True, requestId=request_id)
-    logging.warning("[BATCH] Added %s antenna(s) from batch update", len(ants_ids))
+    print("[BATCH] Added %s antenna(s) from batch update", len(ants_ids))
 
     if self.enable_live_rsrp and ants_ids:
       self.get_accurate_baseline()
@@ -373,7 +374,16 @@ class Combined(CombinedTemplate):
     if status == "success":
       with anvil.server.no_loading_indicator:
         live_baseline = anvil.server.call("get_live_rsrp", 0, 0)
+
+      ant_configs_dict = result.get("ant_configs", [])
+      # ant_configs_list = list(ant_configs_dict.values()) if ant_configs_dict else []
+
+      if ant_configs_list:
+        # Sending the configs through optimization_update directly applies them to the UI
+        self._send_to_iframe("optimization_update", new_action_configs=ant_configs_list, new_bsrv_rsrp=[], new_compliance=[], status="finished", message="Restoring baseline antennas")
+
       self._send_to_iframe("baseline_rsrp",
+                           new_action_configs=ant_configs_list,
                            new_bsrv_rsrp=live_baseline.get("new_bsrv_rsrp", []),
                            new_compliance=live_baseline.get("new_compliance", []),
                            message="Accurate baseline calculated successfully")
@@ -470,8 +480,8 @@ class Combined(CombinedTemplate):
     _update_indexes()
 
     # ========== DXF ==========
-  def preview_dxf(self, event):
-    print("Iframe sent DXF preview request...")
+    def preview_dxf(self, event):
+      print("Iframe sent DXF preview request...")
     request_id = event.detail.get("requestId") if hasattr(event, "detail") else None
     data = event.detail
     image_base64 = data.get("image")
@@ -563,15 +573,31 @@ class Combined(CombinedTemplate):
     request_id = event.detail.get("requestId") if hasattr(event, "detail") else None
     data = event.detail if hasattr(event, "detail") else {}
     opt_params = data.get("opt_params") or {}
+    print("Iframe sent optimization params: %s", opt_params)
     try:
       with anvil.server.no_loading_indicator:
-        result = anvil.server.call("set_optimization_params", opt_params)
+        result = anvil.server.call("sync_optimization_params", opt_params)
       if result.get("status") != "success":
         self._send_error("optimization_params_response", result.get("message", "Unknown error"), request_id=request_id)
         return
       self._send_to_iframe("optimization_params_response", success=True, requestId=request_id, opt_params=result.get("opt_params"))
     except Exception as e:
       self._send_error("optimization_params_response", str(e), request_id=request_id)
+
+  def set_weight_params(self, event):
+    request_id = event.detail.get("requestId") if hasattr(event, "detail") else None
+    data = event.detail if hasattr(event, "detail") else {}
+    weight_params = data.get("weight_params") or {}
+    print("Iframe sent weight params: %s", weight_params)
+    try:
+      with anvil.server.no_loading_indicator:
+        result = anvil.server.call("sync_bl_params", weight_params)
+      if result.get("status") != "success":
+        self._send_error("weight_params_response", result.get("message", "Unknown error"), request_id=request_id)
+        return
+      self._send_to_iframe("weight_params_response", success=True, requestId=request_id, weight_params=result.get("weight_params"))
+    except Exception as e:
+      self._send_error("weight_params_response", str(e), request_id=request_id)
 
     # ========== Compliance ==========
   def update_compliance_settings(self, event):
@@ -589,7 +615,7 @@ class Combined(CombinedTemplate):
 
     self._send_to_iframe("compliance_settings_response", success=True, requestId=request_id, threshold=result.get("threshold"), percentage=result.get("percentage"))
 
-    # ========== App Version ==========
+  # ========== App Version ==========
   def send_app_version(self, event=None):
     retries = 10
     while retries > 0:
@@ -599,7 +625,7 @@ class Combined(CombinedTemplate):
         self._send_to_iframe("app_version", version=version)
         break
       except Exception as e:
-        print(f"Waiting for backend connection to get app version... ({retries} attempts left)")
+        logger.warning("Waiting for backend connection to get app version... (%s attempts left)", retries)
         time.sleep(1)
         retries -= 1
 
@@ -620,5 +646,5 @@ class Combined(CombinedTemplate):
           anvil.server.call("reset_session")
         break
       except:
-        print(".", end="")
+        print(".")
         time.sleep(1)
