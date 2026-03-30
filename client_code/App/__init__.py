@@ -375,7 +375,7 @@ class App(AppTemplate):
       with anvil.server.no_loading_indicator:
         live_baseline = anvil.server.call("get_live_rsrp", 0, 0)
 
-      ant_configs_dict = result.get("ant_configs", [])
+      ant_configs_list = result.get("ant_configs", [])
       # ant_configs_list = list(ant_configs_dict.values()) if ant_configs_dict else []
 
       if ant_configs_list:
@@ -480,34 +480,34 @@ class App(AppTemplate):
     _update_indexes()
 
     # ========== DXF ==========
-    def preview_dxf(self, event):
-      print("Iframe sent DXF preview request...")
-      request_id = event.detail.get("requestId") if hasattr(event, "detail") else None
-      data = event.detail
-      image_base64 = data.get("image")
-      params = data.get("params")
-  
-      if not image_base64:
-        self._send_error("dxf_preview_error", "No image provided for preview", request_id=request_id)
+  def preview_dxf(self, event):
+    print("Iframe sent DXF preview request...")
+    request_id = event.detail.get("requestId") if hasattr(event, "detail") else None
+    data = event.detail
+    image_base64 = data.get("image")
+    params = data.get("params")
+
+    if not image_base64:
+      self._send_error("dxf_preview_error", "No image provided for preview", request_id=request_id)
+      return
+
+    try:
+      with anvil.server.no_loading_indicator:
+        result = anvil.server.call("preview_floorplan", image_base64, params)
+
+      if not result:
+        self._send_error("dxf_preview_error", "Backend returned no preview data", request_id=request_id)
         return
-  
-      try:
-        with anvil.server.no_loading_indicator:
-          result = anvil.server.call("preview_floorplan", image_base64, params)
-  
-        if not result:
-          self._send_error("dxf_preview_error", "Backend returned no preview data", request_id=request_id)
-          return
-  
-        self._send_to_iframe("dxf_preview_result",
-                            requestId=request_id,
-                            predictions=result["predictions"],
-                            counts=result["counts"],
-                            vizImage=result["viz_image"],
-                            imageHeight=result["image_height"]
-                            )
-      except Exception as e:
-        self._send_error("dxf_preview_error", str(e), request_id=request_id)
+
+      self._send_to_iframe("dxf_preview_result",
+                           requestId=request_id,
+                           predictions=result["predictions"],
+                           counts=result["counts"],
+                           vizImage=result["viz_image"],
+                           imageHeight=result["image_height"]
+                          )
+    except Exception as e:
+      self._send_error("dxf_preview_error", str(e), request_id=request_id)
 
   def generate_dxf(self, event):
     print("Iframe sent DXF generation request...")
