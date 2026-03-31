@@ -28,32 +28,32 @@
   <div class="container">
     <!-- Icon Sidebar -->
     <div class="icon-sidebar">
-      <button class="icon-btn active" data-section="floorplan">
+      <button class="icon-btn active" data-section="floorplan" title="Floor Plan">
         🏢
         <span class="tooltip">Floor Plan</span>
       </button>
-      <button class="icon-btn" data-section="propagation">
+      <button class="icon-btn" data-section="propagation" title="Propagation Model">
         📊
         <span class="tooltip">Propagation Model</span>
       </button>
-      <button class="icon-btn" data-section="accesspoints">
+      <button class="icon-btn" data-section="accesspoints" title="Antennas">
         📡
         <span class="tooltip">Antennas</span>
       </button>
-      <button class="icon-btn" data-section="visualization">
+      <button class="icon-btn" data-section="visualization" title="Visualization">
         🎨
         <span class="tooltip">Visualization</span>
       </button>
       
-      <button class="icon-btn" data-section="optimization"> 
+      <button class="icon-btn" data-section="optimization" title="Optimization">
         🎯
         <span class="tooltip">Optimization</span>
       </button>
-      <button class="icon-btn" data-section="walls">
+      <button class="icon-btn" data-section="walls" title="Walls & Obstacles">
         🧱
         <span class="tooltip">Walls & Obstacles</span>
       </button>
-      <button class="icon-btn" data-section="xd">
+      <button class="icon-btn" data-section="xd" title="XD">
         🏗️
         <span class="tooltip">XD</span>
       </button>
@@ -579,53 +579,156 @@
 
             <div id="xdAdvancedContainer" class="xd-advanced-container">
               <div class="form-group xd-form-group-spacing">
-                <label>Confidence</label>
+                <div class="opt-param-label-row">
+                  <label class="opt-param-label" for="xdConfidence">Confidence</label>
+                  <span class="opt-hint-icon" tabindex="0">
+                    <svg width="9" height="9" viewBox="0 0 9 9" fill="none"><circle cx="4.5" cy="2.5" r="0.7" fill="#888"/><rect x="4" y="4" width="1" height="3.5" rx="0.5" fill="#888"/></svg>
+                    <div class="opt-hint-bubble">
+                      <span class="opt-hint-title">Detection Threshold</span>
+                      Minimum confidence score (0–1) for a detection to be kept. Lower values catch more objects but increase false positives; higher values are stricter.
+                    </div>
+                  </span>
+                </div>
                 <input type="number" id="xdConfidence" value="0.25" step="0.05" min="0" max="1" />
               </div>
 
               <div class="form-group xd-form-group-spacing-12">
-                <label>Inference Mode</label>
+                <div class="opt-param-label-row">
+                  <label class="opt-param-label" for="xdInferenceMode">Inference Mode</label>
+                  <span class="opt-hint-icon" tabindex="0">
+                    <svg width="9" height="9" viewBox="0 0 9 9" fill="none"><circle cx="4.5" cy="2.5" r="0.7" fill="#888"/><rect x="4" y="4" width="1" height="3.5" rx="0.5" fill="#888"/></svg>
+                    <div class="opt-hint-bubble">
+                      <span class="opt-hint-title">Processing Strategy</span>
+                      How the image is divided for detection. SAHI uses overlapping sliding windows; Split divides into grid tiles; Split+SAHI combines both for maximum accuracy.
+                    </div>
+                  </span>
+                </div>
                 <select id="xdInferenceMode">
                   <option value="sahi">SAHI (overlapping slices)</option>
-                  <option value="split">Split (vertical strips)</option>
+                  <option value="split">Split (grid tiles)</option>
+                  <option value="split+sahi">Split + SAHI (grid then slices)</option>
                 </select>
               </div>
 
               <div id="xdSahiOptions" class="xd-sahi-options">
                 <div class="form-group">
-                  <label>Slice Size</label>
+                  <div class="opt-param-label-row">
+                    <label class="opt-param-label" for="xdSliceSize">Slice Size</label>
+                    <span class="opt-hint-icon" tabindex="0">
+                      <svg width="9" height="9" viewBox="0 0 9 9" fill="none"><circle cx="4.5" cy="2.5" r="0.7" fill="#888"/><rect x="4" y="4" width="1" height="3.5" rx="0.5" fill="#888"/></svg>
+                      <div class="opt-hint-bubble">
+                        <span class="opt-hint-title">Sliding Window Size</span>
+                        Pixel size of each SAHI sliding window. Smaller (256) catches fine detail but is slower; larger (640+) is faster but may miss small features.
+                      </div>
+                    </span>
+                  </div>
                   <input type="number" id="xdSliceSize" value="512" step="64" min="128" />
                 </div>
                 <div class="form-group xd-sahi-spacing">
-                  <label>Overlap Ratio</label>
+                  <div class="opt-param-label-row">
+                    <label class="opt-param-label" for="xdOverlapRatio">Overlap Ratio</label>
+                    <span class="opt-hint-icon" tabindex="0">
+                      <svg width="9" height="9" viewBox="0 0 9 9" fill="none"><circle cx="4.5" cy="2.5" r="0.7" fill="#888"/><rect x="4" y="4" width="1" height="3.5" rx="0.5" fill="#888"/></svg>
+                      <div class="opt-hint-bubble">
+                        <span class="opt-hint-title">Slice Overlap</span>
+                        How much adjacent slices overlap (0–1). Higher overlap (0.3+) improves edge detection between slices but increases processing time.
+                      </div>
+                    </span>
+                  </div>
                   <input type="number" id="xdOverlapRatio" value="0.2" step="0.05" min="0" max="1" />
                 </div>
                 <div class="form-group xd-sahi-spacing">
-                  <label>NMS IoU</label>
+                  <div class="opt-param-label-row">
+                    <label class="opt-param-label" for="xdNmsIou">NMS IoU</label>
+                    <span class="opt-hint-icon" tabindex="0">
+                      <svg width="9" height="9" viewBox="0 0 9 9" fill="none"><circle cx="4.5" cy="2.5" r="0.7" fill="#888"/><rect x="4" y="4" width="1" height="3.5" rx="0.5" fill="#888"/></svg>
+                      <div class="opt-hint-bubble">
+                        <span class="opt-hint-title">Duplicate Merging</span>
+                        Non-Maximum Suppression threshold. Controls how aggressively duplicate detections are merged. Lower values merge more; raise if real objects are being dropped.
+                      </div>
+                    </span>
+                  </div>
                   <input type="number" id="xdNmsIou" value="0.4" step="0.05" min="0" max="1" />
                 </div>
               </div>
 
               <div id="xdSplitOptions" class="xd-sahi-options" style="display:none;">
                 <div class="form-group">
-                  <label>Split Parts</label>
-                  <input type="number" id="xdSplitParts" value="2" step="1" min="1" max="20" />
+                  <div class="opt-param-label-row">
+                    <label class="opt-param-label" for="xdSplitCols">Split Columns</label>
+                    <span class="opt-hint-icon" tabindex="0">
+                      <svg width="9" height="9" viewBox="0 0 9 9" fill="none"><circle cx="4.5" cy="2.5" r="0.7" fill="#888"/><rect x="4" y="4" width="1" height="3.5" rx="0.5" fill="#888"/></svg>
+                      <div class="opt-hint-bubble">
+                        <span class="opt-hint-title">Vertical Divisions</span>
+                        Number of vertical divisions. More columns = smaller tiles = better detection on wide images, but increases processing time.
+                      </div>
+                    </span>
+                  </div>
+                  <input type="number" id="xdSplitCols" value="2" step="1" min="1" max="10" />
+                </div>
+                <div class="form-group xd-sahi-spacing">
+                  <div class="opt-param-label-row">
+                    <label class="opt-param-label" for="xdSplitRows">Split Rows</label>
+                    <span class="opt-hint-icon" tabindex="0">
+                      <svg width="9" height="9" viewBox="0 0 9 9" fill="none"><circle cx="4.5" cy="2.5" r="0.7" fill="#888"/><rect x="4" y="4" width="1" height="3.5" rx="0.5" fill="#888"/></svg>
+                      <div class="opt-hint-bubble">
+                        <span class="opt-hint-title">Horizontal Divisions</span>
+                        Number of horizontal divisions. Increase for tall images to keep tile sizes manageable for the detector.
+                      </div>
+                    </span>
+                  </div>
+                  <input type="number" id="xdSplitRows" value="2" step="1" min="1" max="10" />
                 </div>
               </div>
 
               <div class="form-group xd-form-group-spacing-12">
-                <label>Wall Height (DXF)</label>
+                <div class="opt-param-label-row">
+                  <label class="opt-param-label" for="xdWallHeight">Wall Height (DXF)</label>
+                  <span class="opt-hint-icon" tabindex="0">
+                    <svg width="9" height="9" viewBox="0 0 9 9" fill="none"><circle cx="4.5" cy="2.5" r="0.7" fill="#888"/><rect x="4" y="4" width="1" height="3.5" rx="0.5" fill="#888"/></svg>
+                    <div class="opt-hint-bubble">
+                      <span class="opt-hint-title">Wall Extrusion</span>
+                      Extrusion height of walls in the 3D DXF output (arbitrary units). Sets how tall walls appear when opened in CAD software.
+                    </div>
+                  </span>
+                </div>
                 <input type="number" id="xdWallHeight" value="100" step="5" min="10" />
               </div>
               <div class="form-group xd-form-group-spacing-12">
-                <label>Door Height (DXF)</label>
+                <div class="opt-param-label-row">
+                  <label class="opt-param-label" for="xdDoorHeight">Door Height (DXF)</label>
+                  <span class="opt-hint-icon" tabindex="0">
+                    <svg width="9" height="9" viewBox="0 0 9 9" fill="none"><circle cx="4.5" cy="2.5" r="0.7" fill="#888"/><rect x="4" y="4" width="1" height="3.5" rx="0.5" fill="#888"/></svg>
+                    <div class="opt-hint-bubble">
+                      <span class="opt-hint-title">Door Opening</span>
+                      Height of door openings in the DXF. Should be less than Wall Height — the gap above the door is filled with wall geometry.
+                    </div>
+                  </span>
+                </div>
                 <input type="number" id="xdDoorHeight" value="80" step="5" min="10" />
               </div>
             </div>
 
-            <button id="generateDxfBtn" class="action-btn generate-dxf-btn">
-              Generate Floorplan
-            </button>
+            <div class="xd-button-row">
+              <button id="previewDxfBtn" class="action-btn preview-dxf-btn">
+                Preview Detection
+              </button>
+              <button id="generateDxfBtn" class="action-btn generate-dxf-btn" disabled>
+                Generate DXF
+              </button>
+            </div>
+
+            <div id="xdPreviewContainer" class="xd-preview-container" style="display:none;">
+              <div class="xd-preview-header">
+                <span class="xd-preview-title">Detection Result</span>
+                <div class="xd-preview-legend">
+                  <span class="xd-legend-item xd-legend-wall"></span> Walls
+                  <span class="xd-legend-item xd-legend-door"></span> Doors
+                  <span class="xd-legend-item xd-legend-window"></span> Windows
+                </div>
+              </div>
+              <div id="xdPreviewStats" class="xd-preview-stats"></div>
+            </div>
           </div>
         </div>
       </div>

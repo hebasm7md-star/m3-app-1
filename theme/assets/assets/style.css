@@ -1263,8 +1263,92 @@ input[type="range"]:focus {
 }
 
 .xd-form-group-spacing,
-.generate-dxf-btn {
+.generate-dxf-btn,
+.preview-dxf-btn {
     margin-top: 16px;
+}
+
+/* XD Button Row */
+.xd-button-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.xd-button-row .action-btn {
+    flex: 1;
+    margin-top: 0;
+}
+
+.xd-button-row .generate-dxf-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* XD Preview Container */
+.xd-preview-container {
+    margin-top: 14px;
+    border: 1px solid var(--color-slate-200);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--color-slate-50);
+}
+
+.xd-preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--color-slate-200);
+}
+
+.xd-preview-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-slate-700);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.xd-preview-legend {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 11px;
+    color: var(--color-slate-500);
+}
+
+.xd-legend-item {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    margin-right: 2px;
+}
+
+.xd-legend-wall  { background: #0000ff; }
+.xd-legend-door  { background: #ff0000; }
+.xd-legend-window { background: #00ff00; }
+
+.xd-preview-stats {
+    padding: 10px 12px;
+    font-size: 12px;
+    color: var(--color-slate-600);
+    border-top: 1px solid var(--color-slate-200);
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.xd-stat-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.xd-stat-count {
+    font-weight: 700;
+    color: var(--color-slate-800);
 }
 
 /* SAHI Options Container */
@@ -2558,6 +2642,32 @@ button.small {
     background: rgba(15, 23, 42, 0.8) !important;
     border-color: var(--color-slate-700) !important;
     color: var(--color-slate-800) !important;
+}
+
+.dark-mode .xd-preview-container {
+    background: rgba(15, 23, 42, 0.6);
+    border-color: var(--color-slate-700);
+}
+
+.dark-mode .xd-preview-header {
+    border-bottom-color: var(--color-slate-700);
+}
+
+.dark-mode .xd-preview-title {
+    color: var(--color-slate-300);
+}
+
+.dark-mode .xd-preview-legend {
+    color: var(--color-slate-400);
+}
+
+.dark-mode .xd-preview-stats {
+    border-top-color: var(--color-slate-700);
+    color: var(--color-slate-400);
+}
+
+.dark-mode .xd-stat-count {
+    color: var(--color-slate-300);
 }
 
 /* Scrollbar hidden globally — no dark-mode overrides needed */

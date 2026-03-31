@@ -126,6 +126,7 @@
 
   var xdLoader = document.getElementById("xdImageLoader");
   if (xdLoader) xdLoader.addEventListener("change", function (e) {
+    clearXdPreview();
     var reader = new FileReader();
     reader.onload = function (event) {
       var img = new Image();
@@ -163,6 +164,7 @@
     e.stopPropagation();
     NotificationSystem.confirm("This will remove the uploaded XD floorplan.", "Delete XD Image", function (confirmed) {
       if (confirmed) {
+        clearXdPreview();
         window.state.xdImage = null;
         window.state.xdImageBase64 = null;
 
@@ -191,8 +193,10 @@
     var mode = this.value;
     var xdSahiOptions = document.getElementById("xdSahiOptions");
     var xdSplitOptions = document.getElementById("xdSplitOptions");
-    if (xdSahiOptions) xdSahiOptions.style.display = mode === "sahi" ? "block" : "none";
-    if (xdSplitOptions) xdSplitOptions.style.display = mode === "split" ? "block" : "none";
+    var showSahi = mode === "sahi" || mode === "split+sahi";
+    var showSplit = mode === "split" || mode === "split+sahi";
+    if (xdSahiOptions) xdSahiOptions.style.display = showSahi ? "block" : "none";
+    if (xdSplitOptions) xdSplitOptions.style.display = showSplit ? "block" : "none";
   });
   if (xdInferenceMode) xdInferenceMode.dispatchEvent(new Event("change"));
 
@@ -202,45 +206,156 @@
     if (container) container.style.display = this.checked ? "block" : "none";
   });
 
-  var genDxfBtn = document.getElementById("generateDxfBtn");
-  if (genDxfBtn) genDxfBtn.addEventListener("click", function () {
+  function getXdParams() {
+    return {
+      confidence: +document.getElementById("xdConfidence").value,
+      inferenceMode: document.getElementById("xdInferenceMode").value,
+      sliceSize: +document.getElementById("xdSliceSize").value,
+      overlapRatio: +document.getElementById("xdOverlapRatio").value,
+      nmsIou: +document.getElementById("xdNmsIou").value,
+      splitCols: +document.getElementById("xdSplitCols").value,
+      splitRows: +document.getElementById("xdSplitRows").value,
+      wallHeight: +document.getElementById("xdWallHeight").value,
+      doorHeight: +document.getElementById("xdDoorHeight").value
+    };
+  }
+
+  function clearXdPreview() {
+    window.state.xdPendingPredictions = null;
+    window.state.xdPendingImageHeight = null;
+    var container = document.getElementById("xdPreviewContainer");
+    if (container) container.style.display = "none";
+    var genBtn = document.getElementById("generateDxfBtn");
+    if (genBtn) genBtn.disabled = true;
+    if (window.state.activeSection === "xd" && window.state.xdImage) {
+      window.state.backgroundImage = window.state.xdImage;
+      window.draw();
+    }
+  }
+
+  // Preview Detection button
+  var previewBtn = document.getElementById("previewDxfBtn");
+  if (previewBtn) previewBtn.addEventListener("click", function () {
     if (!window.state.xdImageBase64) {
       NotificationSystem.warning("Please upload a floorplan image first.");
       return;
     }
 
-    var btn = document.getElementById("generateDxfBtn");
-    var originalText = btn.textContent;
-
+    var btn = document.getElementById("previewDxfBtn");
     btn.disabled = true;
     btn.style.opacity = "0.7";
-    btn.style.cursor = "not-allowed";
+    btn.textContent = "DETECTING...";
+
+    var overlay = document.getElementById("loadingOverlay");
+    var loadingText = document.getElementById("loadingText");
+    var subtext = document.getElementById("loadingSubtext");
+    if (overlay) overlay.style.display = "flex";
+    if (loadingText) loadingText.textContent = "Detecting Floorplan...";
+    if (subtext) subtext.textContent = "Our AI is detecting walls, doors, and windows. You can review the results before generating the DXF.";
+
+    window.parent.postMessage({
+      type: "preview_dxf",
+      image: window.state.xdImageBase64,
+      params: getXdParams(),
+      requestId: "preview_" + Date.now()
+    }, "*");
+
+    var previewListener = function (event) {
+      if (!event.data) return;
+
+      if (event.data.type === "dxf_preview_result") {
+        if (overlay) overlay.style.display = "none";
+        btn.disabled = false;
+        btn.style.opacity = "1";
+        btn.textContent = "Preview Detection";
+        window.removeEventListener("message", previewListener);
+
+        window.state.xdPendingPredictions = event.data.predictions;
+        window.state.xdPendingImageHeight = event.data.imageHeight;
+
+        var container = document.getElementById("xdPreviewContainer");
+        var statsEl = document.getElementById("xdPreviewStats");
+        var genBtn = document.getElementById("generateDxfBtn");
+
+        if (container) container.style.display = "block";
+        if (genBtn) genBtn.disabled = false;
+
+        if (statsEl && event.data.counts) {
+          var c = event.data.counts;
+          statsEl.innerHTML =
+            '<span class="xd-stat-item"><span class="xd-stat-count">' + c.walls + '</span> Walls</span>' +
+            '<span class="xd-stat-item"><span class="xd-stat-count">' + c.doors + '</span> Doors</span>' +
+            '<span class="xd-stat-item"><span class="xd-stat-count">' + c.windows + '</span> Windows</span>' +
+            '<span class="xd-stat-item"><span class="xd-stat-count">' + c.total + '</span> Total</span>';
+        }
+
+        if (event.data.vizImage) {
+          var vizImg = new Image();
+          vizImg.onload = function () {
+            window.state.backgroundImage = vizImg;
+            var imgAspectRatio = vizImg.width / vizImg.height;
+            var canvasAspectRatio = window.state.w / window.state.h;
+            if (imgAspectRatio > canvasAspectRatio) {
+              window.state.backgroundImageDisplayWidth = window.state.w;
+              window.state.backgroundImageDisplayHeight = window.state.w / imgAspectRatio;
+            } else {
+              window.state.backgroundImageDisplayWidth = window.state.h * imgAspectRatio;
+              window.state.backgroundImageDisplayHeight = window.state.h;
+            }
+            window.state.backgroundImageAspectRatio = imgAspectRatio;
+            window.draw();
+          };
+          vizImg.src = event.data.vizImage;
+        }
+
+        NotificationSystem.success("Detection complete! Review the canvas, then click Generate DXF.");
+      }
+      else if (event.data.type === "dxf_preview_error") {
+        if (overlay) overlay.style.display = "none";
+        btn.disabled = false;
+        btn.style.opacity = "1";
+        btn.textContent = "Preview Detection";
+        window.removeEventListener("message", previewListener);
+        NotificationSystem.error("Preview failed.\n" + (event.data.error || "Unknown error"));
+      }
+    };
+    window.addEventListener("message", previewListener);
+  });
+
+  // Generate DXF button (uses cached predictions when available)
+  var genDxfBtn = document.getElementById("generateDxfBtn");
+  if (genDxfBtn) genDxfBtn.addEventListener("click", function () {
+    if (!window.state.xdImageBase64 && !window.state.xdPendingPredictions) {
+      NotificationSystem.warning("Please run Preview Detection first.");
+      return;
+    }
+
+    var btn = document.getElementById("generateDxfBtn");
+    var originalText = btn.textContent;
+    btn.disabled = true;
+    btn.style.opacity = "0.7";
     btn.textContent = "GENERATING...";
 
     var overlay = document.getElementById("loadingOverlay");
     var loadingText = document.getElementById("loadingText");
     var subtext = document.getElementById("loadingSubtext");
     if (overlay) overlay.style.display = "flex";
-    if (loadingText) loadingText.textContent = "Processing Floorplan...";
-    if (subtext) subtext.textContent = "Our AI is detecting walls, doors, and windows to generate your DXF.";
+    if (loadingText) loadingText.textContent = "Generating DXF...";
+    if (subtext) subtext.textContent = "Exporting your floorplan to DXF format.";
 
-    var params = {
-      confidence: +document.getElementById("xdConfidence").value,
-      inferenceMode: document.getElementById("xdInferenceMode").value,
-      sliceSize: +document.getElementById("xdSliceSize").value,
-      overlapRatio: +document.getElementById("xdOverlapRatio").value,
-      nmsIou: +document.getElementById("xdNmsIou").value,
-      splitParts: +document.getElementById("xdSplitParts").value,
-      wallHeight: +document.getElementById("xdWallHeight").value,
-      doorHeight: +document.getElementById("xdDoorHeight").value
-    };
-
-    window.parent.postMessage({
+    var payload = {
       type: "generate_dxf",
       image: window.state.xdImageBase64,
-      params: params,
+      params: getXdParams(),
       requestId: "dxf_" + Date.now()
-    }, "*");
+    };
+
+    if (window.state.xdPendingPredictions) {
+      payload.predictions = window.state.xdPendingPredictions;
+      payload.imageHeight = window.state.xdPendingImageHeight;
+    }
+
+    window.parent.postMessage(payload, "*");
 
     var dxfListener = function (event) {
       if (!event.data) return;
@@ -249,24 +364,19 @@
         if (overlay) overlay.style.display = "none";
         btn.disabled = false;
         btn.style.opacity = "1";
-        btn.style.cursor = "pointer";
         btn.textContent = originalText;
-
         window.removeEventListener("message", dxfListener);
 
         if (event.data.fileData) {
           triggerFileDownload(event.data.fileData, event.data.fileName || "floorplan.dxf");
         }
-
         NotificationSystem.success("DXF generated successfully!");
       }
       else if (event.data.type === "dxf_error") {
         if (overlay) overlay.style.display = "none";
         btn.disabled = false;
         btn.style.opacity = "1";
-        btn.style.cursor = "pointer";
         btn.textContent = originalText;
-
         window.removeEventListener("message", dxfListener);
         NotificationSystem.error("Failed to generate DXF.\n" + (event.data.error || "Unknown error"));
       }
@@ -992,5 +1102,6 @@
   window.updateEditorButtonsUI = updateEditorButtonsUI;
   window.getAddButtonText = getAddButtonText;
   window.setAddAPBtnText = setAddAPBtnText;
+  window.clearXdPreview = clearXdPreview;
 
 })();
