@@ -1118,63 +1118,6 @@ input[type="range"]:focus {
     margin-top: 4px;
 }
 
-
-/* Parameter Hint Tooltips */
-.param-label-row {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.param-hint {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    cursor: help;
-    color: var(--color-slate-400);
-    font-size: 12px;
-    flex-shrink: 0;
-    text-transform: none;
-    letter-spacing: normal;
-}
-
-.param-hint .param-hint-text {
-    position: absolute;
-    bottom: calc(100% + 8px);
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(15, 23, 42, 0.92);
-    color: #f1f5f9;
-    font-size: 11px;
-    font-weight: 400;
-    text-transform: none;
-    letter-spacing: normal;
-    padding: 8px 10px;
-    border-radius: 6px;
-    white-space: normal;
-    width: 220px;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.2s;
-    z-index: 100;
-    line-height: 1.45;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-    text-align: left;
-}
-
-.param-hint .param-hint-text::after {
-    content: "";
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    border: 5px solid transparent;
-    border-top-color: rgba(15, 23, 42, 0.92);
-}
-
-.param-hint:hover .param-hint-text {
-    opacity: 1;
-}
 /* XD Advanced Toggle */
 .xd-advanced-container {
     display: none;

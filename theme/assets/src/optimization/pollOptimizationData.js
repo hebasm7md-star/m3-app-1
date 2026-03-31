@@ -117,10 +117,6 @@ var OptimizationSystem = (function () {
     }
     var newRsrp = data.new_bsrv_rsrp || [];
     var newCompliance = data.new_compliance || [];
-    var newActions = data.new_action_configs || [];
-    if (newActions && !Array.isArray(newActions)) {
-      newActions = Object.values(newActions);
-    }
     if (Array.isArray(newRsrp) && newRsrp.length > 0) {
       if (typeof window.clearBackendRsrpCache === 'function') window.clearBackendRsrpCache();
       var latestRsrp = newRsrp[newRsrp.length - 1];
@@ -148,12 +144,12 @@ var OptimizationSystem = (function () {
       }
     }
     refreshHeatmap();
-    // if (data.type === "baseline_rsrp" && Array.isArray(newRsrp) && newRsrp.length > 0 && typeof DataExportSystem !== 'undefined' && DataExportSystem.exportDetailedCoverageData) {
+    if (data.type === "baseline_rsrp" && Array.isArray(newRsrp) && newRsrp.length > 0 && typeof DataExportSystem !== 'undefined' && DataExportSystem.exportDetailedCoverageData) {
       // setTimeout(function () {
       //   var ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
       //   DataExportSystem.exportDetailedCoverageData('accurate_bl_cm_' + ts + '.csv', 1.0, { silent: true });
       // }, 500);
-    // }
+    }
   }
 
   function handleTerminalStatus(status, data, footerBadge, footerMessage) {
@@ -190,21 +186,11 @@ var OptimizationSystem = (function () {
     try {
       var toReadable = function (sec) { return new Date(sec * 1000).toISOString().replace('T', ' ').replace('Z', ''); };
       var newActions = data.new_action_configs || [];
-      if (newActions && !Array.isArray(newActions)) {
-        newActions = Object.values(newActions);
-      }
       var newRsrp = data.new_bsrv_rsrp || [];
       var newCompliance = data.new_compliance || [];
       var status = data.status;
       var message = data.message;
-      // Update antenna configurations
-      var changesMade = false;
-      for (var i = 0; i < newActions.length; i++) {
-        if (newActions[i]) {
-          updateSingleAntennaFromAction(newActions[i]);
-          changesMade = true;
-        }
-      }
+
       // RSRP grid
       var rsrpUpdated = false;
       var receiveAtSec = (performance.timeOrigin + performance.now()) / 1000;
@@ -221,7 +207,7 @@ var OptimizationSystem = (function () {
               index: rsrpTimingRows.length + 1,
               serverSendTime: toReadable(serverSendSec),
               clientReceiveTime: toReadable(receiveAtSec),
-              heatmapTime: '',          // Filled when heatmap is rendered (onHeatmapShown)
+              heatmapTime: '',           // Filled when heatmap is rendered (onHeatmapShown)
               serverToClientSec: (receiveAtSec - serverSendSec).toFixed(3),
               receiveToHeatmapSec: '',  // Filled when heatmap is rendered
               serverToHeatmapSec: ''    // Filled when heatmap is rendered
@@ -370,27 +356,15 @@ var OptimizationSystem = (function () {
         if (state.aps[j].id === antennaId) { existing = state.aps[j]; break; }
       }
 
-      var newTx = pickField(action, ['power', 'tx', 'power(antenna)_BL']);
-      var newAzimuth = pickField(action, ['azimuth', 'Az_BL']);
-      var newTilt = pickField(action, ['tilt', 'Tilt_BL']);
-      var newZ = pickField(action, ['Z_antenna', 'z', 'Z']);
-      
-      var isNewEnabled = true;
-      if (enabledRaw !== undefined) {
-        isNewEnabled = enabledRaw === "True" || enabledRaw === true ||
-                       enabledRaw === "true" || enabledRaw === 1 || enabledRaw === "1";
-      }
-
       if (existing) {
         var oldX = existing.x, oldY = existing.y;
         existing.x = canvasX;
         existing.y = canvasY;
         
-        if (newTx !== undefined) existing.tx = Number(newTx);
-        if (newAzimuth !== undefined) existing.azimuth = Number(newAzimuth);
-        if (newTilt !== undefined) existing.tilt = Number(newTilt);
-        if (newZ !== undefined) existing.z = Number(newZ);
-        if (enabledRaw !== undefined) existing.enabled = isNewEnabled;
+        if (enabledRaw !== undefined) {
+          existing.enabled = enabledRaw === "True" || enabledRaw === true ||
+                             enabledRaw === "true" || enabledRaw === 1 || enabledRaw === "1";
+        }
 
         if (Math.abs(oldX - canvasX) > 0.01 || Math.abs(oldY - canvasY) > 0.01) {
           if (typeof window.logAntennaPositionChange === 'function') {
@@ -400,13 +374,17 @@ var OptimizationSystem = (function () {
       } else {
         var defaultPattern = typeof window.getDefaultAntennaPattern === 'function'
           ? window.getDefaultAntennaPattern() : null;
+        var isNewEnabled = true;
+        if (enabledRaw !== undefined) {
+          isNewEnabled = enabledRaw === "True" || enabledRaw === true ||
+                         enabledRaw === "true" || enabledRaw === 1 || enabledRaw === "1";
+        }
         var ap = {
-          id: antennaId, x: canvasX, y: canvasY, 
-          z: newZ !== undefined ? Number(newZ) : 0,
-          tx: newTx !== undefined ? Number(newTx) : 15,
+          id: antennaId, x: canvasX, y: canvasY, z: 0,
+          tx: action.power !== undefined ? action.power : 15,
           gt: 5, ch: 1,
-          azimuth: newAzimuth !== undefined ? Number(newAzimuth) : 0,
-          tilt: newTilt !== undefined ? Number(newTilt) : 0,
+          azimuth: action.azimuth !== undefined ? action.azimuth : 0,
+          tilt: action.tilt !== undefined ? action.tilt : 0,
           enabled: isNewEnabled,
           antennaPatternFile: null, antennaPatternFileName: null
         };
