@@ -340,7 +340,7 @@ class App(AppTemplate):
     now = time.time()
     last = getattr(self, "_last_batch_time", 0)
     if now - last < 2.0 and getattr(self, "_last_batch_count", 0) == len(ants_ids):
-      logging.warning("[BATCH] Skipping duplicate batch (%s antennas) within 2s", len(ants_ids))
+      print("[BATCH] Skipping duplicate batch (%s antennas) within 2s", len(ants_ids))
       self._send_to_iframe("antennas_batch_status_response", success=True, requestId=request_id)
       return
 
@@ -351,7 +351,7 @@ class App(AppTemplate):
       anvil.server.call("process_batch_antennas", pattern, ants_ids, ants_configs)
 
     self._send_to_iframe("antennas_batch_status_response", success=True, requestId=request_id)
-    logging.warning("[BATCH] Added %s antenna(s) from batch update", len(ants_ids))
+    print("[BATCH] Added %s antenna(s) from batch update", len(ants_ids))
 
     if self.enable_live_rsrp and ants_ids:
       self.get_accurate_baseline()
