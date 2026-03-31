@@ -150,11 +150,11 @@ class App(AppTemplate):
       with anvil.server.no_loading_indicator:
         result = anvil.server.call("set_enable_live_rsrp_flag", enabled)
         if result.get("status") == "success":
-          logger.info(f"Enable live rsrp in backend")
+          print(f"Enable live rsrp in backend")
         else:
-          logger.error(f"set_send_live_rsrp failed: {result.get('message', 'Unknown error')}")
+          print(f"set_send_live_rsrp failed: {result.get('message', 'Unknown error')}")
     except Exception as e:
-      logger.error(f"[RSRP] set_send_live_rsrp failed: {e}")
+      print(f"[RSRP] set_send_live_rsrp failed: {e}")
 
   def _send_error(self, msg_type, technical_error, request_id=None):
     """Log raw error to console, send friendly message to iframe."""
@@ -185,7 +185,7 @@ class App(AppTemplate):
       else:
         friendly_msg = "An unexpected error occurred."  # Please try again later."
 
-    logger.error(f"[ERROR] {technical_error}")
+    print(f"[ERROR] {technical_error}")
     self._send_to_iframe(msg_type, success=False, error=friendly_msg, requestId=request_id)
 
     # ========== Antenna Pattern Upload ==========
@@ -225,7 +225,7 @@ class App(AppTemplate):
         result = anvil.server.call("upload_antenna_pattern", media_obj)
 
       if result.get("status") == "success":
-        logger.info(f"[SUCCESS] Pattern {result.get('pattern_name')} uploaded.")
+        print(f"[SUCCESS] Pattern {result.get('pattern_name')} uploaded.")
         self._send_to_iframe("upload_antenna_pattern_response", success=True, pattern_name=result.get("pattern_name"), filename=result.get("filename"))
       else:
         self._send_error("upload_antenna_pattern_response", result.get("message", "Unknown error during upload"))
@@ -257,7 +257,7 @@ class App(AppTemplate):
     antenna_data = event.detail.get("antenna") if hasattr(event, "detail") else event.detail
     request_id = event.detail.get("requestId") if hasattr(event, "detail") else None
     ant_id = antenna_data.get("id") if antenna_data else None
-    logger.info(f"[RSRP] send_antenna_config received ant_id={ant_id} enable_live_rsrp={getattr(self, 'enable_live_rsrp', False)}")
+    print(f"[RSRP] send_antenna_config received ant_id={ant_id} enable_live_rsrp={getattr(self, 'enable_live_rsrp', False)}")
 
     if not antenna_data:
       self._send_error("antenna_status_response", "No antenna data in status update", request_id=request_id)
@@ -269,7 +269,7 @@ class App(AppTemplate):
       return
 
     ant_config = self._transform_antenna_data(antenna_data)
-    logger.info(f"Antenna update: {ant_id} - enabled: {ant_config.get('Turning_ON_OFF')}")
+    print(f"Antenna update: {ant_id} - enabled: {ant_config.get('Turning_ON_OFF')}")
 
     with anvil.server.no_loading_indicator:
       result = anvil.server.call("enqueue_antenna", ant_id, ant_config)
@@ -286,7 +286,7 @@ class App(AppTemplate):
       self._send_error("antenna_status_response", f"Update failed: {result.get('error', 'Unknown error')}", request_id=request_id)
       return
 
-    logger.info(f"[SUCCESS] Antenna {ant_id} {state}")
+    print(f"[SUCCESS] Antenna {ant_id} {state}")
     self._send_to_iframe("antenna_status_response", success=True, requestId=request_id)
 
     if not self.enable_live_rsrp or state not in ("added", "updated"):
@@ -295,7 +295,7 @@ class App(AppTemplate):
       # Antenna turned off — evict from frontend cache immediately, no RSRP to fetch
     if not ant_config.get('Turning_ON_OFF'):
       self._send_to_iframe("live_rsrp", ant_id=ant_id, rsrp=None)
-      logger.info(f"[RSRP] Antenna {ant_id} turned OFF — evicted from cache")
+      print(f"[RSRP] Antenna {ant_id} turned OFF — evicted from cache")
       return
 
       # enqueue_antenna is a blocking server.call — by the time it returned the backend
@@ -308,11 +308,11 @@ class App(AppTemplate):
       if new_rsrp:
         rsrp_grid = new_rsrp[-1]  # last entry is always this antenna's fresh grid
         self._send_to_iframe("live_rsrp", ant_id=ant_id, rsrp=rsrp_grid)
-        logger.info(f"Sent live_rsrp: ant_id={ant_id}, bins={len(rsrp_grid) if rsrp_grid else 0}")
+        print(f"Sent live_rsrp: ant_id={ant_id}, bins={len(rsrp_grid) if rsrp_grid else 0}")
       else:
-        logger.info(f"get_live_rsrp returned empty for ant_id={ant_id}")
+        print(f"get_live_rsrp returned empty for ant_id={ant_id}")
     except Exception as e:
-      logger.error(f"get_live_rsrp failed for ant_id={ant_id}: {e}")
+      print(f"get_live_rsrp failed for ant_id={ant_id}: {e}")
 
   def add_batch_antennas(self, event):
     request_id = event.detail.get("requestId") if hasattr(event, "detail") else None
@@ -404,10 +404,10 @@ class App(AppTemplate):
       result = anvil.server.call("start_optimization")
 
     status = result.get("state")
-    logger.info(f"[INFO] Optimization status: {status}")
+    print(f"[INFO] Optimization status: {status}")
 
     if status == "started":
-      logger.info("[SUCCESS] Optimization started!")
+      print("[SUCCESS] Optimization started!")
       self._send_to_iframe("optimization_started", success=True)
       self.opt_running = True
       self._reset_indexes()
@@ -449,11 +449,11 @@ class App(AppTemplate):
 
     if status == "finished":
       if new_actions or new_bsrv_rsrp or new_compliance:
-        logger.info(f"     final batch: {len(new_actions)} action(s), {len(new_bsrv_rsrp)} rsrp, {len(new_compliance)} compliance")
-        logger.info("[BACK] last compliance: ", new_compliance[-1])
+        print(f"     final batch: {len(new_actions)} action(s), {len(new_bsrv_rsrp)} rsrp, {len(new_compliance)} compliance")
+        print("[BACK] last compliance: ", new_compliance[-1])
       self._send_to_iframe("optimization_update", new_action_configs=new_actions, new_bsrv_rsrp=new_bsrv_rsrp, new_compliance=new_compliance, status=status, message=message, rsrp_send_timestamp_sec=result.get("rsrp_send_timestamp_sec"))
       _update_indexes()
-      logger.info(f"[+] OPTIMIZATION COMPLETED — actions={self.last_action_idx}, rsrp={self.last_rsrp_idx}, compliance={self.last_compliance_idx}")
+      print(f"[+] OPTIMIZATION COMPLETED — actions={self.last_action_idx}, rsrp={self.last_rsrp_idx}, compliance={self.last_compliance_idx}")
       self._send_to_iframe("optimization_finished", success=True)
       self.opt_running = False
       self._reset_indexes()
@@ -462,18 +462,18 @@ class App(AppTemplate):
     if status == "idle":
       self.opt_running = False
       self._reset_indexes()
-      logger.info("[!] Optimization is idle")
+      print("[!] Optimization is idle")
       return
 
     if new_actions or new_bsrv_rsrp or new_compliance:
-      logger.debug(f"[DEBUG] Sending {len(new_actions)} action(s), {len(new_bsrv_rsrp)} rsrp, {len(new_compliance)} compliance to HTML display")
+      print(f"[DEBUG] Sending {len(new_actions)} action(s), {len(new_bsrv_rsrp)} rsrp, {len(new_compliance)} compliance to HTML display")
 
     self._send_to_iframe("optimization_update", new_action_configs=new_actions, new_bsrv_rsrp=new_bsrv_rsrp, new_compliance=new_compliance, status=status, message=message, rsrp_send_timestamp_sec=result.get("rsrp_send_timestamp_sec"))
     _update_indexes()
 
     # ========== DXF ==========
   def preview_dxf(self, event):
-    logger.info("Iframe sent DXF preview request...")
+    print("Iframe sent DXF preview request...")
     request_id = event.detail.get("requestId") if hasattr(event, "detail") else None
     data = event.detail
     image_base64 = data.get("image")
@@ -502,7 +502,7 @@ class App(AppTemplate):
       self._send_error("dxf_preview_error", str(e), request_id=request_id)
 
   def generate_dxf(self, event):
-    logger.info("Iframe sent DXF generation request...")
+    print("Iframe sent DXF generation request...")
     request_id = event.detail.get("requestId") if hasattr(event, "detail") else None
     data = event.detail
     image_base64 = data.get("image")
@@ -529,7 +529,7 @@ class App(AppTemplate):
       self._send_error("dxf_error", str(e), request_id=request_id)
 
   def parse_dxf(self, event):
-    logger.info("Iframe sent DXF parsing request...")
+    print("Iframe sent DXF parsing request...")
     request_id = event.detail.get("requestId") if hasattr(event, "detail") else None
     data = event.detail
     file_content = data.get("content")
@@ -565,7 +565,7 @@ class App(AppTemplate):
     request_id = event.detail.get("requestId") if hasattr(event, "detail") else None
     data = event.detail if hasattr(event, "detail") else {}
     opt_params = data.get("opt_params") or {}
-    logger.info("Iframe sent optimization params: %s", opt_params)
+    print("Iframe sent optimization params: %s", opt_params)
     try:
       with anvil.server.no_loading_indicator:
         result = anvil.server.call("sync_optimization_params", opt_params)
@@ -580,7 +580,7 @@ class App(AppTemplate):
     request_id = event.detail.get("requestId") if hasattr(event, "detail") else None
     data = event.detail if hasattr(event, "detail") else {}
     weight_params = data.get("weight_params") or {}
-    logger.info("Iframe sent weight params: %s", weight_params)
+    print("Iframe sent weight params: %s", weight_params)
     try:
       with anvil.server.no_loading_indicator:
         result = anvil.server.call("sync_bl_params", weight_params)
@@ -631,12 +631,12 @@ class App(AppTemplate):
     self.opt_running = False
     self.enable_live_rsrp = False
     self._reset_indexes()
-    logger.info("Resetting backend session...")
+    print("Resetting backend session...")
     while True:
       try:
         with anvil.server.no_loading_indicator:
           anvil.server.call("reset_session")
         break
       except:
-        logger.info(".")
+        print(".")
         time.sleep(1)
