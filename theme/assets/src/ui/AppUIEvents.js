@@ -332,8 +332,10 @@
 
     var btn = document.getElementById("generateDxfBtn");
     var originalText = btn.textContent;
+
     btn.disabled = true;
     btn.style.opacity = "0.7";
+    btn.style.cursor = "not-allowed";
     btn.textContent = "GENERATING...";
 
     var overlay = document.getElementById("loadingOverlay");
@@ -364,19 +366,24 @@
         if (overlay) overlay.style.display = "none";
         btn.disabled = false;
         btn.style.opacity = "1";
+        btn.style.cursor = "pointer";
         btn.textContent = originalText;
+
         window.removeEventListener("message", dxfListener);
 
         if (event.data.fileData) {
           triggerFileDownload(event.data.fileData, event.data.fileName || "floorplan.dxf");
         }
+
         NotificationSystem.success("DXF generated successfully!");
       }
       else if (event.data.type === "dxf_error") {
         if (overlay) overlay.style.display = "none";
         btn.disabled = false;
         btn.style.opacity = "1";
+        btn.style.cursor = "pointer";
         btn.textContent = originalText;
+
         window.removeEventListener("message", dxfListener);
         NotificationSystem.error("Failed to generate DXF.\n" + (event.data.error || "Unknown error"));
       }
@@ -586,6 +593,8 @@
       NotificationSystem.warning("Please add at least one antenna before starting optimization.");
       return;
     }
+
+    if (typeof window.saveState === "function") window.saveState();
 
     var optimizeBtn = document.getElementById("optimizeBtn");
     var addAPBtn = document.getElementById("addAP");

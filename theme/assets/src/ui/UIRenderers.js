@@ -78,7 +78,7 @@
 
         var nameSpan = document.createElement("span");
         nameSpan.textContent = a.id;
-        nameSpan.style.fontWeight = "bold";
+        //nameSpan.style.fontWeight = "bold";
 
         iconAndName.appendChild(icon);
         iconAndName.appendChild(nameSpan);
@@ -98,10 +98,6 @@
         item.appendChild(expandHeader);
         item.appendChild(collapsibleContent);
 
-        // Create title (antenna name) - displayed first
-        var title = document.createElement("div");
-        title.className = "ap-item-title";
-        title.textContent = a.id;
 
         var actions = document.createElement("div");
         actions.className = "ap-item-actions";
@@ -643,8 +639,7 @@
           item.classList.add("ap-item-disabled");
         }
 
-        // Add title first, then buttons, then content
-        collapsibleContent.appendChild(title);
+        // Add buttons, then content
         collapsibleContent.appendChild(actions);
 
         var content = document.createElement("div");
@@ -686,7 +681,6 @@
         inputs[0].oninput = function () {
           //if (state.isOptimizing) return;
           a.id = inputs[0].value;
-          title.textContent = a.id;
           if (nameSpan) nameSpan.textContent = a.id;
           // Don't clear cache here - applyInputChange will handle it
           // Schedule debounced update (3 seconds or Enter key)
@@ -1213,7 +1207,7 @@
         } else if (w.elementType === "window") {
             icon.textContent = "window";
         } else {
-            icon.textContent = "view_stream";
+            icon.textContent = "view_module";
         }
         icon.style.fontSize = "20px";
         icon.style.color = "inherit";

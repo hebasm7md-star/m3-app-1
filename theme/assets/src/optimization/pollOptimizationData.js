@@ -145,10 +145,10 @@ var OptimizationSystem = (function () {
     }
     refreshHeatmap();
     if (data.type === "baseline_rsrp" && Array.isArray(newRsrp) && newRsrp.length > 0 && typeof DataExportSystem !== 'undefined' && DataExportSystem.exportDetailedCoverageData) {
-      // setTimeout(function () {
-      //   var ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-      //   DataExportSystem.exportDetailedCoverageData('accurate_bl_cm_' + ts + '.csv', 1.0, { silent: true });
-      // }, 500);
+      setTimeout(function () {
+        var ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+        DataExportSystem.exportDetailedCoverageData('accurate_bl_cm_' + ts + '.csv', 1.0, { silent: true });
+      }, 500);
     }
   }
 
@@ -164,7 +164,7 @@ var OptimizationSystem = (function () {
         setTimeout(function () {
           var ts2 = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
           DataExportSystem.exportDetailedCoverageData('after_opt_cm_' + ts2 + '.csv', 1.0, { silent: true });
-        }, 500);
+        }, 1000);
       }
       // Timing export only after optimization completes (snapshot & clear immediately to avoid re-export on re-entry)
       if (typeof DataExportSystem !== 'undefined' && DataExportSystem.exportTimingRowsAsXlsx && rsrpTimingRows.length > 0) {
@@ -172,7 +172,7 @@ var OptimizationSystem = (function () {
         rsrpTimingRows = [];
         setTimeout(function () {
           DataExportSystem.exportTimingRowsAsXlsx(rowsSnapshot);
-        }, 1000);
+        }, 2000);
       }
     } else {
       setFooter(footerBadge, footerMessage, 'ERROR', "Error: " + (data.error || "Optimization failed."));
@@ -306,7 +306,6 @@ var OptimizationSystem = (function () {
 
       if (changesMade || rsrpUpdated) {
         if (changesMade) {
-          if (window.saveState) window.saveState();
           if (window.renderAPs) window.renderAPs();
         }
         var onHeatmapShown = rsrpUpdated && rsrpTimingRows.length > 0 ? function () {

@@ -1922,6 +1922,10 @@
                 value = val !== null ? val : (fallbackBest ? best.rssiDbm - state.noise : -100);
                 unit = "dB";
                 modeName = "SNR";
+              } else if (state.view === "sinr") {
+                value = val !== null ? val : (fallbackBest ? sinrAt(best.rssiDbm, cciAt(worldX, worldY, best.ap)) : -100);
+                unit = "dB";
+                modeName = "SINR";
               } else if (state.view === "cci") {
                 // Count interfering antennas (power > -85, same channel as best server)
                 value = val !== null ? val : (fallbackBest ? countInterferingAntennas(worldX, worldY, best.ap) : 0);

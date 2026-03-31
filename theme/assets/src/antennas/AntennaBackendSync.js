@@ -470,7 +470,6 @@ var BackendSync = (function () {
       state.heatmapUpdatePending = false;
 
       // Update UI
-      if (window.saveState) window.saveState();
       if (window.renderAPs) window.renderAPs();
       if (window.renderApDetails) window.renderApDetails(); // Update right sidebar if an antenna is selected
       if (window.draw) window.draw();
