@@ -340,7 +340,7 @@ class App(AppTemplate):
     now = time.time()
     last = getattr(self, "_last_batch_time", 0)
     if now - last < 2.0 and getattr(self, "_last_batch_count", 0) == len(ants_ids):
-      print("[BATCH] Skipping duplicate batch (%s antennas) within 2s", len(ants_ids))
+      print(f"[BATCH] Skipping duplicate batch ({len(ants_ids)} antennas) within 2s")
       self._send_to_iframe("antennas_batch_status_response", success=True, requestId=request_id)
       return
 
@@ -351,7 +351,7 @@ class App(AppTemplate):
       anvil.server.call("process_batch_antennas", pattern, ants_ids, ants_configs)
 
     self._send_to_iframe("antennas_batch_status_response", success=True, requestId=request_id)
-    print("[BATCH] Added %s antenna(s) from batch update", len(ants_ids))
+    print(f"[BATCH] Added {len(ants_ids)} antenna(s) from batch update", )
 
     if self.enable_live_rsrp and ants_ids:
       self.get_accurate_baseline()
@@ -565,7 +565,7 @@ class App(AppTemplate):
     request_id = event.detail.get("requestId") if hasattr(event, "detail") else None
     data = event.detail if hasattr(event, "detail") else {}
     opt_params = data.get("opt_params") or {}
-    print("Iframe sent optimization params: %s", opt_params)
+    print("Iframe sent optimization params: ", opt_params)
     try:
       with anvil.server.no_loading_indicator:
         result = anvil.server.call("sync_optimization_params", opt_params)
@@ -580,7 +580,7 @@ class App(AppTemplate):
     request_id = event.detail.get("requestId") if hasattr(event, "detail") else None
     data = event.detail if hasattr(event, "detail") else {}
     weight_params = data.get("weight_params") or {}
-    print("Iframe sent weight params: %s", weight_params)
+    print("Iframe sent weight params: ", weight_params)
     try:
       with anvil.server.no_loading_indicator:
         result = anvil.server.call("sync_bl_params", weight_params)
@@ -617,7 +617,7 @@ class App(AppTemplate):
         self._send_to_iframe("app_version", version=version)
         break
       except Exception as e:
-        logger.warning("Waiting for backend connection to get app version... (%s attempts left)", retries)
+        print(f"Waiting for backend connection to get app version... ({retries} attempts left)")
         time.sleep(1)
         retries -= 1
 
